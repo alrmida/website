@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,9 +6,27 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { Activity, Settings, Monitor, Database } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import WaterTankIndicator from '@/components/WaterTankIndicator';
+import MachineInfoHeader from '@/components/MachineInfoHeader';
 
 const AWGDashboard = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('daily');
+
+  // Machine information
+  const machineInfo = {
+    machineId: 'AWG-001-2024',
+    machineName: 'Kumulus AWG Unit #1',
+    location: 'Barcelona, Spain',
+    status: 'Producing',
+    launchDate: 'March 15, 2024'
+  };
+
+  // Water tank specifications
+  const waterTank = {
+    currentLevel: 10.0,
+    maxCapacity: 12.0,
+    percentage: 83
+  };
 
   // Mock data for daily production
   const dailyProductionData = [
@@ -71,18 +88,22 @@ const AWGDashboard = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Machine Information Header */}
+        <MachineInfoHeader
+          machineId={machineInfo.machineId}
+          machineName={machineInfo.machineName}
+          location={machineInfo.location}
+          status={machineInfo.status}
+          launchDate={machineInfo.launchDate}
+        />
+
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">💧 Current Water Level</CardTitle>
-              <Activity className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-gray-900 dark:text-white">10.0 L <span className="text-xl">(83%)</span></div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Water Tank Fill</p>
-            </CardContent>
-          </Card>
+          <WaterTankIndicator
+            currentLevel={waterTank.currentLevel}
+            maxCapacity={waterTank.maxCapacity}
+            percentage={waterTank.percentage}
+          />
 
           <Card className="bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -102,7 +123,7 @@ const AWGDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-gray-900 dark:text-white">1245.7 L</div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Lifetime production</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Since {machineInfo.launchDate}</p>
             </CardContent>
           </Card>
 
@@ -113,7 +134,7 @@ const AWGDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-green-600">€622.85</div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Cost savings</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Since {machineInfo.launchDate}</p>
             </CardContent>
           </Card>
         </div>
