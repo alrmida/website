@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { Activity, Settings, Monitor, Database } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const AWGDashboard = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('daily');
@@ -44,9 +45,9 @@ const AWGDashboard = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-gray-900 dark:to-gray-800">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+      <div className="bg-white dark:bg-gray-900 shadow-sm border-b dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3">
@@ -54,11 +55,12 @@ const AWGDashboard = () => {
                 <span className="text-white text-xl">💧</span>
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Kumulus - AWG Dashboard</h1>
-                <p className="text-sm text-gray-600">Powered by EeKan • Clean water from air • Real-time Monitoring</p>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Kumulus - AWG Dashboard</h1>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Powered by EeKan • Clean water from air • Real-time Monitoring</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
+              <ThemeToggle />
               <Button variant="outline" size="sm">
                 <Settings className="w-4 h-4 mr-2" />
                 Settings
@@ -71,65 +73,65 @@ const AWGDashboard = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-white hover:shadow-lg transition-shadow">
+          <Card className="bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">💧 Current Water Level</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">💧 Current Water Level</CardTitle>
               <Activity className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900">10.0 L <span className="text-xl">(83%)</span></div>
-              <p className="text-sm text-gray-500 mt-1">Water Tank Fill</p>
+              <div className="text-3xl font-bold text-gray-900 dark:text-white">10.0 L <span className="text-xl">(83%)</span></div>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Water Tank Fill</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-white hover:shadow-lg transition-shadow">
+          <Card className="bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">⚡ Machine State</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">⚡ Machine State</CardTitle>
               <Monitor className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-green-600">Producing</div>
-              <Badge variant="secondary" className="mt-2 bg-green-100 text-green-800">Online</Badge>
+              <Badge variant="secondary" className="mt-2 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">Online</Badge>
             </CardContent>
           </Card>
 
-          <Card className="bg-white hover:shadow-lg transition-shadow">
+          <Card className="bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">📊 Total Water Produced</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">📊 Total Water Produced</CardTitle>
               <Database className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900">1245.7 L</div>
-              <p className="text-sm text-gray-500 mt-1">Lifetime production</p>
+              <div className="text-3xl font-bold text-gray-900 dark:text-white">1245.7 L</div>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Lifetime production</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-white hover:shadow-lg transition-shadow">
+          <Card className="bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">💰 Money Saved</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">💰 Money Saved</CardTitle>
               <Activity className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-green-600">€622.85</div>
-              <p className="text-sm text-gray-500 mt-1">Cost savings</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Cost savings</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Water Production Analytics */}
-        <Card className="mb-8 bg-white">
+        <Card className="mb-8 bg-white dark:bg-gray-800">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <span className="text-lg">📈</span>
-                <CardTitle>Water Production</CardTitle>
+                <CardTitle className="dark:text-white">Water Production</CardTitle>
               </div>
             </div>
           </CardHeader>
           <CardContent>
             <Tabs value={selectedPeriod} onValueChange={setSelectedPeriod} className="w-full">
               <TabsList className="grid w-full grid-cols-4 mb-6">
-                <TabsTrigger value="daily" className="text-red-600 data-[state=active]:bg-red-100">Daily Production</TabsTrigger>
+                <TabsTrigger value="daily" className="text-red-600 data-[state=active]:bg-red-100 dark:data-[state=active]:bg-red-900">Daily Production</TabsTrigger>
                 <TabsTrigger value="monthly">Monthly Production</TabsTrigger>
                 <TabsTrigger value="status7">Status (7 Days)</TabsTrigger>
                 <TabsTrigger value="status4">Status (4 Months)</TabsTrigger>
@@ -308,7 +310,7 @@ const AWGDashboard = () => {
         </Card>
 
         {/* Footer */}
-        <div className="text-center text-sm text-gray-500">
+        <div className="text-center text-sm text-gray-500 dark:text-gray-400">
           © 2025 Kumulus Water • Last updated: 2025-06-01 07:39
         </div>
       </div>
