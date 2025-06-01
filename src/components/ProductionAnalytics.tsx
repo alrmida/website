@@ -26,18 +26,38 @@ const ProductionAnalytics = ({
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <span className="text-lg">📈</span>
-            <CardTitle className="dark:text-white">Water Production</CardTitle>
+            <span className="text-lg">📊</span>
+            <CardTitle className="dark:text-white">Metrics & Visuals</CardTitle>
           </div>
         </div>
       </CardHeader>
       <CardContent>
         <Tabs value={selectedPeriod} onValueChange={onPeriodChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6">
-            <TabsTrigger value="daily" className="text-red-600 data-[state=active]:bg-red-100 dark:data-[state=active]:bg-red-900">Daily Production</TabsTrigger>
-            <TabsTrigger value="monthly">Monthly Production</TabsTrigger>
-            <TabsTrigger value="status7">Status (7 Days)</TabsTrigger>
-            <TabsTrigger value="status4">Status (4 Months)</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-4 mb-6 bg-gray-100 dark:bg-gray-700">
+            <TabsTrigger 
+              value="daily" 
+              className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:bg-blue-500 dark:text-gray-300 text-gray-700 font-medium transition-all duration-200"
+            >
+              Daily Production
+            </TabsTrigger>
+            <TabsTrigger 
+              value="monthly"
+              className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:bg-blue-500 dark:text-gray-300 text-gray-700 font-medium transition-all duration-200"
+            >
+              Monthly Production
+            </TabsTrigger>
+            <TabsTrigger 
+              value="status7"
+              className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:bg-blue-500 dark:text-gray-300 text-gray-700 font-medium transition-all duration-200"
+            >
+              Status (7 Days)
+            </TabsTrigger>
+            <TabsTrigger 
+              value="status4"
+              className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:bg-blue-500 dark:text-gray-300 text-gray-300 font-medium transition-all duration-200"
+            >
+              Status (4 Months)
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="daily" className="mt-6">
