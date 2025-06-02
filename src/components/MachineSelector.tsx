@@ -1,0 +1,240 @@
+
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+
+interface Machine {
+  id: number;
+  machine_id: string;
+  name: string;
+  location: string;
+  client_id: string;
+  profiles?: {
+    username: string;
+  };
+}
+
+interface Client {
+  id: string;
+  username: string;
+}
+
+interface MachineSelectorProps {
+  onMachineSelect: (machine: Machine) => void;
+  selectedMachine: Machine | null;
+}
+
+const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorProps) => {
+  const { profile } = useAuth();
+  const [machines, setMachines] = useState<Machine[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [selectedClient, setSelectedClient] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchData();
+  }, [profile]);
+
+  const fetchData = async () => {
+    if (!profile) return;
+
+    setLoading(true);
+
+    if (profile.role === 'client') {
+      // Clients see only their machines
+      const { data: machinesData } = await supabase
+        .from('machines')
+        .select('*')
+        .eq('client_id', profile.id);
+      
+      if (machinesData) {
+        setMachines(machinesData);
+        // Auto-select first machine for clients
+        if (machinesData.length > 0 && !selectedMachine) {
+          onMachineSelect(machinesData[0]);
+        }
+      }
+    } else {
+      // Kumulus personnel see all machines and clients
+      const { data: clientsData } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .eq('role', 'client');
+      
+      const { data: machinesData } = await supabase
+        .from('machines')
+        .select(`
+          *,
+          profiles:client_id (
+            username
+          )
+        `);
+      
+      if (clientsData) setClients(clientsData);
+      if (machinesData) setMachines(machinesData);
+    }
+
+    setLoading(false);
+  };
+
+  const handleClientSelect = (clientId: string) => {
+    setSelectedClient(clientId);
+    // Clear machine selection when client changes
+    if (selectedMachine) {
+      onMachineSelect(null as any);
+    }
+  };
+
+  const getClientMachines = () => {
+    if (profile?.role === 'client') {
+      return machines;
+    }
+    
+    if (selectedClient) {
+      return machines.filter(machine => machine.client_id === selectedClient);
+    }
+    
+    return machines;
+  };
+
+  const handleDirectMachineSelect = (machineId: string) => {
+    const machine = machines.find(m => m.machine_id === machineId);
+    if (machine) {
+      onMachineSelect(machine);
+      // If kumulus personnel selects directly, set the client too
+      if (profile?.role === 'kumulus_personnel') {
+        setSelectedClient(machine.client_id);
+      }
+    }
+  };
+
+  if (loading) {
+    return (
+      <Card className="bg-white dark:bg-gray-800">
+        <CardHeader>
+          <CardTitle>Loading machines...</CardTitle>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="bg-white dark:bg-gray-800 mb-6">
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          Machine Selection
+          <Badge variant={profile?.role === 'kumulus_personnel' ? 'default' : 'secondary'}>
+            {profile?.role === 'kumulus_personnel' ? 'Kumulus Personnel' : 'Client'}
+          </Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {profile?.role === 'kumulus_personnel' && (
+          <>
+            <div className="space-y-2">
+              <Label>Select Client</Label>
+              <Select value={selectedClient} onValueChange={handleClientSelect}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a client..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.username}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="border-t pt-4">
+              <Label className="text-sm text-gray-600 dark:text-gray-400">
+                Or select machine directly by ID:
+              </Label>
+              <Select 
+                value={selectedMachine?.machine_id || ''} 
+                onValueChange={handleDirectMachineSelect}
+              >
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Choose machine ID..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {machines.map((machine) => (
+                    <SelectItem key={machine.id} value={machine.machine_id}>
+                      {machine.machine_id} - {machine.profiles?.username}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </>
+        )}
+
+        <div className="space-y-2">
+          <Label>
+            {profile?.role === 'kumulus_personnel' && selectedClient ? 
+              `Machines for ${clients.find(c => c.id === selectedClient)?.username}` : 
+              'Available Machines'
+            }
+          </Label>
+          <Select 
+            value={selectedMachine?.machine_id || ''} 
+            onValueChange={handleDirectMachineSelect}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose a machine..." />
+            </SelectTrigger>
+            <SelectContent>
+              {getClientMachines().map((machine) => (
+                <SelectItem key={machine.id} value={machine.machine_id}>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{machine.machine_id} - {machine.name}</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      {machine.location}
+                      {profile?.role === 'kumulus_personnel' && machine.profiles && 
+                        ` • Owner: ${machine.profiles.username}`
+                      }
+                    </span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {selectedMachine && (
+          <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
+            <h4 className="font-medium text-blue-900 dark:text-blue-100">Selected Machine</h4>
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              {selectedMachine.machine_id} - {selectedMachine.name}
+            </p>
+            <p className="text-sm text-blue-600 dark:text-blue-400">
+              Location: {selectedMachine.location}
+            </p>
+            {profile?.role === 'kumulus_personnel' && selectedMachine.profiles && (
+              <p className="text-sm text-blue-600 dark:text-blue-400">
+                Owner: {selectedMachine.profiles.username}
+              </p>
+            )}
+          </div>
+        )}
+
+        {getClientMachines().length === 0 && (
+          <p className="text-gray-500 dark:text-gray-400 text-center py-4">
+            {profile?.role === 'kumulus_personnel' && !selectedClient ? 
+              'Select a client to view their machines' :
+              'No machines available'
+            }
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+export default MachineSelector;

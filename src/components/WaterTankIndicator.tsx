@@ -11,10 +11,10 @@ interface WaterTankIndicatorProps {
 
 const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTankIndicatorProps) => {
   return (
-    <Card className="bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow">
+    <Card className="bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow border-gray-200 dark:border-gray-700">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">💧 Current Water Level</CardTitle>
-        <Activity className="h-4 w-4 text-blue-600" />
+        <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400" />
       </CardHeader>
       <CardContent>
         <div className="flex items-center space-x-4">
@@ -29,14 +29,14 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
           
           {/* Animated Water Tank Visual */}
           <div className="relative">
-            <div className="w-16 h-24 border-2 border-gray-300 dark:border-gray-600 rounded-b-lg rounded-t-sm bg-gray-50 dark:bg-gray-700 overflow-hidden">
+            <div className="w-16 h-24 border-2 border-gray-300 dark:border-gray-500 rounded-b-lg rounded-t-sm bg-gray-50 dark:bg-gray-600 overflow-hidden">
               {/* Water fill animation */}
               <div 
-                className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-blue-500 to-blue-300 transition-all duration-1000 ease-out"
+                className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-blue-500 to-blue-300 dark:from-blue-600 dark:to-blue-400 transition-all duration-1000 ease-out"
                 style={{ height: `${percentage}%` }}
               >
                 {/* Water wave animation */}
-                <div className="absolute top-0 left-0 right-0 h-2 bg-blue-400 opacity-60 animate-pulse"></div>
+                <div className="absolute top-0 left-0 right-0 h-2 bg-blue-400 dark:bg-blue-300 opacity-60 animate-pulse"></div>
               </div>
               
               {/* Percentage indicator */}

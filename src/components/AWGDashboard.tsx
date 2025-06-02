@@ -1,60 +1,84 @@
 
 import React, { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import DashboardHeader from '@/components/DashboardHeader';
 import MachineInfoHeader from '@/components/MachineInfoHeader';
 import MetricsCards from '@/components/MetricsCards';
 import ProductionAnalytics from '@/components/ProductionAnalytics';
+import MachineSelector from '@/components/MachineSelector';
+
+interface Machine {
+  id: number;
+  machine_id: string;
+  name: string;
+  location: string;
+  client_id: string;
+  profiles?: {
+    username: string;
+  };
+}
 
 const AWGDashboard = () => {
+  const { profile } = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState('daily');
+  const [selectedMachine, setSelectedMachine] = useState<Machine | null>(null);
 
-  // Machine information
-  const machineInfo = {
-    machineId: 'AWG-001-2024',
-    machineName: 'Kumulus AWG Unit #1',
-    location: 'Barcelona, Spain',
-    status: 'Producing',
-    launchDate: 'March 15, 2024'
+  // Default machine info for when no machine is selected
+  const defaultMachineInfo = {
+    machineId: 'Select a machine',
+    machineName: 'No machine selected',
+    location: 'N/A',
+    status: 'Offline',
+    launchDate: 'N/A'
   };
+
+  // Current machine info based on selection
+  const machineInfo = selectedMachine ? {
+    machineId: selectedMachine.machine_id,
+    machineName: selectedMachine.name,
+    location: selectedMachine.location,
+    status: 'Producing', // You can make this dynamic based on real data
+    launchDate: 'March 15, 2024' // You can make this dynamic
+  } : defaultMachineInfo;
 
   // Water tank specifications
   const waterTank = {
-    currentLevel: 10.0,
+    currentLevel: selectedMachine ? 10.0 : 0,
     maxCapacity: 12.0,
-    percentage: 83
+    percentage: selectedMachine ? 83 : 0
   };
 
-  // Mock data for daily production
+  // Mock data for daily production - could be filtered by selected machine
   const dailyProductionData = [
-    { date: '01 Jun', production: 15.2 },
-    { date: '29 May', production: 31.5 },
-    { date: '30 May', production: 47.8 },
-    { date: '31 May', production: 19.6 }
+    { date: '01 Jun', production: selectedMachine ? 15.2 : 0 },
+    { date: '29 May', production: selectedMachine ? 31.5 : 0 },
+    { date: '30 May', production: selectedMachine ? 47.8 : 0 },
+    { date: '31 May', production: selectedMachine ? 19.6 : 0 }
   ];
 
   // Mock data for monthly production
   const monthlyProductionData = [
-    { month: 'Apr 2025', production: 2250 },
-    { month: 'Mar 2025', production: 1850 },
-    { month: 'May 2025', production: 1950 }
+    { month: 'Apr 2025', production: selectedMachine ? 2250 : 0 },
+    { month: 'Mar 2025', production: selectedMachine ? 1850 : 0 },
+    { month: 'May 2025', production: selectedMachine ? 1950 : 0 }
   ];
 
   // Mock data for status tracking
   const statusData = [
-    { date: '01 Jun', producing: 18, idle: 2, fullWater: 1, disconnected: 3 },
-    { date: '26 May', producing: 19, idle: 1, fullWater: 2, disconnected: 2 },
-    { date: '27 May', producing: 22, idle: 1, fullWater: 1, disconnected: 0 },
-    { date: '28 May', producing: 19, idle: 2, fullWater: 2, disconnected: 1 },
-    { date: '29 May', producing: 21, idle: 1, fullWater: 1, disconnected: 1 },
-    { date: '30 May', producing: 12, idle: 6, fullWater: 3, disconnected: 3 },
-    { date: '31 May', producing: 10, idle: 6, fullWater: 4, disconnected: 4 }
+    { date: '01 Jun', producing: selectedMachine ? 18 : 0, idle: 2, fullWater: 1, disconnected: 3 },
+    { date: '26 May', producing: selectedMachine ? 19 : 0, idle: 1, fullWater: 2, disconnected: 2 },
+    { date: '27 May', producing: selectedMachine ? 22 : 0, idle: 1, fullWater: 1, disconnected: 0 },
+    { date: '28 May', producing: selectedMachine ? 19 : 0, idle: 2, fullWater: 2, disconnected: 1 },
+    { date: '29 May', producing: selectedMachine ? 21 : 0, idle: 1, fullWater: 1, disconnected: 1 },
+    { date: '30 May', producing: selectedMachine ? 12 : 0, idle: 6, fullWater: 3, disconnected: 3 },
+    { date: '31 May', producing: selectedMachine ? 10 : 0, idle: 6, fullWater: 4, disconnected: 4 }
   ];
 
   const monthlyStatusData = [
-    { month: '2025-03', producing: 68.9, idle: 14.1, fullWater: 5.2, disconnected: 11.8 },
-    { month: '2025-04', producing: 85.2, idle: 8.5, fullWater: 3.1, disconnected: 3.2 },
-    { month: '2025-05', producing: 72.4, idle: 15.6, fullWater: 6.8, disconnected: 5.2 },
-    { month: '2025-06', producing: 78.1, idle: 12.3, fullWater: 4.9, disconnected: 4.7 }
+    { month: '2025-03', producing: selectedMachine ? 68.9 : 0, idle: 14.1, fullWater: 5.2, disconnected: 11.8 },
+    { month: '2025-04', producing: selectedMachine ? 85.2 : 0, idle: 8.5, fullWater: 3.1, disconnected: 3.2 },
+    { month: '2025-05', producing: selectedMachine ? 72.4 : 0, idle: 15.6, fullWater: 6.8, disconnected: 5.2 },
+    { month: '2025-06', producing: selectedMachine ? 78.1 : 0, idle: 12.3, fullWater: 4.9, disconnected: 4.7 }
   ];
 
   return (
@@ -62,6 +86,11 @@ const AWGDashboard = () => {
       <DashboardHeader />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <MachineSelector 
+          onMachineSelect={setSelectedMachine}
+          selectedMachine={selectedMachine}
+        />
+
         <MachineInfoHeader
           machineId={machineInfo.machineId}
           machineName={machineInfo.machineName}
@@ -86,7 +115,12 @@ const AWGDashboard = () => {
 
         {/* Footer */}
         <div className="text-center text-sm text-gray-500 dark:text-gray-400">
-          © 2025 Kumulus Water • Last updated: 2025-06-01 07:39
+          © 2025 Kumulus Water • Last updated: 2025-06-01 07:39 
+          {profile && (
+            <span className="ml-4">
+              Logged in as: {profile.username} ({profile.role})
+            </span>
+          )}
         </div>
       </div>
     </div>

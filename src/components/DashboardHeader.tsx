@@ -3,8 +3,12 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Settings } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useAuth } from '@/contexts/AuthContext';
+import { Badge } from '@/components/ui/badge';
 
 const DashboardHeader = () => {
+  const { profile, signOut } = useAuth();
+
   return (
     <div className="bg-white dark:bg-gray-900 shadow-sm border-b dark:border-gray-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -19,10 +23,23 @@ const DashboardHeader = () => {
             </div>
           </div>
           <div className="flex items-center space-x-4">
+            {profile && (
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-600 dark:text-gray-300">
+                  {profile.username}
+                </span>
+                <Badge variant={profile.role === 'kumulus_personnel' ? 'default' : 'secondary'}>
+                  {profile.role === 'kumulus_personnel' ? 'Kumulus' : 'Client'}
+                </Badge>
+              </div>
+            )}
             <ThemeToggle />
             <Button variant="outline" size="sm">
               <Settings className="w-4 h-4 mr-2" />
               Settings
+            </Button>
+            <Button variant="outline" size="sm" onClick={signOut}>
+              Sign Out
             </Button>
           </div>
         </div>
