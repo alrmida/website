@@ -31,19 +31,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Fetch user profile using any cast to bypass type checking temporarily
+          // Fetch user profile
           setTimeout(async () => {
-            const { data: profileData } = await (supabase as any)
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
-            
-            setProfile(profileData);
+            try {
+              const { data: profileData, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
+              
+              console.log('Profile data:', profileData, 'Error:', error);
+              if (profileData) {
+                setProfile(profileData);
+              }
+            } catch (err) {
+              console.error('Error fetching profile:', err);
+            }
           }, 0);
         } else {
           setProfile(null);
@@ -54,6 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session check:', session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -63,10 +72,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
+    console.log('Attempting to sign in with:', email);
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+    console.log('Sign in result:', error ? 'Error: ' + error.message : 'Success');
     return { error };
   };
 

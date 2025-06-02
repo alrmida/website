@@ -23,6 +23,7 @@ const Login = () => {
 
   useEffect(() => {
     if (user) {
+      console.log('User logged in, redirecting to dashboard');
       navigate('/');
     }
   }, [user, navigate]);
@@ -31,13 +32,21 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     
+    console.log('Attempting sign in with:', email);
     const { error } = await signIn(email, password);
     
     if (error) {
+      console.error('Sign in error:', error);
       toast({
         title: "Error signing in",
         description: error.message,
         variant: "destructive"
+      });
+    } else {
+      console.log('Sign in successful');
+      toast({
+        title: "Success",
+        description: "You have successfully signed in!",
       });
     }
     
@@ -68,14 +77,18 @@ const Login = () => {
 
   // Quick login buttons for demo accounts
   const quickLogin = async (demoEmail: string) => {
+    console.log('Quick login attempt with:', demoEmail);
     setLoading(true);
     const { error } = await signIn(demoEmail, '0000');
     if (error) {
+      console.error('Quick login error:', error);
       toast({
         title: "Error signing in",
         description: error.message,
         variant: "destructive"
       });
+    } else {
+      console.log('Quick login successful');
     }
     setLoading(false);
   };
@@ -132,7 +145,7 @@ const Login = () => {
               </form>
 
               <div className="mt-6">
-                <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">Demo Accounts:</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">Demo Accounts (Password: 0000):</div>
                 <div className="space-y-2">
                   <Button 
                     variant="outline" 

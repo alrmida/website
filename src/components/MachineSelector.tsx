@@ -43,40 +43,51 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
   const fetchData = async () => {
     if (!profile) return;
 
+    console.log('Fetching data for profile:', profile);
     setLoading(true);
 
-    if (profile.role === 'client') {
-      // Clients see only their machines - using any cast temporarily
-      const { data: machinesData } = await (supabase as any)
-        .from('machines')
-        .select('*')
-        .eq('client_id', profile.id);
-      
-      if (machinesData) {
-        setMachines(machinesData);
-        // Auto-select first machine for clients
-        if (machinesData.length > 0 && !selectedMachine) {
-          onMachineSelect(machinesData[0]);
+    try {
+      if (profile.role === 'client') {
+        // Clients see only their machines
+        const { data: machinesData, error } = await supabase
+          .from('machines')
+          .select('*')
+          .eq('client_id', profile.id);
+        
+        console.log('Client machines data:', machinesData, 'Error:', error);
+        
+        if (machinesData) {
+          setMachines(machinesData);
+          // Auto-select first machine for clients
+          if (machinesData.length > 0 && !selectedMachine) {
+            onMachineSelect(machinesData[0]);
+          }
         }
+      } else {
+        // Kumulus personnel see all machines and clients
+        const { data: clientsData, error: clientsError } = await supabase
+          .from('profiles')
+          .select('id, username')
+          .eq('role', 'client');
+        
+        console.log('Clients data:', clientsData, 'Error:', clientsError);
+        
+        const { data: machinesData, error: machinesError } = await supabase
+          .from('machines')
+          .select(`
+            *,
+            profiles:client_id (
+              username
+            )
+          `);
+        
+        console.log('All machines data:', machinesData, 'Error:', machinesError);
+        
+        if (clientsData) setClients(clientsData);
+        if (machinesData) setMachines(machinesData);
       }
-    } else {
-      // Kumulus personnel see all machines and clients - using any cast temporarily
-      const { data: clientsData } = await (supabase as any)
-        .from('profiles')
-        .select('id, username')
-        .eq('role', 'client');
-      
-      const { data: machinesData } = await (supabase as any)
-        .from('machines')
-        .select(`
-          *,
-          profiles:client_id (
-            username
-          )
-        `);
-      
-      if (clientsData) setClients(clientsData);
-      if (machinesData) setMachines(machinesData);
+    } catch (error) {
+      console.error('Error fetching data:', error);
     }
 
     setLoading(false);
@@ -112,6 +123,22 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
       }
     }
   };
+
+  // Set up demo accounts when component mounts
+  useEffect(() => {
+    const setupDemoAccounts = async () => {
+      try {
+        console.log('Setting up demo accounts...');
+        const response = await supabase.functions.invoke('setup-demo-accounts');
+        console.log('Demo accounts setup result:', response);
+      } catch (error) {
+        console.error('Error setting up demo accounts:', error);
+      }
+    };
+    
+    // Only run once when the component first mounts
+    setupDemoAccounts();
+  }, []);
 
   if (loading) {
     return (
