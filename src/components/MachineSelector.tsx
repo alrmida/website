@@ -46,8 +46,8 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
     setLoading(true);
 
     if (profile.role === 'client') {
-      // Clients see only their machines
-      const { data: machinesData } = await supabase
+      // Clients see only their machines - using any cast temporarily
+      const { data: machinesData } = await (supabase as any)
         .from('machines')
         .select('*')
         .eq('client_id', profile.id);
@@ -60,13 +60,13 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
         }
       }
     } else {
-      // Kumulus personnel see all machines and clients
-      const { data: clientsData } = await supabase
+      // Kumulus personnel see all machines and clients - using any cast temporarily
+      const { data: clientsData } = await (supabase as any)
         .from('profiles')
         .select('id, username')
         .eq('role', 'client');
       
-      const { data: machinesData } = await supabase
+      const { data: machinesData } = await (supabase as any)
         .from('machines')
         .select(`
           *,
