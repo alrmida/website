@@ -41,7 +41,7 @@ interface Machine {
   location: string;
   client_id?: string;
   manager_id?: string;
-  profiles?: {
+  client_profile?: {
     username: string;
   };
 }
@@ -91,12 +91,12 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
         .select('*')
         .order('created_at', { ascending: false });
       
-      // Fetch machines with client info
+      // Fetch machines with client info - Fixed query
       const { data: machinesData } = await supabase
         .from('machines')
         .select(`
           *,
-          profiles:client_id (username)
+          client_profile:profiles!client_id (username)
         `)
         .order('created_at', { ascending: false });
       
@@ -343,7 +343,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
                         <TableCell>{machine.machine_id}</TableCell>
                         <TableCell>{machine.name}</TableCell>
                         <TableCell>{machine.location}</TableCell>
-                        <TableCell>{machine.profiles?.username || 'Unassigned'}</TableCell>
+                        <TableCell>{machine.client_profile?.username || 'Unassigned'}</TableCell>
                         <TableCell>
                           <Button
                             variant="destructive"

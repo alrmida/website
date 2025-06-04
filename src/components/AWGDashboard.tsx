@@ -63,13 +63,13 @@ const AWGDashboard = () => {
     { month: 'May 2025', production: selectedMachine ? 1950 : 0 }
   ];
 
-  // Status data for last 7 days
+  // Status data for last 7 days - Fixed to ensure all required properties
   const statusData = [
     { date: '25 May', producing: selectedMachine ? 19 : 0, idle: 2, fullWater: 2, disconnected: 1 },
     { date: '26 May', producing: selectedMachine ? 18 : 0, idle: 2, fullWater: 1, disconnected: 3 },
     { date: '27 May', producing: selectedMachine ? 22 : 0, idle: 1, fullWater: 1, disconnected: 0 },
     { date: '28 May', producing: selectedMachine ? 19 : 0, idle: 2, fullWater: 2, disconnected: 1 },
-    { date: '29 May', production: selectedMachine ? 21 : 0, idle: 1, fullWater: 1, disconnected: 1 },
+    { date: '29 May', producing: selectedMachine ? 21 : 0, idle: 1, fullWater: 1, disconnected: 1 },
     { date: '30 May', producing: selectedMachine ? 12 : 0, idle: 6, fullWater: 3, disconnected: 3 },
     { date: '31 May', producing: selectedMachine ? 10 : 0, idle: 6, fullWater: 4, disconnected: 4 }
   ];

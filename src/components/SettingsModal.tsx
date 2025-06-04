@@ -27,11 +27,11 @@ const SettingsModal = ({ open, onOpenChange }: SettingsModalProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
-  // Profile settings state
-  const [contactEmail, setContactEmail] = useState(profile?.contact_email || '');
-  const [contactPhone, setContactPhone] = useState(profile?.contact_phone || '');
-  const [preferredCurrency, setPreferredCurrency] = useState(profile?.preferred_currency || 'USD');
-  const [preferredTimezone, setPreferredTimezone] = useState(profile?.preferred_timezone || 'UTC');
+  // Profile settings state - Fixed to handle potentially undefined properties
+  const [contactEmail, setContactEmail] = useState((profile as any)?.contact_email || '');
+  const [contactPhone, setContactPhone] = useState((profile as any)?.contact_phone || '');
+  const [preferredCurrency, setPreferredCurrency] = useState((profile as any)?.preferred_currency || 'USD');
+  const [preferredTimezone, setPreferredTimezone] = useState((profile as any)?.preferred_timezone || 'UTC');
 
   // Password change state
   const [currentPassword, setCurrentPassword] = useState('');

@@ -14,7 +14,7 @@ interface Machine {
   name: string;
   location: string;
   client_id: string;
-  profiles?: {
+  client_profile?: {
     username: string;
   };
 }
@@ -72,11 +72,12 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
         
         console.log('Clients data:', clientsData, 'Error:', clientsError);
         
+        // Fixed query for machines with proper relationship naming
         const { data: machinesData, error: machinesError } = await supabase
           .from('machines')
           .select(`
             *,
-            profiles:client_id (
+            client_profile:profiles!client_id (
               username
             )
           `);
@@ -193,7 +194,7 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
                 <SelectContent>
                   {machines.map((machine) => (
                     <SelectItem key={machine.id} value={machine.machine_id}>
-                      {machine.machine_id} - {machine.profiles?.username}
+                      {machine.machine_id} - {machine.client_profile?.username}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -223,8 +224,8 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
                     <span className="font-medium">{machine.machine_id} - {machine.name}</span>
                     <span className="text-sm text-gray-500 dark:text-gray-400">
                       {machine.location}
-                      {profile?.role === 'kumulus_personnel' && machine.profiles && 
-                        ` • Owner: ${machine.profiles.username}`
+                      {profile?.role === 'kumulus_personnel' && machine.client_profile && 
+                        ` • Owner: ${machine.client_profile.username}`
                       }
                     </span>
                   </div>
@@ -243,9 +244,9 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
             <p className="text-sm text-blue-600 dark:text-blue-400">
               Location: {selectedMachine.location}
             </p>
-            {profile?.role === 'kumulus_personnel' && selectedMachine.profiles && (
+            {profile?.role === 'kumulus_personnel' && selectedMachine.client_profile && (
               <p className="text-sm text-blue-600 dark:text-blue-400">
-                Owner: {selectedMachine.profiles.username}
+                Owner: {selectedMachine.client_profile.username}
               </p>
             )}
           </div>

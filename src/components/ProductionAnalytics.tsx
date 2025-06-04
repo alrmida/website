@@ -115,7 +115,7 @@ const ProductionAnalytics = ({
                 value="status"
                 className="text-gray-900 dark:text-gray-100 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400"
               >
-                {selectedPeriod === 'daily' ? 'Status (7 Days)' : 'Status (Last 3 Months)'}
+                {selectedPeriod === 'daily' ? 'Status (Last 7 Days)' : 'Status (Last 3 Months)'}
               </TabsTrigger>
             </TabsList>
 
@@ -129,14 +129,14 @@ const ProductionAnalytics = ({
                         dataKey="date" 
                         stroke="#6b7280" 
                         className="dark:stroke-gray-400"
-                        tick={{ fontSize: 12 }}
+                        tick={{ fontSize: 12, fill: '#6b7280' }}
                         tickMargin={10}
                       />
                       <YAxis 
                         stroke="#6b7280" 
                         className="dark:stroke-gray-400"
-                        tick={{ fontSize: 12 }}
-                        label={{ value: 'Liters', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } }}
+                        tick={{ fontSize: 12, fill: '#6b7280' }}
+                        label={{ value: 'Liters', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#6b7280' } }}
                       />
                       <Tooltip 
                         contentStyle={{ 
@@ -145,7 +145,6 @@ const ProductionAnalytics = ({
                           borderRadius: '8px',
                           color: '#1f2937'
                         }}
-                        className="dark:bg-gray-800 dark:border-gray-600 dark:text-white"
                       />
                       <Bar dataKey="production" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                     </BarChart>
@@ -156,14 +155,14 @@ const ProductionAnalytics = ({
                         dataKey="month" 
                         stroke="#6b7280" 
                         className="dark:stroke-gray-400"
-                        tick={{ fontSize: 12 }}
+                        tick={{ fontSize: 12, fill: '#6b7280' }}
                         tickMargin={10}
                       />
                       <YAxis 
                         stroke="#6b7280" 
                         className="dark:stroke-gray-400"
-                        tick={{ fontSize: 12 }}
-                        label={{ value: 'Liters', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } }}
+                        tick={{ fontSize: 12, fill: '#6b7280' }}
+                        label={{ value: 'Liters', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#6b7280' } }}
                       />
                       <Tooltip 
                         contentStyle={{ 
@@ -172,7 +171,6 @@ const ProductionAnalytics = ({
                           borderRadius: '8px',
                           color: '#1f2937'
                         }}
-                        className="dark:bg-gray-800 dark:border-gray-600 dark:text-white"
                       />
                       <Area 
                         type="monotone" 
@@ -194,19 +192,29 @@ const ProductionAnalytics = ({
                     data={selectedPeriod === 'daily' ? averageStatusData : monthlyStatusData} 
                     margin={{ top: 20, right: 30, left: 40, bottom: 60 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.3} className="dark:stroke-gray-700 dark:opacity-20" />
+                    <CartesianGrid 
+                      strokeDasharray="3 3" 
+                      stroke="#e5e7eb" 
+                      opacity={0.3} 
+                      className="dark:stroke-gray-700 dark:opacity-20" 
+                    />
                     <XAxis 
                       dataKey={selectedPeriod === 'daily' ? 'category' : 'month'} 
                       stroke="#6b7280" 
                       className="dark:stroke-gray-400"
-                      tick={{ fontSize: 12 }}
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
                       tickMargin={10}
                     />
                     <YAxis 
                       stroke="#6b7280" 
                       className="dark:stroke-gray-400"
-                      tick={{ fontSize: 12 }}
-                      label={{ value: selectedPeriod === 'daily' ? 'Percentage (%)' : 'Percentage (%)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } }}
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      label={{ 
+                        value: selectedPeriod === 'daily' ? 'Percentage (%)' : 'Percentage (%)', 
+                        angle: -90, 
+                        position: 'insideLeft', 
+                        style: { textAnchor: 'middle', fill: '#6b7280' } 
+                      }}
                     />
                     <Tooltip 
                       contentStyle={{ 
@@ -215,7 +223,6 @@ const ProductionAnalytics = ({
                         borderRadius: '8px',
                         color: '#1f2937'
                       }}
-                      className="dark:bg-gray-800 dark:border-gray-600 dark:text-white"
                     />
                     <Bar dataKey="producing" stackId="a" fill="#10b981" name="Producing" />
                     <Bar dataKey="idle" stackId="a" fill="#f59e0b" name="Idle" />
