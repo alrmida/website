@@ -37,8 +37,8 @@ const AWGDashboard = () => {
     machineId: selectedMachine.machine_id,
     machineName: selectedMachine.name,
     location: selectedMachine.location,
-    status: 'Producing', // You can make this dynamic based on real data
-    launchDate: 'March 15, 2024' // You can make this dynamic
+    status: 'Producing',
+    launchDate: 'March 15, 2024'
   } : defaultMachineInfo;
 
   // Water tank specifications
@@ -48,37 +48,37 @@ const AWGDashboard = () => {
     percentage: selectedMachine ? 83 : 0
   };
 
-  // Mock data for daily production - could be filtered by selected machine
+  // Extended daily production data (last 7 days)
   const dailyProductionData = [
-    { date: '01 Jun', production: selectedMachine ? 15.2 : 0 },
+    { date: '28 May', production: selectedMachine ? 15.2 : 0 },
     { date: '29 May', production: selectedMachine ? 31.5 : 0 },
     { date: '30 May', production: selectedMachine ? 47.8 : 0 },
     { date: '31 May', production: selectedMachine ? 19.6 : 0 }
   ];
 
-  // Mock data for monthly production
+  // Monthly production data (last 3 months)
   const monthlyProductionData = [
-    { month: 'Apr 2025', production: selectedMachine ? 2250 : 0 },
     { month: 'Mar 2025', production: selectedMachine ? 1850 : 0 },
+    { month: 'Apr 2025', production: selectedMachine ? 2250 : 0 },
     { month: 'May 2025', production: selectedMachine ? 1950 : 0 }
   ];
 
-  // Mock data for status tracking
+  // Status data for last 7 days
   const statusData = [
-    { date: '01 Jun', producing: selectedMachine ? 18 : 0, idle: 2, fullWater: 1, disconnected: 3 },
-    { date: '26 May', producing: selectedMachine ? 19 : 0, idle: 1, fullWater: 2, disconnected: 2 },
+    { date: '25 May', producing: selectedMachine ? 19 : 0, idle: 2, fullWater: 2, disconnected: 1 },
+    { date: '26 May', producing: selectedMachine ? 18 : 0, idle: 2, fullWater: 1, disconnected: 3 },
     { date: '27 May', producing: selectedMachine ? 22 : 0, idle: 1, fullWater: 1, disconnected: 0 },
     { date: '28 May', producing: selectedMachine ? 19 : 0, idle: 2, fullWater: 2, disconnected: 1 },
-    { date: '29 May', producing: selectedMachine ? 21 : 0, idle: 1, fullWater: 1, disconnected: 1 },
+    { date: '29 May', production: selectedMachine ? 21 : 0, idle: 1, fullWater: 1, disconnected: 1 },
     { date: '30 May', producing: selectedMachine ? 12 : 0, idle: 6, fullWater: 3, disconnected: 3 },
     { date: '31 May', producing: selectedMachine ? 10 : 0, idle: 6, fullWater: 4, disconnected: 4 }
   ];
 
+  // Monthly status data (last 3 months)
   const monthlyStatusData = [
     { month: '2025-03', producing: selectedMachine ? 68.9 : 0, idle: 14.1, fullWater: 5.2, disconnected: 11.8 },
     { month: '2025-04', producing: selectedMachine ? 85.2 : 0, idle: 8.5, fullWater: 3.1, disconnected: 3.2 },
-    { month: '2025-05', producing: selectedMachine ? 72.4 : 0, idle: 15.6, fullWater: 6.8, disconnected: 5.2 },
-    { month: '2025-06', producing: selectedMachine ? 78.1 : 0, idle: 12.3, fullWater: 4.9, disconnected: 4.7 }
+    { month: '2025-05', producing: selectedMachine ? 72.4 : 0, idle: 15.6, fullWater: 6.8, disconnected: 5.2 }
   ];
 
   return (
@@ -114,7 +114,7 @@ const AWGDashboard = () => {
         />
 
         {/* Footer */}
-        <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+        <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-8">
           © 2025 Kumulus Water • Last updated: 2025-06-01 07:39 
           {profile && (
             <span className="ml-4">

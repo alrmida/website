@@ -9,6 +9,47 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      invitations: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          email: string
+          expires_at: string
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          email: string
+          expires_at: string
+          id?: string
+          role: Database["public"]["Enums"]["user_role"]
+          token: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          token?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       machines: {
         Row: {
           client_id: string | null
@@ -16,6 +57,7 @@ export type Database = {
           id: number
           location: string | null
           machine_id: string
+          manager_id: string | null
           name: string
           updated_at: string | null
         }
@@ -25,6 +67,7 @@ export type Database = {
           id?: number
           location?: string | null
           machine_id: string
+          manager_id?: string | null
           name: string
           updated_at?: string | null
         }
@@ -34,6 +77,7 @@ export type Database = {
           id?: number
           location?: string | null
           machine_id?: string
+          manager_id?: string | null
           name?: string
           updated_at?: string | null
         }
@@ -45,26 +89,51 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "machines_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       profiles: {
         Row: {
+          contact_email: string | null
+          contact_phone: string | null
           created_at: string | null
           id: string
+          notification_preferences: Json | null
+          preferences: Json | null
+          preferred_currency: string | null
+          preferred_timezone: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string | null
           username: string
         }
         Insert: {
+          contact_email?: string | null
+          contact_phone?: string | null
           created_at?: string | null
           id: string
+          notification_preferences?: Json | null
+          preferences?: Json | null
+          preferred_currency?: string | null
+          preferred_timezone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
           username: string
         }
         Update: {
+          contact_email?: string | null
+          contact_phone?: string | null
           created_at?: string | null
           id?: string
+          notification_preferences?: Json | null
+          preferences?: Json | null
+          preferred_currency?: string | null
+          preferred_timezone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
           username?: string
@@ -76,6 +145,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_invitation: {
+        Args: {
+          p_email: string
+          p_role: Database["public"]["Enums"]["user_role"]
+          p_created_by: string
+        }
+        Returns: string
+      }
+      generate_invitation_token: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_user_role: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
