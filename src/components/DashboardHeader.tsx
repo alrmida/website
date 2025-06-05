@@ -34,15 +34,14 @@ const DashboardHeader = () => {
   return (
     <div className="bg-white dark:bg-gray-900 shadow-sm border-b dark:border-gray-700 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-blue-600 dark:bg-blue-500 rounded-lg flex items-center justify-center">
+        <div className="flex items-center justify-between h-20">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-blue-600 dark:bg-blue-500 rounded-xl flex items-center justify-center p-2">
               <img 
                 src="/lovable-uploads/6b2020dd-160c-4c6a-bac9-5f824123d5d1.png" 
                 alt="Kumulus" 
-                className="w-6 h-6 object-contain dark:block hidden"
+                className="w-full h-full object-contain dark:block hidden"
                 onError={(e) => {
-                  // Fallback to text if image doesn't load
                   const target = e.currentTarget;
                   target.style.display = 'none';
                   const fallback = target.nextElementSibling?.nextElementSibling as HTMLElement;
@@ -54,9 +53,8 @@ const DashboardHeader = () => {
               <img 
                 src="/lovable-uploads/913ab43b-9664-4082-88da-18b2190e49c2.png" 
                 alt="Kumulus" 
-                className="w-6 h-6 object-contain dark:hidden block"
+                className="w-full h-full object-contain dark:hidden block"
                 onError={(e) => {
-                  // Fallback to text if image doesn't load
                   const target = e.currentTarget;
                   target.style.display = 'none';
                   const fallback = target.nextElementSibling?.nextElementSibling as HTMLElement;
@@ -65,11 +63,11 @@ const DashboardHeader = () => {
                   }
                 }}
               />
-              <span className="text-white text-lg font-bold hidden">K</span>
+              <span className="text-white text-xl font-bold hidden">K</span>
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Kumulus</h1>
-              <p className="text-sm text-gray-600 dark:text-gray-300">Your Drinking Water From Air. Mineralized, Fresh, Sustainable</p>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white font-poppins">Kumulus</h1>
+              <p className="text-sm text-gray-600 dark:text-gray-300 font-poppins">Your Drinking Water From Air. Mineralized, Fresh, Sustainable</p>
             </div>
           </div>
           <div className="flex items-center space-x-4">

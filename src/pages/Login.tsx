@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -83,14 +82,13 @@ const Login = () => {
       
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="flex items-center justify-center space-x-2 mb-4">
-            <div className="w-12 h-12 bg-blue-600 dark:bg-blue-500 rounded-lg flex items-center justify-center">
+          <div className="flex items-center justify-center space-x-3 mb-4">
+            <div className="w-16 h-16 bg-blue-600 dark:bg-blue-500 rounded-xl flex items-center justify-center p-3">
               <img 
                 src="/lovable-uploads/6b2020dd-160c-4c6a-bac9-5f824123d5d1.png" 
                 alt="Kumulus" 
-                className="w-8 h-8 object-contain dark:block hidden"
+                className="w-full h-full object-contain dark:block hidden"
                 onError={(e) => {
-                  // Fallback to text if image doesn't load
                   const target = e.currentTarget;
                   target.style.display = 'none';
                   const fallback = target.nextElementSibling?.nextElementSibling as HTMLElement;
@@ -102,9 +100,8 @@ const Login = () => {
               <img 
                 src="/lovable-uploads/913ab43b-9664-4082-88da-18b2190e49c2.png" 
                 alt="Kumulus" 
-                className="w-8 h-8 object-contain dark:hidden block"
+                className="w-full h-full object-contain dark:hidden block"
                 onError={(e) => {
-                  // Fallback to text if image doesn't load
                   const target = e.currentTarget;
                   target.style.display = 'none';
                   const fallback = target.nextElementSibling?.nextElementSibling as HTMLElement;
@@ -113,11 +110,11 @@ const Login = () => {
                   }
                 }}
               />
-              <span className="text-white text-xl font-bold hidden">K</span>
+              <span className="text-white text-2xl font-bold hidden">K</span>
             </div>
-            <CardTitle className="text-2xl">Kumulus AWG</CardTitle>
+            <CardTitle className="text-3xl font-poppins">Kumulus AWG</CardTitle>
           </div>
-          <CardDescription>Sign in to access your dashboard</CardDescription>
+          <CardDescription className="font-poppins">Sign in to access your dashboard</CardDescription>
         </CardHeader>
 
         <CardContent>
