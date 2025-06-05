@@ -39,19 +39,36 @@ serve(async (req) => {
       throw new Error('Missing InfluxDB configuration');
     }
 
-    // Enhanced Flux query to get both water level and compressor state
-    const fluxQuery = `from(bucket: "${influxBucket}")
+    // Modified Flux query to get both fields separately and then join them
+    const fluxQuery = `
+import "join"
+
+water_level = from(bucket: "${influxBucket}")
   |> range(start: -10m)
   |> filter(fn: (r) => r._measurement == "awg_data_full")
-  |> filter(fn: (r) => r._field == "water_level_L" or r._field == "compressor_on")
+  |> filter(fn: (r) => r._field == "water_level_L")
   |> group(columns: [])
   |> last()
-  |> pivot(
-       rowKey:   ["_time"],
-       columnKey: ["_field"],
-       valueColumn: "_value"
-     )
-  |> limit(n: 1)`;
+  |> drop(columns: ["_start", "_stop"])
+
+compressor = from(bucket: "${influxBucket}")
+  |> range(start: -10m)
+  |> filter(fn: (r) => r._measurement == "awg_data_full")
+  |> filter(fn: (r) => r._field == "compressor_on")
+  |> group(columns: [])
+  |> last()
+  |> drop(columns: ["_start", "_stop"])
+
+join.left(
+  left: water_level,
+  right: compressor,
+  on: (l, r) => l._time == r._time,
+  as: (l, r) => ({
+    _time: l._time,
+    water_level_L: l._value,
+    compressor_on: if exists r._value then r._value else 0.0
+  })
+)`;
 
     console.log('Executing Flux query:', fluxQuery);
 
@@ -131,6 +148,12 @@ serve(async (req) => {
           data[header] = value;
         }
       }
+    }
+
+    // Ensure compressor_on defaults to 0 if not present
+    if (!data.hasOwnProperty('compressor_on')) {
+      console.log('compressor_on field not found, defaulting to 0');
+      data.compressor_on = 0;
     }
 
     console.log('Parsed data:', data);
