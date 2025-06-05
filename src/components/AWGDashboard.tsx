@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardHeader from '@/components/DashboardHeader';
-import MachineInfoHeader from '@/components/MachineInfoHeader';
 import MetricsCards from '@/components/MetricsCards';
 import ProductionAnalytics from '@/components/ProductionAnalytics';
 import ESGMetrics from '@/components/ESGMetrics';
@@ -177,16 +176,6 @@ const AWGDashboard = () => {
             <p>Loading live machine data...</p>
           </div>
         )}
-
-        <MachineInfoHeader
-          machineId={machineInfo.machineId}
-          machineName={machineInfo.machineName}
-          location={machineInfo.location}
-          status={machineInfo.status}
-          launchDate={machineInfo.launchDate}
-          isOnline={machineInfo.isOnline}
-          userRole={profile?.role}
-        />
 
         <MetricsCards
           waterTank={waterTank}
