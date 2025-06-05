@@ -39,7 +39,7 @@ serve(async (req) => {
       throw new Error('Missing InfluxDB configuration');
     }
 
-    // Flux query exactly as specified by ChatGPT
+    // Flux query to get the latest data
     const fluxQuery = `from(bucket: "${influxBucket}")
   |> range(start: -10m)
   |> filter(fn: (r) => r._measurement == "awg_data_full")
@@ -54,7 +54,13 @@ serve(async (req) => {
 
     console.log('Executing Flux query:', fluxQuery);
 
-    const response = await fetch(`${influxUrl}/api/v2/query?org=${encodeURIComponent(influxOrg)}`, {
+    // Ensure the URL doesn't have a trailing slash and construct the proper query endpoint
+    const baseUrl = influxUrl.endsWith('/') ? influxUrl.slice(0, -1) : influxUrl;
+    const queryUrl = `${baseUrl}/api/v2/query?org=${encodeURIComponent(influxOrg)}`;
+    
+    console.log('Query URL:', queryUrl);
+
+    const response = await fetch(queryUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Token ${influxToken}`,
@@ -71,14 +77,32 @@ serve(async (req) => {
       const errorText = await response.text();
       console.error('InfluxDB query failed:', response.status, response.statusText, errorText);
       return new Response(JSON.stringify({ 
-        error: `InfluxDB returned ${response.status} ${response.statusText}` 
+        error: `InfluxDB returned ${response.status} ${response.statusText}: ${errorText}` 
       }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const jsonData = await response.json();
+    const responseText = await response.text();
+    console.log('InfluxDB raw response:', responseText);
+
+    // Try to parse as JSON
+    let jsonData;
+    try {
+      jsonData = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Failed to parse response as JSON:', parseError);
+      console.error('Response was:', responseText.substring(0, 500));
+      return new Response(JSON.stringify({ 
+        error: 'InfluxDB returned non-JSON response',
+        details: responseText.substring(0, 200)
+      }), {
+        status: 502,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     console.log('InfluxDB JSON response:', JSON.stringify(jsonData, null, 2));
 
     // Check if we have tables and records
