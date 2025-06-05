@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 
 interface LiveMachineData {
@@ -20,15 +19,21 @@ function calculateMachineStatus(waterLevel: number, compressorOn: number, dataAg
   const isOnline = true;
   
   // Calculate status based on water level and compressor state
-  if (waterLevel > 9.5 && compressorOn === 0) {
-    return { status: 'Full Water', isOnline };
-  } else if (waterLevel <= 9.5 && compressorOn === 1) {
-    return { status: 'Producing', isOnline };
-  } else if (waterLevel <= 9.5 && compressorOn === 0) {
-    return { status: 'Idle', isOnline };
+  if (waterLevel > 9.5) {
+    // Tank is full or nearly full
+    if (compressorOn === 1) {
+      return { status: 'Full Water', isOnline }; // Still producing but tank is full
+    } else {
+      return { status: 'Full Water', isOnline }; // Tank full, compressor off
+    }
+  } else {
+    // Tank is not full
+    if (compressorOn === 1) {
+      return { status: 'Producing', isOnline }; // Actively producing water
+    } else {
+      return { status: 'Idle', isOnline }; // Not producing, waiting
+    }
   }
-  
-  return { status: 'Unknown', isOnline };
 }
 
 // Static data generator for demo machines
