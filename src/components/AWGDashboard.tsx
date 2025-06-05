@@ -34,7 +34,8 @@ const AWGDashboard = () => {
     machineName: 'No machine selected',
     location: 'N/A',
     status: 'Offline',
-    launchDate: 'N/A'
+    launchDate: 'N/A',
+    isOnline: false
   };
 
   // Current machine info based on selection - use live data when machine is selected
@@ -43,7 +44,8 @@ const AWGDashboard = () => {
     machineName: selectedMachine.name,
     location: selectedMachine.location,
     status: liveData.status || 'Loading...',
-    launchDate: 'March 15, 2024'
+    launchDate: 'March 15, 2024',
+    isOnline: liveData.isOnline
   } : defaultMachineInfo;
 
   // Water tank specifications - use live data when machine is selected
@@ -117,6 +119,7 @@ const AWGDashboard = () => {
           location={machineInfo.location}
           status={machineInfo.status}
           launchDate={machineInfo.launchDate}
+          isOnline={machineInfo.isOnline}
         />
 
         <MetricsCards

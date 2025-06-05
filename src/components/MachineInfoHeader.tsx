@@ -9,17 +9,21 @@ interface MachineInfoHeaderProps {
   location: string;
   status: string;
   launchDate: string;
+  isOnline?: boolean;
 }
 
-const MachineInfoHeader = ({ machineId, machineName, location, status, launchDate }: MachineInfoHeaderProps) => {
+const MachineInfoHeader = ({ machineId, machineName, location, status, launchDate, isOnline = false }: MachineInfoHeaderProps) => {
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'producing':
         return 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-200 dark:border-green-800';
       case 'idle':
         return 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 border-yellow-200 dark:border-yellow-800';
+      case 'full water':
+        return 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-800';
       case 'maintenance':
         return 'bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 border-orange-200 dark:border-orange-800';
+      case 'disconnected':
       case 'offline':
         return 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 border-red-200 dark:border-red-800';
       default:
@@ -46,9 +50,9 @@ const MachineInfoHeader = ({ machineId, machineName, location, status, launchDat
           </div>
           
           <div className="flex items-center space-x-2">
-            <div className={`w-3 h-3 rounded-full ${status.toLowerCase() === 'producing' ? 'bg-green-500 dark:bg-green-400 animate-pulse' : 'bg-gray-400 dark:bg-gray-500'}`}></div>
+            <div className={`w-3 h-3 rounded-full ${isOnline ? 'bg-green-500 dark:bg-green-400 animate-pulse' : 'bg-red-500 dark:bg-red-400'}`}></div>
             <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
-              {status === 'Producing' ? 'Online' : 'Offline'}
+              {isOnline ? 'Online' : 'Offline'}
             </span>
           </div>
         </div>

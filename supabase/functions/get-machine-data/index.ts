@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -38,7 +39,7 @@ serve(async (req) => {
       throw new Error('Missing InfluxDB configuration');
     }
 
-    // Flux query to get the latest data
+    // Enhanced Flux query to get more machine data including compressor state
     const fluxQuery = `from(bucket: "${influxBucket}")
   |> range(start: -10m)
   |> filter(fn: (r) => r._measurement == "awg_data_full")
@@ -96,12 +97,12 @@ serve(async (req) => {
       });
     }
 
-    // Parse CSV headers
-    const headers = lines[0].split(',');
+    // Parse CSV headers - handle carriage returns
+    const headers = lines[0].split(',').map(h => h.trim().replace(/\r$/, ''));
     console.log('CSV headers:', headers);
 
     // Parse data row (skip first line which is headers)
-    const dataRow = lines[1].split(',');
+    const dataRow = lines[1].split(',').map(d => d.trim().replace(/\r$/, ''));
     console.log('CSV data row:', dataRow);
 
     if (dataRow.length !== headers.length) {

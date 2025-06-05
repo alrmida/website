@@ -7,24 +7,28 @@ interface LiveMachineData {
   lastUpdated: string;
   dataAge: number;
   compressorOn: number;
+  isOnline: boolean;
 }
 
-function calculateMachineStatus(waterLevel: number, compressorOn: number, dataAge: number): string {
-  // If no data for 60+ seconds, machine is disconnected
+function calculateMachineStatus(waterLevel: number, compressorOn: number, dataAge: number): { status: string, isOnline: boolean } {
+  // If no data for 60+ seconds, machine is disconnected/offline
   if (dataAge > 60000) { // 60 seconds in milliseconds
-    return 'Disconnected';
+    return { status: 'Disconnected', isOnline: false };
   }
+  
+  // Machine is online if we have recent data
+  const isOnline = true;
   
   // Calculate status based on water level and compressor state
   if (waterLevel > 9.5 && compressorOn === 0) {
-    return 'Full Water';
+    return { status: 'Full Water', isOnline };
   } else if (waterLevel <= 9.5 && compressorOn === 1) {
-    return 'Producing';
+    return { status: 'Producing', isOnline };
   } else if (waterLevel <= 9.5 && compressorOn === 0) {
-    return 'Idle';
+    return { status: 'Idle', isOnline };
   }
   
-  return 'Unknown';
+  return { status: 'Unknown', isOnline };
 }
 
 export const useLiveMachineData = () => {
@@ -33,7 +37,8 @@ export const useLiveMachineData = () => {
     status: 'Loading...',
     lastUpdated: new Date().toISOString(),
     dataAge: 0,
-    compressorOn: 0
+    compressorOn: 0,
+    isOnline: false
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +47,7 @@ export const useLiveMachineData = () => {
     try {
       console.log('Fetching live machine data...');
       
-      // Use GET request to the edge function with hardcoded values
+      // Use GET request to the edge function
       const response = await fetch(
         'https://dolkcmipdzqrtpaflvaf.supabase.co/functions/v1/get-machine-data',
         {
@@ -63,7 +68,7 @@ export const useLiveMachineData = () => {
       const result = await response.json();
       console.log('Received data:', result);
 
-      // Handle the new response format
+      // Handle the response format
       if (result.status === 'ok' && result.data) {
         const machineData = result.data;
         
@@ -72,19 +77,23 @@ export const useLiveMachineData = () => {
         const now = new Date();
         const dataAge = now.getTime() - dataTime.getTime();
 
-        // Calculate machine status
+        // Get machine data
         const waterLevel = machineData.water_level_L || 0;
         const compressorOn = machineData.compressor_on || 0;
-        const status = calculateMachineStatus(waterLevel, compressorOn, dataAge);
+        
+        // Calculate machine status and online state
+        const { status, isOnline } = calculateMachineStatus(waterLevel, compressorOn, dataAge);
 
         const processedData = {
           waterLevel: waterLevel,
           status: status,
           lastUpdated: machineData._time,
           dataAge: dataAge,
-          compressorOn: compressorOn
+          compressorOn: compressorOn,
+          isOnline: isOnline
         };
 
+        console.log('Processed machine data:', processedData);
         setData(processedData);
         setError(null);
       } else {
@@ -96,7 +105,8 @@ export const useLiveMachineData = () => {
       // Set fallback data when there's an error
       setData(prev => ({
         ...prev,
-        status: 'Disconnected'
+        status: 'Disconnected',
+        isOnline: false
       }));
     } finally {
       setIsLoading(false);
