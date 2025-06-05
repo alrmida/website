@@ -16,10 +16,10 @@ interface Machine {
 
 // Helper function to get model name based on machine ID
 const getModelName = (machineId: string): string => {
-  if (machineId === 'KU079') return 'Amphore'; // Live data machine
-  if (machineId.startsWith('KU0')) return 'Amphore';
-  if (machineId.startsWith('KU1')) return 'BoKs';
-  if (machineId.startsWith('KU2')) return 'Dispenser';
+  if (machineId === 'KU001619000079') return 'Amphore'; // Live data machine
+  if (machineId.startsWith('KU0016190000')) return 'Amphore';
+  if (machineId.startsWith('KU0016191000')) return 'BoKs';
+  if (machineId.startsWith('KU0016192000')) return 'Dispenser';
   return 'Amphore'; // Default to Amphore
 };
 
@@ -57,11 +57,11 @@ export const useDashboardData = (selectedMachine: Machine | null) => {
 
     // Get production data based on machine - varied for different machines
     const productionMultiplier = selectedMachine ? 
-      (selectedMachine.machine_id === 'KU079' ? 1.0 : 
-       selectedMachine.machine_id === 'KU001' ? 1.3 :
-       selectedMachine.machine_id === 'KU002' ? 0.8 :
-       selectedMachine.machine_id === 'KU003' ? 0.6 :
-       selectedMachine.machine_id === 'KU004' ? 0.4 : 0.9) : 0;
+      (selectedMachine.machine_id === 'KU001619000079' ? 1.0 : 
+       selectedMachine.machine_id === 'KU001619000001' ? 1.3 :
+       selectedMachine.machine_id === 'KU001619000002' ? 0.8 :
+       selectedMachine.machine_id === 'KU001619000003' ? 0.6 :
+       selectedMachine.machine_id === 'KU001619000004' ? 0.4 : 0.9) : 0;
 
     const productionData = getStaticProductionData(selectedMachine?.machine_id, productionMultiplier);
 
@@ -84,9 +84,9 @@ export const useDashboardData = (selectedMachine: Machine | null) => {
 
     // Monthly status data (last 3 months) - varied based on machine
     const monthlyStatusMultiplier = selectedMachine ? 
-      (selectedMachine.machine_id === 'KU004' ? 0.3 : 
-       selectedMachine.machine_id === 'KU003' ? 0.7 :
-       selectedMachine.machine_id === 'KU002' ? 0.9 : 1.0) : 0;
+      (selectedMachine.machine_id === 'KU001619000004' ? 0.3 : 
+       selectedMachine.machine_id === 'KU001619000003' ? 0.7 :
+       selectedMachine.machine_id === 'KU001619000002' ? 0.9 : 1.0) : 0;
 
     const monthlyStatusData = selectedMachine ? [
       { month: '2025-03', producing: 68.9 * monthlyStatusMultiplier, idle: 14.1, fullWater: 5.2, disconnected: 11.8 },

@@ -18,7 +18,7 @@ const DashboardFooter = ({ profile, selectedMachine, liveData }: DashboardFooter
       )}
       {selectedMachine && (
         <span className="ml-4 text-xs">
-          {selectedMachine.machine_id === 'KU079' ? 
+          {selectedMachine.machine_id === 'KU001619000079' ? 
             `Data age: ${Math.round(liveData.dataAge / 1000)}s • Compressor: ${liveData.compressorOn ? 'ON' : 'OFF'}` :
             'Static Demo Data'
           }

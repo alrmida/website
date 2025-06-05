@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,20 +31,20 @@ interface MachineSelectorProps {
 
 // Helper function to get model name based on machine ID
 const getModelName = (machineId: string): string => {
-  if (machineId === 'KU079') return 'Amphore'; // Live data machine
-  if (machineId.startsWith('KU0')) return 'Amphore';
-  if (machineId.startsWith('KU1')) return 'BoKs';
-  if (machineId.startsWith('KU2')) return 'Dispenser';
+  if (machineId === 'KU001619000079') return 'Amphore'; // Live data machine
+  if (machineId.startsWith('KU0016190000')) return 'Amphore';
+  if (machineId.startsWith('KU0016191000')) return 'BoKs';
+  if (machineId.startsWith('KU0016192000')) return 'Dispenser';
   return 'Amphore'; // Default to Amphore
 };
 
 // Helper function to get operating since date
 const getOperatingSince = (machineId: string): string => {
-  if (machineId === 'KU079') return '15 March 2024'; // Live data machine
-  if (machineId === 'KU001') return '23 June 1999';
-  if (machineId === 'KU002') return '15 January 2024';
-  if (machineId === 'KU003') return '8 November 2023';
-  if (machineId === 'KU004') return '30 September 2023';
+  if (machineId === 'KU001619000079') return '15 March 2024'; // Live data machine
+  if (machineId === 'KU001619000001') return '23 June 1999';
+  if (machineId === 'KU001619000002') return '15 January 2024';
+  if (machineId === 'KU001619000003') return '8 November 2023';
+  if (machineId === 'KU001619000004') return '30 September 2023';
   return '15 March 2024'; // Default date
 };
 

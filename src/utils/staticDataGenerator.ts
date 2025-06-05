@@ -23,10 +23,10 @@ export function getStaticProductionData(machineId: string | undefined, multiplie
 // Generate varied status data based on machine ID
 export function getStaticStatusData(machineId: string | undefined) {
   const variations: { [key: string]: any } = {
-    'KU001': { producingMultiplier: 1.2, idleMultiplier: 0.5, disconnectedMultiplier: 0.2 },
-    'KU002': { producingMultiplier: 0.9, idleMultiplier: 1.5, disconnectedMultiplier: 0.8 },
-    'KU003': { producingMultiplier: 0.7, idleMultiplier: 2.0, disconnectedMultiplier: 1.5 },
-    'KU004': { producingMultiplier: 0.3, idleMultiplier: 0.8, disconnectedMultiplier: 3.0 },
+    'KU001619000001': { producingMultiplier: 1.2, idleMultiplier: 0.5, disconnectedMultiplier: 0.2 },
+    'KU001619000002': { producingMultiplier: 0.9, idleMultiplier: 1.5, disconnectedMultiplier: 0.8 },
+    'KU001619000003': { producingMultiplier: 0.7, idleMultiplier: 2.0, disconnectedMultiplier: 1.5 },
+    'KU001619000004': { producingMultiplier: 0.3, idleMultiplier: 0.8, disconnectedMultiplier: 3.0 },
     'default': { producingMultiplier: 1.0, idleMultiplier: 1.0, disconnectedMultiplier: 1.0 }
   };
 
