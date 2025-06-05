@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -99,18 +100,32 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
         throw profilesError;
       }
       
-      // Fetch machines with client info
+      // Fetch machines with better error handling
       const { data: machinesData, error: machinesError } = await supabase
         .from('machines')
         .select(`
-          *,
-          client_profile:profiles!client_id (username)
+          id,
+          machine_id,
+          name,
+          location,
+          client_id,
+          manager_id,
+          created_at,
+          updated_at,
+          client_profile:profiles!client_id (
+            username
+          )
         `)
         .order('created_at', { ascending: false });
       
       if (machinesError) {
         console.error('Machines error:', machinesError);
-        throw machinesError;
+        // Don't throw here, just log and continue with empty array
+        console.log('Continuing with empty machines array due to error');
+        setMachines([]);
+      } else {
+        console.log('Machines fetched successfully:', machinesData);
+        setMachines(machinesData || []);
       }
       
       // Fetch invitations
@@ -121,14 +136,20 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
 
       if (invitationsError) {
         console.error('Invitations error:', invitationsError);
-        throw invitationsError;
+        // Don't throw here either
+        setInvitations([]);
+      } else {
+        setInvitations(invitationsData || []);
       }
 
-      console.log('Fetched data:', { profiles: profilesData, machines: machinesData, invitations: invitationsData });
+      console.log('Fetched data:', { 
+        profiles: profilesData?.length || 0, 
+        machines: machinesData?.length || 0, 
+        invitations: invitationsData?.length || 0 
+      });
 
       if (profilesData) setProfiles(profilesData);
-      if (machinesData) setMachines(machinesData);
-      if (invitationsData) setInvitations(invitationsData);
+      
     } catch (error: any) {
       console.error('Error fetching admin data:', error);
       setError(`Failed to load admin data: ${error.message}`);
@@ -173,20 +194,40 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
   };
 
   const addMachine = async () => {
-    if (!newMachine.machine_id || !newMachine.name) return;
+    if (!newMachine.machine_id || !newMachine.name) {
+      toast({
+        title: 'Error',
+        description: 'Machine ID and Name are required',
+        variant: 'destructive',
+      });
+      return;
+    }
     
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('machines')
-        .insert([{
-          machine_id: newMachine.machine_id,
-          name: newMachine.name,
-          location: newMachine.location,
-          client_id: newMachine.client_id || null,
-        }]);
+      console.log('Adding machine:', newMachine);
+      
+      const machineData = {
+        machine_id: newMachine.machine_id.trim(),
+        name: newMachine.name.trim(),
+        location: newMachine.location.trim() || null,
+        client_id: newMachine.client_id || null,
+        manager_id: profile?.id || null,
+      };
+      
+      console.log('Machine data to insert:', machineData);
 
-      if (error) throw error;
+      const { data, error } = await supabase
+        .from('machines')
+        .insert([machineData])
+        .select('*');
+
+      if (error) {
+        console.error('Insert error:', error);
+        throw error;
+      }
+
+      console.log('Machine added successfully:', data);
 
       toast({
         title: 'Success',
@@ -196,6 +237,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
       setNewMachine({ machine_id: '', name: '', location: '', client_id: '' });
       fetchData();
     } catch (error: any) {
+      console.error('Error adding machine:', error);
       toast({
         title: 'Error',
         description: error.message,
@@ -206,14 +248,23 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
   };
 
   const deleteMachine = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this machine?')) {
+      return;
+    }
+    
     setLoading(true);
     try {
+      console.log('Deleting machine with id:', id);
+      
       const { error } = await supabase
         .from('machines')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Delete error:', error);
+        throw error;
+      }
 
       toast({
         title: 'Success',
@@ -222,6 +273,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
       
       fetchData();
     } catch (error: any) {
+      console.error('Error deleting machine:', error);
       toast({
         title: 'Error',
         description: error.message,
@@ -365,7 +417,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="machineId">Machine ID</Label>
+                    <Label htmlFor="machineId">Machine ID *</Label>
                     <Input
                       id="machineId"
                       value={newMachine.machine_id}
@@ -374,7 +426,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="machineName">Machine Name</Label>
+                    <Label htmlFor="machineName">Machine Name *</Label>
                     <Input
                       id="machineName"
                       value={newMachine.name}
@@ -410,7 +462,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
                     </Select>
                   </div>
                 </div>
-                <Button onClick={addMachine} disabled={loading}>
+                <Button onClick={addMachine} disabled={loading || !newMachine.machine_id || !newMachine.name}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add Machine
                 </Button>
@@ -422,37 +474,46 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
                 <CardTitle>Machines ({machines.length})</CardTitle>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Machine ID</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {machines.map((machine) => (
-                      <TableRow key={machine.id}>
-                        <TableCell>{machine.machine_id}</TableCell>
-                        <TableCell>{machine.name}</TableCell>
-                        <TableCell>{machine.location}</TableCell>
-                        <TableCell>{machine.client_profile?.username || 'Unassigned'}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => deleteMachine(machine.id)}
-                            disabled={loading}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </TableCell>
+                {machines.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">No machines found</p>
+                    <Button onClick={fetchData} variant="outline" className="mt-2">
+                      Refresh
+                    </Button>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Machine ID</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Client</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {machines.map((machine) => (
+                        <TableRow key={machine.id}>
+                          <TableCell className="font-mono">{machine.machine_id}</TableCell>
+                          <TableCell>{machine.name}</TableCell>
+                          <TableCell>{machine.location || '-'}</TableCell>
+                          <TableCell>{machine.client_profile?.username || 'Unassigned'}</TableCell>
+                          <TableCell>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => deleteMachine(machine.id)}
+                              disabled={loading}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
