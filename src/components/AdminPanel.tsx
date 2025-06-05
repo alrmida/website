@@ -59,6 +59,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
   const { profile } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // State for different tabs
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -84,15 +85,23 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
 
   const fetchData = async () => {
     setLoading(true);
+    setError(null);
     try {
+      console.log('Fetching admin data...');
+      
       // Fetch profiles
-      const { data: profilesData } = await supabase
+      const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
       
-      // Fetch machines with client info - Fixed query
-      const { data: machinesData } = await supabase
+      if (profilesError) {
+        console.error('Profiles error:', profilesError);
+        throw profilesError;
+      }
+      
+      // Fetch machines with client info
+      const { data: machinesData, error: machinesError } = await supabase
         .from('machines')
         .select(`
           *,
@@ -100,17 +109,35 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
         `)
         .order('created_at', { ascending: false });
       
+      if (machinesError) {
+        console.error('Machines error:', machinesError);
+        throw machinesError;
+      }
+      
       // Fetch invitations
-      const { data: invitationsData } = await supabase
+      const { data: invitationsData, error: invitationsError } = await supabase
         .from('invitations')
         .select('*')
         .order('created_at', { ascending: false });
 
+      if (invitationsError) {
+        console.error('Invitations error:', invitationsError);
+        throw invitationsError;
+      }
+
+      console.log('Fetched data:', { profiles: profilesData, machines: machinesData, invitations: invitationsData });
+
       if (profilesData) setProfiles(profilesData);
       if (machinesData) setMachines(machinesData);
       if (invitationsData) setInvitations(invitationsData);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching admin data:', error);
+      setError(`Failed to load admin data: ${error.message}`);
+      toast({
+        title: 'Error',
+        description: `Failed to load admin data: ${error.message}`,
+        variant: 'destructive',
+      });
     }
     setLoading(false);
   };
@@ -205,8 +232,71 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
     setLoading(false);
   };
 
+  // Add your machine automatically when component loads
+  useEffect(() => {
+    const addKU079Machine = async () => {
+      if (!profile?.role === 'kumulus_personnel' || !profile?.id) return;
+      
+      try {
+        // Check if machine already exists
+        const { data: existingMachine } = await supabase
+          .from('machines')
+          .select('*')
+          .eq('machine_id', 'KU079')
+          .single();
+        
+        if (!existingMachine) {
+          console.log('Adding KU079 machine...');
+          const { error } = await supabase
+            .from('machines')
+            .insert([{
+              machine_id: 'KU079',
+              name: 'Atmospheric Water Generator KU079',
+              location: 'Kumulus-HOUSE',
+              manager_id: profile.id,
+              client_id: profile.id
+            }]);
+
+          if (error) {
+            console.error('Error adding KU079 machine:', error);
+          } else {
+            console.log('KU079 machine added successfully');
+            fetchData();
+          }
+        }
+      } catch (error) {
+        console.error('Error checking/adding KU079 machine:', error);
+      }
+    };
+
+    if (open && profile?.role === 'kumulus_personnel') {
+      addKU079Machine();
+    }
+  }, [open, profile]);
+
   if (profile?.role !== 'kumulus_personnel') {
     return null;
+  }
+
+  if (error) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Admin Panel Error</DialogTitle>
+            <DialogDescription>
+              There was an error loading the admin panel.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="p-4 bg-red-50 border border-red-200 rounded">
+            <p className="text-red-800">{error}</p>
+            <Button onClick={fetchData} className="mt-2">
+              Try Again
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
   }
 
   return (
@@ -218,6 +308,13 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
             Manage users, machines, and system settings
           </DialogDescription>
         </DialogHeader>
+
+        {loading && (
+          <div className="text-center py-4">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            <p className="mt-2">Loading...</p>
+          </div>
+        )}
 
         <Tabs defaultValue="users" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
@@ -275,7 +372,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
                       id="machineId"
                       value={newMachine.machine_id}
                       onChange={(e) => setNewMachine({ ...newMachine, machine_id: e.target.value })}
-                      placeholder="AWG-001"
+                      placeholder="KU079"
                     />
                   </div>
                   <div className="space-y-2">
@@ -295,7 +392,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
                       id="machineLocation"
                       value={newMachine.location}
                       onChange={(e) => setNewMachine({ ...newMachine, location: e.target.value })}
-                      placeholder="Office Building A"
+                      placeholder="Kumulus-HOUSE"
                     />
                   </div>
                   <div className="space-y-2">
@@ -324,7 +421,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
 
             <Card>
               <CardHeader>
-                <CardTitle>Machines</CardTitle>
+                <CardTitle>Machines ({machines.length})</CardTitle>
               </CardHeader>
               <CardContent>
                 <Table>

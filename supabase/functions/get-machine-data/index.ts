@@ -43,6 +43,13 @@ serve(async (req) => {
     const influxToken = Deno.env.get('INFLUXDB_TOKEN');
     const influxOrg = Deno.env.get('INFLUXDB_ORG');
 
+    console.log('Environment check:', {
+      hasUrl: !!influxUrl,
+      hasToken: !!influxToken,
+      hasOrg: !!influxOrg,
+      url: influxUrl
+    });
+
     if (!influxUrl || !influxToken || !influxOrg) {
       throw new Error('Missing InfluxDB configuration');
     }
@@ -63,7 +70,7 @@ serve(async (req) => {
 
     console.log('Querying InfluxDB with:', { url: influxUrl, org: influxOrg });
 
-    const response = await fetch(`${influxUrl}/api/v2/query?org=${influxOrg}`, {
+    const response = await fetch(`${influxUrl}/api/v2/query?org=${encodeURIComponent(influxOrg)}`, {
       method: 'POST',
       headers: {
         'Authorization': `Token ${influxToken}`,
@@ -73,35 +80,52 @@ serve(async (req) => {
       body: query,
     });
 
+    console.log('InfluxDB response status:', response.status);
+    console.log('InfluxDB response headers:', Object.fromEntries(response.headers.entries()));
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error('InfluxDB query failed:', response.status, errorText);
-      throw new Error(`InfluxDB query failed: ${response.status} ${errorText}`);
+      throw new Error(`InfluxDB query failed: ${response.status} - ${errorText}`);
     }
 
     const csvData = await response.text();
-    console.log('Raw CSV response:', csvData);
+    console.log('Raw CSV response length:', csvData.length);
+    console.log('First 500 chars of CSV:', csvData.substring(0, 500));
 
     // Parse CSV response (basic CSV parsing for InfluxDB format)
     const lines = csvData.trim().split('\n');
+    console.log('CSV lines count:', lines.length);
+    
     if (lines.length < 2) {
+      console.error('No data lines found in CSV');
       throw new Error('No data returned from InfluxDB');
     }
 
+    // Skip empty lines and comments
+    const dataLines = lines.filter(line => line.trim() && !line.startsWith('#'));
+    console.log('Data lines count:', dataLines.length);
+    
+    if (dataLines.length < 2) {
+      throw new Error('No valid data rows found');
+    }
+
     // Get headers and data
-    const headers = lines[0].split(',');
-    const dataLine = lines[lines.length - 1].split(','); // Get last line of data
+    const headers = dataLines[0].split(',').map(h => h.trim());
+    const dataLine = dataLines[dataLines.length - 1].split(',').map(d => d.trim());
+
+    console.log('Headers:', headers);
+    console.log('Data line:', dataLine);
 
     // Create object from headers and data
     const dataPoint: any = {};
     headers.forEach((header, index) => {
-      const cleanHeader = header.trim();
-      const value = dataLine[index]?.trim();
+      const value = dataLine[index];
       
-      if (cleanHeader === '_time') {
-        dataPoint[cleanHeader] = value;
-      } else if (cleanHeader === 'water_level_L' || cleanHeader === 'compressor_on') {
-        dataPoint[cleanHeader] = parseFloat(value) || 0;
+      if (header === '_time') {
+        dataPoint[header] = value;
+      } else if (header === 'water_level_L' || header === 'compressor_on') {
+        dataPoint[header] = parseFloat(value) || 0;
       }
     });
 
@@ -140,7 +164,8 @@ serve(async (req) => {
       waterLevel: 0,
       status: 'Disconnected',
       lastUpdated: new Date().toISOString(),
-      dataAge: 999999
+      dataAge: 999999,
+      compressorOn: 0
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
