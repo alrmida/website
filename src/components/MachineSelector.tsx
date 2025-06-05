@@ -57,10 +57,12 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
         console.log('Client machines data:', machinesData, 'Error:', error);
         
         if (machinesData) {
-          setMachines(machinesData);
+          // Filter out machines with empty machine_id
+          const validMachines = machinesData.filter(machine => machine.machine_id && machine.machine_id.trim() !== '');
+          setMachines(validMachines);
           // Auto-select first machine for clients
-          if (machinesData.length > 0 && !selectedMachine) {
-            onMachineSelect(machinesData[0]);
+          if (validMachines.length > 0 && !selectedMachine) {
+            onMachineSelect(validMachines[0]);
           }
         }
       } else {
@@ -85,7 +87,11 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
         console.log('All machines data:', machinesData, 'Error:', machinesError);
         
         if (clientsData) setClients(clientsData);
-        if (machinesData) setMachines(machinesData);
+        if (machinesData) {
+          // Filter out machines with empty machine_id
+          const validMachines = machinesData.filter(machine => machine.machine_id && machine.machine_id.trim() !== '');
+          setMachines(validMachines);
+        }
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -166,7 +172,7 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
           <>
             <div className="space-y-2">
               <Label>Select Client</Label>
-              <Select value={selectedClient} onValueChange={handleClientSelect}>
+              <Select value={selectedClient || undefined} onValueChange={handleClientSelect}>
                 <SelectTrigger>
                   <SelectValue placeholder="Choose a client..." />
                 </SelectTrigger>
@@ -185,7 +191,7 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
                 Or select machine directly by ID:
               </Label>
               <Select 
-                value={selectedMachine?.machine_id || ''} 
+                value={selectedMachine?.machine_id || undefined} 
                 onValueChange={handleDirectMachineSelect}
               >
                 <SelectTrigger className="mt-2">
@@ -211,7 +217,7 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
             }
           </Label>
           <Select 
-            value={selectedMachine?.machine_id || ''} 
+            value={selectedMachine?.machine_id || undefined} 
             onValueChange={handleDirectMachineSelect}
           >
             <SelectTrigger>
