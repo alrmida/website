@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardHeader from '@/components/DashboardHeader';
@@ -6,6 +5,7 @@ import MachineInfoHeader from '@/components/MachineInfoHeader';
 import MetricsCards from '@/components/MetricsCards';
 import ProductionAnalytics from '@/components/ProductionAnalytics';
 import MachineSelector from '@/components/MachineSelector';
+import { useLiveMachineData } from '@/hooks/useLiveMachineData';
 
 interface Machine {
   id: number;
@@ -22,6 +22,11 @@ const AWGDashboard = () => {
   const { profile } = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState('daily');
   const [selectedMachine, setSelectedMachine] = useState<Machine | null>(null);
+  
+  // Fetch live machine data
+  const { data: liveData, isLoading: dataLoading, error: dataError } = useLiveMachineData();
+
+  console.log('Live data in dashboard:', liveData);
 
   // Default machine info for when no machine is selected
   const defaultMachineInfo = {
@@ -32,20 +37,20 @@ const AWGDashboard = () => {
     launchDate: 'N/A'
   };
 
-  // Current machine info based on selection
+  // Current machine info based on selection - use live data when machine is selected
   const machineInfo = selectedMachine ? {
     machineId: selectedMachine.machine_id,
     machineName: selectedMachine.name,
     location: selectedMachine.location,
-    status: 'Producing',
+    status: liveData.status || 'Loading...',
     launchDate: 'March 15, 2024'
   } : defaultMachineInfo;
 
-  // Water tank specifications
+  // Water tank specifications - use live data when machine is selected
   const waterTank = {
-    currentLevel: selectedMachine ? 10.0 : 0,
+    currentLevel: selectedMachine ? liveData.waterLevel : 0,
     maxCapacity: 12.0,
-    percentage: selectedMachine ? 83 : 0
+    percentage: selectedMachine ? Math.round((liveData.waterLevel / 12.0) * 100) : 0
   };
 
   // Extended daily production data (last 7 days)
@@ -91,6 +96,21 @@ const AWGDashboard = () => {
           selectedMachine={selectedMachine}
         />
 
+        {/* Show data error if exists */}
+        {dataError && selectedMachine && (
+          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+            <p><strong>Data Connection Error:</strong> {dataError}</p>
+            <p className="text-sm">Showing last known data or defaults. Check your InfluxDB connection.</p>
+          </div>
+        )}
+
+        {/* Show loading indicator */}
+        {dataLoading && selectedMachine && (
+          <div className="mb-4 p-4 bg-blue-100 border border-blue-400 text-blue-700 rounded">
+            <p>Loading live machine data...</p>
+          </div>
+        )}
+
         <MachineInfoHeader
           machineId={machineInfo.machineId}
           machineName={machineInfo.machineName}
@@ -102,6 +122,7 @@ const AWGDashboard = () => {
         <MetricsCards
           waterTank={waterTank}
           launchDate={machineInfo.launchDate}
+          machineStatus={machineInfo.status}
         />
 
         <ProductionAnalytics
@@ -115,10 +136,15 @@ const AWGDashboard = () => {
 
         {/* Footer */}
         <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-8">
-          © 2025 Kumulus Water • Last updated: 2025-06-01 07:39 
+          © 2025 Kumulus Water • Last updated: {selectedMachine && liveData.lastUpdated ? new Date(liveData.lastUpdated).toLocaleString() : '2025-06-01 07:39'}
           {profile && (
             <span className="ml-4">
               Logged in as: {profile.username} ({profile.role})
+            </span>
+          )}
+          {selectedMachine && (
+            <span className="ml-4 text-xs">
+              Data age: {Math.round(liveData.dataAge / 1000)}s • Compressor: {liveData.compressorOn ? 'ON' : 'OFF'}
             </span>
           )}
         </div>
