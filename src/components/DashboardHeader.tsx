@@ -40,7 +40,7 @@ const DashboardHeader = () => {
               <img 
                 src="/kumulus-logo-white.png" 
                 alt="Kumulus" 
-                className="w-6 h-6 object-contain"
+                className="w-6 h-6 object-contain dark:block hidden"
                 onError={(e) => {
                   // Fallback to text if image doesn't load
                   const target = e.currentTarget;
@@ -51,11 +51,25 @@ const DashboardHeader = () => {
                   }
                 }}
               />
+              <img 
+                src="/kumulus-logo-blue.png" 
+                alt="Kumulus" 
+                className="w-6 h-6 object-contain dark:hidden block"
+                onError={(e) => {
+                  // Fallback to text if image doesn't load
+                  const target = e.currentTarget;
+                  target.style.display = 'none';
+                  const fallback = target.nextElementSibling?.nextElementSibling as HTMLElement;
+                  if (fallback) {
+                    fallback.style.display = 'block';
+                  }
+                }}
+              />
               <span className="text-white text-lg font-bold hidden">K</span>
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Kumulus - AWG Dashboard</h1>
-              <p className="text-sm text-gray-600 dark:text-gray-300">Powered by EeKan • Clean water from air • Real-time Monitoring</p>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Kumulus</h1>
+              <p className="text-sm text-gray-600 dark:text-gray-300">Your Drinking Water From Air. Mineralized, Fresh, Sustainable</p>
             </div>
           </div>
           <div className="flex items-center space-x-4">
