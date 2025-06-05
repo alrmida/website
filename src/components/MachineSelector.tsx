@@ -36,6 +36,15 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
   const [selectedClient, setSelectedClient] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
+  // Helper function to validate machine has valid machine_id
+  const isValidMachine = (machine: any): machine is Machine => {
+    return machine && 
+           machine.machine_id && 
+           typeof machine.machine_id === 'string' && 
+           machine.machine_id.trim() !== '' &&
+           machine.machine_id.trim().length > 0;
+  };
+
   useEffect(() => {
     fetchData();
   }, [profile]);
@@ -57,8 +66,9 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
         console.log('Client machines data:', machinesData, 'Error:', error);
         
         if (machinesData) {
-          // Filter out machines with empty machine_id
-          const validMachines = machinesData.filter(machine => machine.machine_id && machine.machine_id.trim() !== '');
+          // Filter out machines with empty machine_id using the helper function
+          const validMachines = machinesData.filter(isValidMachine);
+          console.log('Valid machines after filtering:', validMachines);
           setMachines(validMachines);
           // Auto-select first machine for clients
           if (validMachines.length > 0 && !selectedMachine) {
@@ -88,8 +98,9 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
         
         if (clientsData) setClients(clientsData);
         if (machinesData) {
-          // Filter out machines with empty machine_id
-          const validMachines = machinesData.filter(machine => machine.machine_id && machine.machine_id.trim() !== '');
+          // Filter out machines with empty machine_id using the helper function
+          const validMachines = machinesData.filter(isValidMachine);
+          console.log('Valid machines after filtering:', validMachines);
           setMachines(validMachines);
         }
       }
@@ -157,6 +168,9 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
     );
   }
 
+  // Get filtered client machines and ensure they all have valid machine_ids
+  const clientMachines = getClientMachines().filter(isValidMachine);
+
   return (
     <Card className="bg-white dark:bg-gray-800 mb-6">
       <CardHeader>
@@ -198,7 +212,7 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
                   <SelectValue placeholder="Choose machine ID..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {machines.map((machine) => (
+                  {machines.filter(isValidMachine).map((machine) => (
                     <SelectItem key={machine.id} value={machine.machine_id}>
                       {machine.machine_id} - {machine.client_profile?.username}
                     </SelectItem>
@@ -224,7 +238,7 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
               <SelectValue placeholder="Choose a machine..." />
             </SelectTrigger>
             <SelectContent>
-              {getClientMachines().map((machine) => (
+              {clientMachines.map((machine) => (
                 <SelectItem key={machine.id} value={machine.machine_id}>
                   <div className="flex flex-col">
                     <span className="font-medium">{machine.machine_id} - {machine.name}</span>
@@ -258,7 +272,7 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
           </div>
         )}
 
-        {getClientMachines().length === 0 && (
+        {clientMachines.length === 0 && (
           <p className="text-gray-500 dark:text-gray-400 text-center py-4">
             {profile?.role === 'kumulus_personnel' && !selectedClient ? 
               'Select a client to view their machines' :
