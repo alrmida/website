@@ -1,6 +1,5 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 
 interface LiveMachineData {
   waterLevel: number;
@@ -43,13 +42,13 @@ export const useLiveMachineData = () => {
     try {
       console.log('Fetching live machine data...');
       
-      // Use GET request to the edge function
+      // Use GET request to the edge function with hardcoded values
       const response = await fetch(
-        `${supabase.supabaseUrl}/functions/v1/get-machine-data`,
+        'https://dolkcmipdzqrtpaflvaf.supabase.co/functions/v1/get-machine-data',
         {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${supabase.supabaseKey}`,
+            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRvbGtjbWlwZHpxcnRwYWZsdmFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg4OTY2MDUsImV4cCI6MjA2NDQ3MjYwNX0.ezGW3OsanYsDSHireReMkeV_sEs3HzyfATzGLKHfQCc',
             'Accept': 'application/json',
           },
         }
