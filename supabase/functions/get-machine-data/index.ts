@@ -39,10 +39,11 @@ serve(async (req) => {
       throw new Error('Missing InfluxDB configuration');
     }
 
-    // Enhanced Flux query to get more machine data including compressor state
+    // Enhanced Flux query to get both water level and compressor state
     const fluxQuery = `from(bucket: "${influxBucket}")
   |> range(start: -10m)
   |> filter(fn: (r) => r._measurement == "awg_data_full")
+  |> filter(fn: (r) => r._field == "water_level_L" or r._field == "compressor_on")
   |> group(columns: [])
   |> last()
   |> pivot(
