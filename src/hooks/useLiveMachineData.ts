@@ -19,7 +19,7 @@ function calculateMachineStatus(waterLevel: number, compressorOn: number, dataAg
   const isOnline = true;
   
   // Calculate status based on water level and compressor state
-  if (waterLevel > 9.5) {
+  if (waterLevel > 9.9) {
     // Tank is full or nearly full
     if (compressorOn === 1) {
       return { status: 'Full Water', isOnline }; // Still producing but tank is full

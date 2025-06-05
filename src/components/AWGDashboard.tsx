@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardHeader from '@/components/DashboardHeader';
@@ -103,8 +102,8 @@ const AWGDashboard = () => {
   // Water tank specifications - use live/static data when machine is selected
   const waterTank = {
     currentLevel: selectedMachine ? liveData.waterLevel : 0,
-    maxCapacity: 12.0,
-    percentage: selectedMachine ? Math.round((liveData.waterLevel / 12.0) * 100) : 0
+    maxCapacity: 10.0,
+    percentage: selectedMachine ? Math.round((liveData.waterLevel / 10.0) * 100) : 0
   };
 
   // Get production data based on machine - varied for different machines
