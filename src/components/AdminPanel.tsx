@@ -28,7 +28,7 @@ interface AdminPanelProps {
 interface Profile {
   id: string;
   username: string;
-  role: 'client' | 'kumulus_personnel';
+  role: 'client' | 'commercial' | 'admin';
   contact_email?: string;
   contact_phone?: string;
   created_at: string;
@@ -49,7 +49,7 @@ interface Machine {
 interface Invitation {
   id: string;
   email: string;
-  role: 'client' | 'kumulus_personnel';
+  role: 'client' | 'commercial' | 'admin';
   expires_at: string;
   used_at?: string;
   created_at: string;
@@ -68,17 +68,42 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
   
   // Form states
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'client' | 'kumulus_personnel'>('client');
+  const [inviteRole, setInviteRole] = useState<'client' | 'commercial' | 'admin'>('client');
   
   const [newMachine, setNewMachine] = useState({
     machine_id: '',
     name: '',
     location: '',
-    client_id: 'unassigned', // Changed from '' to 'unassigned'
+    client_id: 'unassigned',
   });
 
+  // Helper function to map database roles to frontend roles
+  const mapDatabaseRoleToFrontend = (dbRole: string): 'client' | 'commercial' | 'admin' => {
+    switch (dbRole) {
+      case 'kumulus_personnel':
+        return 'commercial';
+      case 'client':
+        return 'client';
+      default:
+        return 'client';
+    }
+  };
+
+  // Helper function to map frontend roles to database roles for invitations
+  const mapFrontendRoleToDatabase = (frontendRole: 'client' | 'commercial' | 'admin'): string => {
+    switch (frontendRole) {
+      case 'commercial':
+      case 'admin':
+        return 'kumulus_personnel';
+      case 'client':
+        return 'client';
+      default:
+        return 'client';
+    }
+  };
+
   useEffect(() => {
-    if (open && profile?.role === 'kumulus_personnel') {
+    if (open && (profile?.role === 'admin' || profile?.role === 'commercial')) {
       fetchData();
     }
   }, [open, profile]);
@@ -100,6 +125,12 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
         throw profilesError;
       }
       
+      // Map database profiles to frontend format
+      const mappedProfiles = profilesData?.map(p => ({
+        ...p,
+        role: mapDatabaseRoleToFrontend(p.role)
+      })) || [];
+
       // Fetch machines with better error handling
       const { data: machinesData, error: machinesError } = await supabase
         .from('machines')
@@ -120,8 +151,6 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
       
       if (machinesError) {
         console.error('Machines error:', machinesError);
-        // Don't throw here, just log and continue with empty array
-        console.log('Continuing with empty machines array due to error');
         setMachines([]);
       } else {
         console.log('Machines fetched successfully:', machinesData);
@@ -136,19 +165,23 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
 
       if (invitationsError) {
         console.error('Invitations error:', invitationsError);
-        // Don't throw here either
         setInvitations([]);
       } else {
-        setInvitations(invitationsData || []);
+        // Map database invitation roles to frontend roles
+        const mappedInvitations = invitationsData?.map(inv => ({
+          ...inv,
+          role: mapDatabaseRoleToFrontend(inv.role)
+        })) || [];
+        setInvitations(mappedInvitations);
       }
 
       console.log('Fetched data:', { 
-        profiles: profilesData?.length || 0, 
+        profiles: mappedProfiles?.length || 0, 
         machines: machinesData?.length || 0, 
         invitations: invitationsData?.length || 0 
       });
 
-      if (profilesData) setProfiles(profilesData);
+      if (mappedProfiles) setProfiles(mappedProfiles);
       
     } catch (error: any) {
       console.error('Error fetching admin data:', error);
@@ -167,9 +200,10 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
     
     setLoading(true);
     try {
+      const dbRole = mapFrontendRoleToDatabase(inviteRole);
       const { data, error } = await supabase.rpc('create_invitation', {
         p_email: inviteEmail,
-        p_role: inviteRole,
+        p_role: dbRole,
         p_created_by: profile.id
       });
 
@@ -211,7 +245,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
         machine_id: newMachine.machine_id.trim(),
         name: newMachine.name.trim(),
         location: newMachine.location.trim() || null,
-        client_id: newMachine.client_id === 'unassigned' ? null : newMachine.client_id, // Handle the unassigned case
+        client_id: newMachine.client_id === 'unassigned' ? null : newMachine.client_id,
         manager_id: profile?.id || null,
       };
       
@@ -234,7 +268,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
         description: 'Machine added successfully',
       });
       
-      setNewMachine({ machine_id: '', name: '', location: '', client_id: 'unassigned' }); // Reset to 'unassigned'
+      setNewMachine({ machine_id: '', name: '', location: '', client_id: 'unassigned' });
       fetchData();
     } catch (error: any) {
       console.error('Error adding machine:', error);
@@ -284,7 +318,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
   };
 
   const addKU079Machine = async () => {
-    if (profile?.role !== 'kumulus_personnel' || !profile?.id) return;
+    if ((profile?.role !== 'admin' && profile?.role !== 'commercial') || !profile?.id) return;
     
     try {
       // Check if machine already exists
@@ -319,12 +353,12 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
   };
 
   useEffect(() => {
-    if (open && profile?.role === 'kumulus_personnel') {
+    if (open && (profile?.role === 'admin' || profile?.role === 'commercial')) {
       addKU079Machine();
     }
   }, [open, profile]);
 
-  if (profile?.role !== 'kumulus_personnel') {
+  if (profile?.role !== 'admin' && profile?.role !== 'commercial') {
     return null;
   }
 
@@ -394,7 +428,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
                       <TableRow key={user.id}>
                         <TableCell>{user.username}</TableCell>
                         <TableCell>
-                          <Badge variant={user.role === 'kumulus_personnel' ? 'default' : 'secondary'}>
+                          <Badge variant={user.role === 'admin' || user.role === 'commercial' ? 'default' : 'secondary'}>
                             {user.role}
                           </Badge>
                         </TableCell>
@@ -537,13 +571,14 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="inviteRole">Role</Label>
-                    <Select value={inviteRole} onValueChange={(value: 'client' | 'kumulus_personnel') => setInviteRole(value)}>
+                    <Select value={inviteRole} onValueChange={(value: 'client' | 'commercial' | 'admin') => setInviteRole(value)}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="client">Client</SelectItem>
-                        <SelectItem value="kumulus_personnel">Kumulus Personnel</SelectItem>
+                        <SelectItem value="commercial">Commercial</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -575,7 +610,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
                       <TableRow key={invitation.id}>
                         <TableCell>{invitation.email}</TableCell>
                         <TableCell>
-                          <Badge variant={invitation.role === 'kumulus_personnel' ? 'default' : 'secondary'}>
+                          <Badge variant={invitation.role === 'admin' || invitation.role === 'commercial' ? 'default' : 'secondary'}>
                             {invitation.role}
                           </Badge>
                         </TableCell>

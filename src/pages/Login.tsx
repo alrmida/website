@@ -91,8 +91,12 @@ const Login = () => {
                 className="w-8 h-8 object-contain"
                 onError={(e) => {
                   // Fallback to text if image doesn't load
-                  e.currentTarget.style.display = 'none';
-                  e.currentTarget.nextElementSibling!.style.display = 'block';
+                  const target = e.currentTarget;
+                  target.style.display = 'none';
+                  const fallback = target.nextElementSibling as HTMLElement;
+                  if (fallback) {
+                    fallback.style.display = 'block';
+                  }
                 }}
               />
               <span className="text-white text-xl font-bold hidden">K</span>

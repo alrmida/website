@@ -43,8 +43,12 @@ const DashboardHeader = () => {
                 className="w-6 h-6 object-contain"
                 onError={(e) => {
                   // Fallback to text if image doesn't load
-                  e.currentTarget.style.display = 'none';
-                  e.currentTarget.nextElementSibling!.style.display = 'block';
+                  const target = e.currentTarget;
+                  target.style.display = 'none';
+                  const fallback = target.nextElementSibling as HTMLElement;
+                  if (fallback) {
+                    fallback.style.display = 'block';
+                  }
                 }}
               />
               <span className="text-white text-lg font-bold hidden">K</span>

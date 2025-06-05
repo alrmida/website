@@ -76,7 +76,7 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
           }
         }
       } else {
-        // Kumulus personnel see all machines and clients
+        // Commercial and admin users see all machines and clients
         const { data: clientsData, error: clientsError } = await supabase
           .from('profiles')
           .select('id, username')
@@ -135,8 +135,8 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
     const machine = machines.find(m => m.machine_id === machineId);
     if (machine) {
       onMachineSelect(machine);
-      // If kumulus personnel selects directly, set the client too
-      if (profile?.role === 'kumulus_personnel') {
+      // If commercial/admin selects directly, set the client too
+      if (profile?.role === 'commercial' || profile?.role === 'admin') {
         setSelectedClient(machine.client_id);
       }
     }
@@ -176,13 +176,13 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           Machine Selection
-          <Badge variant={profile?.role === 'kumulus_personnel' ? 'default' : 'secondary'}>
-            {profile?.role === 'kumulus_personnel' ? 'Kumulus Personnel' : 'Client'}
+          <Badge variant={profile?.role === 'commercial' || profile?.role === 'admin' ? 'default' : 'secondary'}>
+            {profile?.role === 'commercial' || profile?.role === 'admin' ? 'Kumulus Personnel' : 'Client'}
           </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {profile?.role === 'kumulus_personnel' && (
+        {(profile?.role === 'commercial' || profile?.role === 'admin') && (
           <>
             <div className="space-y-2">
               <Label>Select Client</Label>
@@ -225,7 +225,7 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
 
         <div className="space-y-2">
           <Label>
-            {profile?.role === 'kumulus_personnel' && selectedClient ? 
+            {(profile?.role === 'commercial' || profile?.role === 'admin') && selectedClient ? 
               `Machines for ${clients.find(c => c.id === selectedClient)?.username}` : 
               'Available Machines'
             }
@@ -244,7 +244,7 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
                     <span className="font-medium">{machine.machine_id} - {machine.name}</span>
                     <span className="text-sm text-gray-500 dark:text-gray-400">
                       {machine.location}
-                      {profile?.role === 'kumulus_personnel' && machine.client_profile && 
+                      {(profile?.role === 'commercial' || profile?.role === 'admin') && machine.client_profile && 
                         ` • Owner: ${machine.client_profile.username}`
                       }
                     </span>
@@ -255,26 +255,9 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
           </Select>
         </div>
 
-        {selectedMachine && (
-          <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
-            <h4 className="font-medium text-blue-900 dark:text-blue-100">Selected Machine</h4>
-            <p className="text-sm text-blue-700 dark:text-blue-300">
-              {selectedMachine.machine_id} - {selectedMachine.name}
-            </p>
-            <p className="text-sm text-blue-600 dark:text-blue-400">
-              Location: {selectedMachine.location}
-            </p>
-            {profile?.role === 'kumulus_personnel' && selectedMachine.client_profile && (
-              <p className="text-sm text-blue-600 dark:text-blue-400">
-                Owner: {selectedMachine.client_profile.username}
-              </p>
-            )}
-          </div>
-        )}
-
         {clientMachines.length === 0 && (
           <p className="text-gray-500 dark:text-gray-400 text-center py-4">
-            {profile?.role === 'kumulus_personnel' && !selectedClient ? 
+            {(profile?.role === 'commercial' || profile?.role === 'admin') && !selectedClient ? 
               'Select a client to view their machines' :
               'No machines available'
             }
