@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -65,7 +64,7 @@ serve(async (req) => {
       headers: {
         'Authorization': `Token ${influxToken}`,
         'Content-Type': 'application/vnd.flux',
-        'Accept': 'application/json',
+        'Accept': 'application/csv', // Request CSV format which is more reliable
       },
       body: fluxQuery,
     });
@@ -87,62 +86,52 @@ serve(async (req) => {
     const responseText = await response.text();
     console.log('InfluxDB raw response:', responseText);
 
-    // Try to parse as JSON
-    let jsonData;
-    try {
-      jsonData = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('Failed to parse response as JSON:', parseError);
-      console.error('Response was:', responseText.substring(0, 500));
+    // Parse CSV response
+    const lines = responseText.trim().split('\n');
+    if (lines.length < 2) {
+      console.log('No data found in CSV response');
+      return new Response(JSON.stringify({ error: 'No data returned from InfluxDB' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Parse CSV headers
+    const headers = lines[0].split(',');
+    console.log('CSV headers:', headers);
+
+    // Parse data row (skip first line which is headers)
+    const dataRow = lines[1].split(',');
+    console.log('CSV data row:', dataRow);
+
+    if (dataRow.length !== headers.length) {
+      console.error('CSV parsing error: header/data length mismatch');
       return new Response(JSON.stringify({ 
-        error: 'InfluxDB returned non-JSON response',
-        details: responseText.substring(0, 200)
+        error: 'CSV parsing error: header/data length mismatch' 
       }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log('InfluxDB JSON response:', JSON.stringify(jsonData, null, 2));
-
-    // Check if we have tables and records
-    if (!jsonData.tables || jsonData.tables.length === 0) {
-      console.log('No tables found in response');
-      return new Response(JSON.stringify({ error: 'No data returned from InfluxDB' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const table = jsonData.tables[0];
-    if (!table.records || table.records.length === 0) {
-      console.log('No records found in table');
-      return new Response(JSON.stringify({ error: 'No data returned from InfluxDB' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Build the flat object from the first record
-    const record = table.records[0];
-    console.log('Processing record:', record);
-
-    // Extract all field data from the record
+    // Build the data object from CSV
     const data: any = {};
-    
-    // Add timestamp
-    if (record._time) {
-      data._time = record._time;
+    for (let i = 0; i < headers.length; i++) {
+      const header = headers[i].trim();
+      const value = dataRow[i].trim();
+      
+      // Skip metadata columns but keep _time
+      if (!header.startsWith('_') || header === '_time') {
+        // Try to parse numeric values
+        if (header !== '_time' && !isNaN(Number(value))) {
+          data[header] = Number(value);
+        } else {
+          data[header] = value;
+        }
+      }
     }
 
-    // Add all other fields (excluding metadata fields that start with _)
-    Object.keys(record).forEach(key => {
-      if (!key.startsWith('_') || key === '_time') {
-        data[key] = record[key];
-      }
-    });
-
-    console.log('Extracted data:', data);
+    console.log('Parsed data:', data);
 
     const result = {
       status: 'ok',
