@@ -86,14 +86,28 @@ const Login = () => {
           <div className="flex items-center justify-center space-x-2 mb-4">
             <div className="w-12 h-12 bg-blue-600 dark:bg-blue-500 rounded-lg flex items-center justify-center">
               <img 
-                src="/kumulus-logo-white.png" 
+                src="/lovable-uploads/6b2020dd-160c-4c6a-bac9-5f824123d5d1.png" 
                 alt="Kumulus" 
-                className="w-8 h-8 object-contain"
+                className="w-8 h-8 object-contain dark:block hidden"
                 onError={(e) => {
                   // Fallback to text if image doesn't load
                   const target = e.currentTarget;
                   target.style.display = 'none';
-                  const fallback = target.nextElementSibling as HTMLElement;
+                  const fallback = target.nextElementSibling?.nextElementSibling as HTMLElement;
+                  if (fallback) {
+                    fallback.style.display = 'block';
+                  }
+                }}
+              />
+              <img 
+                src="/lovable-uploads/913ab43b-9664-4082-88da-18b2190e49c2.png" 
+                alt="Kumulus" 
+                className="w-8 h-8 object-contain dark:hidden block"
+                onError={(e) => {
+                  // Fallback to text if image doesn't load
+                  const target = e.currentTarget;
+                  target.style.display = 'none';
+                  const fallback = target.nextElementSibling?.nextElementSibling as HTMLElement;
                   if (fallback) {
                     fallback.style.display = 'block';
                   }
