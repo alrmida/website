@@ -160,8 +160,8 @@ const AWGDashboard = () => {
           selectedMachine={selectedMachine}
         />
 
-        {/* Show data error only for live data machine (ID79) */}
-        {dataError && selectedMachine?.machine_id === 'ID79' && (
+        {/* Show data error only for live data machine (KU079) */}
+        {dataError && selectedMachine?.machine_id === 'KU079' && (
           <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
             <p><strong>Live Data Connection Error:</strong> {dataError}</p>
             <p className="text-sm">Unable to fetch live data from InfluxDB. Please check the connection.</p>
@@ -169,14 +169,14 @@ const AWGDashboard = () => {
         )}
 
         {/* Show loading indicator only for live data */}
-        {dataLoading && selectedMachine?.machine_id === 'ID79' && (
+        {dataLoading && selectedMachine?.machine_id === 'KU079' && (
           <div className="mb-4 p-4 bg-blue-100 border border-blue-400 text-blue-700 rounded">
             <p>Loading live machine data...</p>
           </div>
         )}
 
         {/* Show demo data indicator for non-live machines */}
-        {selectedMachine && selectedMachine.machine_id !== 'ID79' && (
+        {selectedMachine && selectedMachine.machine_id !== 'KU079' && (
           <div className="mb-4 p-4 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded">
             <p><strong>Demo Data:</strong> This machine is showing example data for demonstration purposes.</p>
           </div>
@@ -216,7 +216,7 @@ const AWGDashboard = () => {
           )}
           {selectedMachine && (
             <span className="ml-4 text-xs">
-              {selectedMachine.machine_id === 'ID79' ? 
+              {selectedMachine.machine_id === 'KU079' ? 
                 `Data age: ${Math.round(liveData.dataAge / 1000)}s • Compressor: ${liveData.compressorOn ? 'ON' : 'OFF'}` :
                 'Demo Data • Static Values'
               }

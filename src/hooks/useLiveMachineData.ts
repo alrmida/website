@@ -34,7 +34,7 @@ function calculateMachineStatus(waterLevel: number, compressorOn: number, dataAg
 // Static data generator for demo machines
 function generateStaticMachineData(machineId: string): LiveMachineData {
   const staticData: { [key: string]: LiveMachineData } = {
-    'AWG001': {
+    'AWG-001': {
       waterLevel: 11.2,
       status: 'Full Water',
       lastUpdated: new Date(Date.now() - 300000).toISOString(), // 5 minutes ago
@@ -42,7 +42,7 @@ function generateStaticMachineData(machineId: string): LiveMachineData {
       compressorOn: 0,
       isOnline: true
     },
-    'AWG002': {
+    'AWG-002': {
       waterLevel: 6.8,
       status: 'Producing',
       lastUpdated: new Date(Date.now() - 120000).toISOString(), // 2 minutes ago
@@ -50,7 +50,7 @@ function generateStaticMachineData(machineId: string): LiveMachineData {
       compressorOn: 1,
       isOnline: true
     },
-    'AWG003': {
+    'AWG-003': {
       waterLevel: 3.2,
       status: 'Idle',
       lastUpdated: new Date(Date.now() - 180000).toISOString(), // 3 minutes ago
@@ -58,7 +58,7 @@ function generateStaticMachineData(machineId: string): LiveMachineData {
       compressorOn: 0,
       isOnline: true
     },
-    'AWG004': {
+    'AWG-004': {
       waterLevel: 0,
       status: 'Disconnected',
       lastUpdated: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
@@ -91,8 +91,8 @@ export const useLiveMachineData = (selectedMachineId?: string) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Check if this is the live data machine (ID79)
-  const isLiveDataMachine = selectedMachineId === 'ID79';
+  // Check if this is the live data machine (KU079 - the actual machine ID in database)
+  const isLiveDataMachine = selectedMachineId === 'KU079';
 
   const fetchData = async () => {
     try {
@@ -108,7 +108,7 @@ export const useLiveMachineData = (selectedMachineId?: string) => {
         return;
       }
 
-      console.log('Fetching live data for ID79...');
+      console.log('Fetching live data for KU079...');
       
       // Use GET request to the edge function for live data
       const response = await fetch(
