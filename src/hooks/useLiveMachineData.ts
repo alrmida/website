@@ -42,13 +42,26 @@ export const useLiveMachineData = () => {
   const fetchData = async () => {
     try {
       console.log('Fetching live machine data...');
-      const { data: result, error: functionError } = await supabase.functions.invoke('get-machine-data');
       
-      if (functionError) {
-        console.error('Function error:', functionError);
-        throw functionError;
+      // Use GET request to the edge function
+      const response = await fetch(
+        `${supabase.supabaseUrl}/functions/v1/get-machine-data`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${supabase.supabaseKey}`,
+            'Accept': 'application/json',
+          },
+        }
+      );
+
+      console.log('Response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`Edge Function returned a non-2xx status code: ${response.status}`);
       }
 
+      const result = await response.json();
       console.log('Received data:', result);
 
       // Handle the new response format
