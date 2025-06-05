@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -232,43 +231,42 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
     setLoading(false);
   };
 
-  // Add your machine automatically when component loads
-  useEffect(() => {
-    const addKU079Machine = async () => {
-      if (!profile?.role === 'kumulus_personnel' || !profile?.id) return;
+  const addKU079Machine = async () => {
+    if (profile?.role !== 'kumulus_personnel' || !profile?.id) return;
+    
+    try {
+      // Check if machine already exists
+      const { data: existingMachine } = await supabase
+        .from('machines')
+        .select('*')
+        .eq('machine_id', 'KU079')
+        .single();
       
-      try {
-        // Check if machine already exists
-        const { data: existingMachine } = await supabase
+      if (!existingMachine) {
+        console.log('Adding KU079 machine...');
+        const { error } = await supabase
           .from('machines')
-          .select('*')
-          .eq('machine_id', 'KU079')
-          .single();
-        
-        if (!existingMachine) {
-          console.log('Adding KU079 machine...');
-          const { error } = await supabase
-            .from('machines')
-            .insert([{
-              machine_id: 'KU079',
-              name: 'Atmospheric Water Generator KU079',
-              location: 'Kumulus-HOUSE',
-              manager_id: profile.id,
-              client_id: profile.id
-            }]);
+          .insert([{
+            machine_id: 'KU079',
+            name: 'Atmospheric Water Generator KU079',
+            location: 'Kumulus-HOUSE',
+            manager_id: profile.id,
+            client_id: profile.id
+          }]);
 
-          if (error) {
-            console.error('Error adding KU079 machine:', error);
-          } else {
-            console.log('KU079 machine added successfully');
-            fetchData();
-          }
+        if (error) {
+          console.error('Error adding KU079 machine:', error);
+        } else {
+          console.log('KU079 machine added successfully');
+          fetchData();
         }
-      } catch (error) {
-        console.error('Error checking/adding KU079 machine:', error);
       }
-    };
+    } catch (error) {
+      console.error('Error checking/adding KU079 machine:', error);
+    }
+  };
 
+  useEffect(() => {
     if (open && profile?.role === 'kumulus_personnel') {
       addKU079Machine();
     }
