@@ -85,8 +85,8 @@ const Login = () => {
           <div className="flex items-center justify-center space-x-3 mb-4">
             <img 
               src="/lovable-uploads/913ab43b-9664-4082-88da-18b2190e49c2.png" 
-              alt="Kumulus" 
-              className="h-20 w-auto object-contain dark:hidden block"
+              alt="KUMULUS" 
+              className="h-24 w-auto object-contain dark:hidden block"
               onError={(e) => {
                 const target = e.currentTarget;
                 target.style.display = 'none';
@@ -98,14 +98,14 @@ const Login = () => {
             />
             <img 
               src="/lovable-uploads/6b2020dd-160c-4c6a-bac9-5f824123d5d1.png" 
-              alt="Kumulus" 
-              className="h-20 w-auto object-contain dark:block hidden"
+              alt="KUMULUS" 
+              className="h-24 w-auto object-contain dark:block hidden"
               onError={(e) => {
                 const target = e.currentTarget;
                 target.style.display = 'none';
               }}
             />
-            <CardTitle className="text-3xl font-poppins">Kumulus AWG</CardTitle>
+            <CardTitle className="text-3xl font-poppins">KUMULUS AWG</CardTitle>
           </div>
           <CardDescription className="font-poppins">Sign in to access your dashboard</CardDescription>
         </CardHeader>

@@ -38,8 +38,8 @@ const DashboardHeader = () => {
           <div className="flex items-center space-x-4">
             <img 
               src="/lovable-uploads/913ab43b-9664-4082-88da-18b2190e49c2.png" 
-              alt="Kumulus" 
-              className="h-16 w-auto object-contain dark:hidden block"
+              alt="KUMULUS" 
+              className="h-20 w-auto object-contain dark:hidden block"
               onError={(e) => {
                 const target = e.currentTarget;
                 target.style.display = 'none';
@@ -51,15 +51,15 @@ const DashboardHeader = () => {
             />
             <img 
               src="/lovable-uploads/6b2020dd-160c-4c6a-bac9-5f824123d5d1.png" 
-              alt="Kumulus" 
-              className="h-16 w-auto object-contain dark:block hidden"
+              alt="KUMULUS" 
+              className="h-20 w-auto object-contain dark:block hidden"
               onError={(e) => {
                 const target = e.currentTarget;
                 target.style.display = 'none';
               }}
             />
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white font-poppins">Kumulus</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white font-poppins">KUMULUS</h1>
               <p className="text-sm text-gray-600 dark:text-gray-300 font-poppins">Your Drinking Water From Air. Mineralized, Fresh, Sustainable</p>
             </div>
           </div>
