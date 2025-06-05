@@ -74,7 +74,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
     machine_id: '',
     name: '',
     location: '',
-    client_id: '',
+    client_id: 'unassigned', // Changed from '' to 'unassigned'
   });
 
   useEffect(() => {
@@ -211,7 +211,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
         machine_id: newMachine.machine_id.trim(),
         name: newMachine.name.trim(),
         location: newMachine.location.trim() || null,
-        client_id: newMachine.client_id || null,
+        client_id: newMachine.client_id === 'unassigned' ? null : newMachine.client_id, // Handle the unassigned case
         manager_id: profile?.id || null,
       };
       
@@ -234,7 +234,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
         description: 'Machine added successfully',
       });
       
-      setNewMachine({ machine_id: '', name: '', location: '', client_id: '' });
+      setNewMachine({ machine_id: '', name: '', location: '', client_id: 'unassigned' }); // Reset to 'unassigned'
       fetchData();
     } catch (error: any) {
       console.error('Error adding machine:', error);
@@ -452,7 +452,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
                         <SelectValue placeholder="Select a client" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No assignment</SelectItem>
+                        <SelectItem value="unassigned">No assignment</SelectItem>
                         {profiles.filter(p => p.role === 'client').map((client) => (
                           <SelectItem key={client.id} value={client.id}>
                             {client.username}
