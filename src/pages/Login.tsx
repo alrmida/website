@@ -83,35 +83,28 @@ const Login = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center space-x-3 mb-4">
-            <div className="w-16 h-16 bg-blue-600 dark:bg-blue-500 rounded-xl flex items-center justify-center p-3">
-              <img 
-                src="/lovable-uploads/6b2020dd-160c-4c6a-bac9-5f824123d5d1.png" 
-                alt="Kumulus" 
-                className="w-full h-full object-contain dark:block hidden"
-                onError={(e) => {
-                  const target = e.currentTarget;
-                  target.style.display = 'none';
-                  const fallback = target.nextElementSibling?.nextElementSibling as HTMLElement;
-                  if (fallback) {
-                    fallback.style.display = 'block';
-                  }
-                }}
-              />
-              <img 
-                src="/lovable-uploads/913ab43b-9664-4082-88da-18b2190e49c2.png" 
-                alt="Kumulus" 
-                className="w-full h-full object-contain dark:hidden block"
-                onError={(e) => {
-                  const target = e.currentTarget;
-                  target.style.display = 'none';
-                  const fallback = target.nextElementSibling?.nextElementSibling as HTMLElement;
-                  if (fallback) {
-                    fallback.style.display = 'block';
-                  }
-                }}
-              />
-              <span className="text-white text-2xl font-bold hidden">K</span>
-            </div>
+            <img 
+              src="/lovable-uploads/913ab43b-9664-4082-88da-18b2190e49c2.png" 
+              alt="Kumulus" 
+              className="h-20 w-auto object-contain dark:hidden block"
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.style.display = 'none';
+                const fallback = target.nextElementSibling as HTMLElement;
+                if (fallback) {
+                  fallback.style.display = 'block';
+                }
+              }}
+            />
+            <img 
+              src="/lovable-uploads/6b2020dd-160c-4c6a-bac9-5f824123d5d1.png" 
+              alt="Kumulus" 
+              className="h-20 w-auto object-contain dark:block hidden"
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.style.display = 'none';
+              }}
+            />
             <CardTitle className="text-3xl font-poppins">Kumulus AWG</CardTitle>
           </div>
           <CardDescription className="font-poppins">Sign in to access your dashboard</CardDescription>
