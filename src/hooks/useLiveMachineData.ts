@@ -31,7 +31,55 @@ function calculateMachineStatus(waterLevel: number, compressorOn: number, dataAg
   return { status: 'Unknown', isOnline };
 }
 
-export const useLiveMachineData = () => {
+// Static data generator for demo machines
+function generateStaticMachineData(machineId: string): LiveMachineData {
+  const staticData: { [key: string]: LiveMachineData } = {
+    'AWG001': {
+      waterLevel: 11.2,
+      status: 'Full Water',
+      lastUpdated: new Date(Date.now() - 300000).toISOString(), // 5 minutes ago
+      dataAge: 300000,
+      compressorOn: 0,
+      isOnline: true
+    },
+    'AWG002': {
+      waterLevel: 6.8,
+      status: 'Producing',
+      lastUpdated: new Date(Date.now() - 120000).toISOString(), // 2 minutes ago
+      dataAge: 120000,
+      compressorOn: 1,
+      isOnline: true
+    },
+    'AWG003': {
+      waterLevel: 3.2,
+      status: 'Idle',
+      lastUpdated: new Date(Date.now() - 180000).toISOString(), // 3 minutes ago
+      dataAge: 180000,
+      compressorOn: 0,
+      isOnline: true
+    },
+    'AWG004': {
+      waterLevel: 0,
+      status: 'Disconnected',
+      lastUpdated: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+      dataAge: 3600000,
+      compressorOn: 0,
+      isOnline: false
+    },
+    'default': {
+      waterLevel: 8.5,
+      status: 'Producing',
+      lastUpdated: new Date(Date.now() - 600000).toISOString(), // 10 minutes ago
+      dataAge: 600000,
+      compressorOn: 1,
+      isOnline: true
+    }
+  };
+
+  return staticData[machineId] || staticData['default'];
+}
+
+export const useLiveMachineData = (selectedMachineId?: string) => {
   const [data, setData] = useState<LiveMachineData>({
     waterLevel: 0,
     status: 'Loading...',
@@ -43,11 +91,26 @@ export const useLiveMachineData = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Check if this is the live data machine (ID79)
+  const isLiveDataMachine = selectedMachineId === 'ID79';
+
   const fetchData = async () => {
     try {
-      console.log('Fetching live machine data...');
+      console.log('Fetching machine data for:', selectedMachineId);
       
-      // Use GET request to the edge function
+      // If not the live data machine, return static data
+      if (!isLiveDataMachine) {
+        const staticData = generateStaticMachineData(selectedMachineId || 'default');
+        console.log('Using static data for machine:', selectedMachineId, staticData);
+        setData(staticData);
+        setError(null);
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('Fetching live data for ID79...');
+      
+      // Use GET request to the edge function for live data
       const response = await fetch(
         'https://dolkcmipdzqrtpaflvaf.supabase.co/functions/v1/get-machine-data',
         {
@@ -66,7 +129,7 @@ export const useLiveMachineData = () => {
       }
 
       const result = await response.json();
-      console.log('Received data:', result);
+      console.log('Received live data:', result);
 
       // Handle the response format
       if (result.status === 'ok' && result.data) {
@@ -93,7 +156,7 @@ export const useLiveMachineData = () => {
           isOnline: isOnline
         };
 
-        console.log('Processed machine data:', processedData);
+        console.log('Processed live machine data:', processedData);
         setData(processedData);
         setError(null);
       } else {
@@ -117,11 +180,12 @@ export const useLiveMachineData = () => {
     // Initial fetch
     fetchData();
 
-    // Set up interval to fetch every 10 seconds
-    const interval = setInterval(fetchData, 10000);
-
-    return () => clearInterval(interval);
-  }, []);
+    // Only set up polling for live data machine
+    if (isLiveDataMachine) {
+      const interval = setInterval(fetchData, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [selectedMachineId, isLiveDataMachine]);
 
   return { data, isLoading, error, refetch: fetchData };
 };
