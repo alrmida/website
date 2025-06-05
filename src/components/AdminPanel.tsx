@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -90,7 +89,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
   };
 
   // Helper function to map frontend roles to database roles for invitations
-  const mapFrontendRoleToDatabase = (frontendRole: 'client' | 'commercial' | 'admin'): string => {
+  const mapFrontendRoleToDatabase = (frontendRole: 'client' | 'commercial' | 'admin'): 'client' | 'kumulus_personnel' => {
     switch (frontendRole) {
       case 'commercial':
       case 'admin':
@@ -325,7 +324,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
       const { data: existingMachine } = await supabase
         .from('machines')
         .select('*')
-        .eq('machine_id', 'KU079')
+        .eq('machine_id', 'KU001619000079')
         .single();
       
       if (!existingMachine) {
@@ -333,7 +332,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
         const { error } = await supabase
           .from('machines')
           .insert([{
-            machine_id: 'KU079',
+            machine_id: 'KU001619000079',
             name: 'Atmospheric Water Generator KU079',
             location: 'Kumulus-HOUSE',
             manager_id: profile.id,
@@ -456,7 +455,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
                       id="machineId"
                       value={newMachine.machine_id}
                       onChange={(e) => setNewMachine({ ...newMachine, machine_id: e.target.value })}
-                      placeholder="KU079"
+                      placeholder="KU001619000079"
                     />
                   </div>
                   <div className="space-y-2">
