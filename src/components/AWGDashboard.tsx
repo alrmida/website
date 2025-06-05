@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardHeader from '@/components/DashboardHeader';
@@ -193,9 +192,8 @@ const AWGDashboard = () => {
           waterTank={waterTank}
           launchDate={machineInfo.launchDate}
           machineStatus={machineInfo.status}
+          totalWaterProduced={totalWaterProduced}
         />
-
-        <ESGMetrics totalWaterProduced={totalWaterProduced} />
 
         <ProductionAnalytics
           selectedPeriod={selectedPeriod}

@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Activity, Settings, Monitor, Database } from 'lucide-react';
+import { Activity, Settings, Monitor, Database, Leaf, Droplets, Recycle, TreePine } from 'lucide-react';
 import WaterTankIndicator from '@/components/WaterTankIndicator';
 
 interface MetricsCardsProps {
@@ -13,9 +13,10 @@ interface MetricsCardsProps {
   };
   launchDate: string;
   machineStatus?: string;
+  totalWaterProduced: number;
 }
 
-const MetricsCards = ({ waterTank, launchDate, machineStatus = 'Offline' }: MetricsCardsProps) => {
+const MetricsCards = ({ waterTank, launchDate, machineStatus = 'Offline', totalWaterProduced }: MetricsCardsProps) => {
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'producing':
@@ -37,8 +38,12 @@ const MetricsCards = ({ waterTank, launchDate, machineStatus = 'Offline' }: Metr
     return isOnline ? 'Online' : 'Offline';
   };
 
+  // Calculate ESG metrics based on water production
+  const co2Saved = Math.round(totalWaterProduced * 0.234); // kg CO2 saved per liter
+  const plasticBottlesSaved = Math.round(totalWaterProduced / 0.5); // 500ml bottles
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
       <WaterTankIndicator
         currentLevel={waterTank.currentLevel}
         maxCapacity={waterTank.maxCapacity}
@@ -51,7 +56,7 @@ const MetricsCards = ({ waterTank, launchDate, machineStatus = 'Offline' }: Metr
           <Monitor className="h-4 w-4 text-green-600 dark:text-green-400" />
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold text-gray-900 dark:text-white">{machineStatus}</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">{machineStatus}</div>
           <Badge variant="secondary" className={`mt-2 ${getStatusColor(machineStatus)}`}>
             {getStatusIcon(machineStatus)}
           </Badge>
@@ -60,12 +65,12 @@ const MetricsCards = ({ waterTank, launchDate, machineStatus = 'Offline' }: Metr
 
       <Card className="bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow border-gray-200 dark:border-gray-700">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">📊 Total Water Produced</CardTitle>
+          <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">📊 Total Water</CardTitle>
           <Database className="h-4 w-4 text-blue-600 dark:text-blue-400" />
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold text-gray-900 dark:text-white">1245.7 L</div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Since {launchDate}</p>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalWaterProduced.toFixed(1)} L</div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Since {launchDate}</p>
         </CardContent>
       </Card>
 
@@ -75,8 +80,30 @@ const MetricsCards = ({ waterTank, launchDate, machineStatus = 'Offline' }: Metr
           <Activity className="h-4 w-4 text-green-600 dark:text-green-400" />
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold text-green-600 dark:text-green-400">€622.85</div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Since {launchDate}</p>
+          <div className="text-2xl font-bold text-green-600 dark:text-green-400">€622.85</div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Since {launchDate}</p>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-green-50 dark:bg-green-900/20 hover:shadow-lg transition-shadow border-green-200 dark:border-green-700">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium text-green-700 dark:text-green-300">🌱 CO₂ Saved</CardTitle>
+          <Leaf className="h-4 w-4 text-green-600 dark:text-green-400" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-green-600 dark:text-green-400">{co2Saved} kg</div>
+          <p className="text-xs text-green-600 dark:text-green-400 mt-1">vs bottled water</p>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-blue-50 dark:bg-blue-900/20 hover:shadow-lg transition-shadow border-blue-200 dark:border-blue-700">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-300">♻️ Bottles Saved</CardTitle>
+          <Recycle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{plasticBottlesSaved}</div>
+          <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">500ml bottles</p>
         </CardContent>
       </Card>
     </div>
