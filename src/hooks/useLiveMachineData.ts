@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 
 interface LiveMachineData {
@@ -38,8 +39,14 @@ function calculateMachineStatus(waterLevel: number, compressorOn: number, dataAg
 
 // Static data generator for demo machines
 function generateStaticMachineData(machineId: string): LiveMachineData {
+  // Format machine ID to standard format for lookup
+  let lookupId = machineId;
+  if (machineId.startsWith('AWG-')) {
+    lookupId = machineId.replace('AWG-', 'AWG');
+  }
+
   const staticData: { [key: string]: LiveMachineData } = {
-    'AWG-001': {
+    'AWG001': {
       waterLevel: 11.2,
       status: 'Full Water',
       lastUpdated: new Date(Date.now() - 300000).toISOString(), // 5 minutes ago
@@ -47,7 +54,7 @@ function generateStaticMachineData(machineId: string): LiveMachineData {
       compressorOn: 0,
       isOnline: true
     },
-    'AWG-002': {
+    'AWG002': {
       waterLevel: 6.8,
       status: 'Producing',
       lastUpdated: new Date(Date.now() - 120000).toISOString(), // 2 minutes ago
@@ -55,7 +62,7 @@ function generateStaticMachineData(machineId: string): LiveMachineData {
       compressorOn: 1,
       isOnline: true
     },
-    'AWG-003': {
+    'AWG003': {
       waterLevel: 3.2,
       status: 'Idle',
       lastUpdated: new Date(Date.now() - 180000).toISOString(), // 3 minutes ago
@@ -63,7 +70,7 @@ function generateStaticMachineData(machineId: string): LiveMachineData {
       compressorOn: 0,
       isOnline: true
     },
-    'AWG-004': {
+    'AWG004': {
       waterLevel: 0,
       status: 'Disconnected',
       lastUpdated: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
@@ -81,7 +88,7 @@ function generateStaticMachineData(machineId: string): LiveMachineData {
     }
   };
 
-  return staticData[machineId] || staticData['default'];
+  return staticData[lookupId] || staticData['default'];
 }
 
 export const useLiveMachineData = (selectedMachineId?: string) => {

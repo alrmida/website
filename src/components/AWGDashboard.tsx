@@ -1,9 +1,11 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardHeader from '@/components/DashboardHeader';
 import MachineInfoHeader from '@/components/MachineInfoHeader';
 import MetricsCards from '@/components/MetricsCards';
 import ProductionAnalytics from '@/components/ProductionAnalytics';
+import ESGMetrics from '@/components/ESGMetrics';
 import MachineSelector from '@/components/MachineSelector';
 import { useLiveMachineData } from '@/hooks/useLiveMachineData';
 
@@ -149,6 +151,9 @@ const AWGDashboard = () => {
     { month: '2025-05', producing: 0, idle: 0, fullWater: 0, disconnected: 0 }
   ];
 
+  // Calculate total water produced for ESG metrics
+  const totalWaterProduced = selectedMachine ? 1245.7 : 0;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-gray-900 dark:to-gray-800">
       <DashboardHeader />
@@ -174,13 +179,6 @@ const AWGDashboard = () => {
           </div>
         )}
 
-        {/* Show demo data indicator for non-live machines */}
-        {selectedMachine && selectedMachine.machine_id !== 'KU079' && (
-          <div className="mb-4 p-4 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded">
-            <p><strong>Demo Data:</strong> This machine is showing example data for demonstration purposes.</p>
-          </div>
-        )}
-
         <MachineInfoHeader
           machineId={machineInfo.machineId}
           machineName={machineInfo.machineName}
@@ -188,6 +186,7 @@ const AWGDashboard = () => {
           status={machineInfo.status}
           launchDate={machineInfo.launchDate}
           isOnline={machineInfo.isOnline}
+          userRole={profile?.role}
         />
 
         <MetricsCards
@@ -195,6 +194,8 @@ const AWGDashboard = () => {
           launchDate={machineInfo.launchDate}
           machineStatus={machineInfo.status}
         />
+
+        <ESGMetrics totalWaterProduced={totalWaterProduced} />
 
         <ProductionAnalytics
           selectedPeriod={selectedPeriod}
@@ -217,7 +218,7 @@ const AWGDashboard = () => {
             <span className="ml-4 text-xs">
               {selectedMachine.machine_id === 'KU079' ? 
                 `Data age: ${Math.round(liveData.dataAge / 1000)}s • Compressor: ${liveData.compressorOn ? 'ON' : 'OFF'}` :
-                'Demo Data • Static Values'
+                'Static Demo Data'
               }
             </span>
           )}

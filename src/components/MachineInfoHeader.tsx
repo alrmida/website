@@ -10,9 +10,18 @@ interface MachineInfoHeaderProps {
   status: string;
   launchDate: string;
   isOnline?: boolean;
+  userRole?: string;
 }
 
-const MachineInfoHeader = ({ machineId, machineName, location, status, launchDate, isOnline = false }: MachineInfoHeaderProps) => {
+const MachineInfoHeader = ({ 
+  machineId, 
+  machineName, 
+  location, 
+  status, 
+  launchDate, 
+  isOnline = false,
+  userRole = 'client'
+}: MachineInfoHeaderProps) => {
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'producing':
@@ -31,6 +40,21 @@ const MachineInfoHeader = ({ machineId, machineName, location, status, launchDat
     }
   };
 
+  // Format machine ID to Kumulus standard
+  const formatMachineId = (id: string) => {
+    if (id === 'Select a machine') return id;
+    
+    // Extract number from ID (e.g., 'KU079' -> '79', 'AWG001' -> '1')
+    const match = id.match(/(\d+)$/);
+    if (match) {
+      const number = match[1].padStart(6, '0');
+      return `KU001619${number}`;
+    }
+    return id;
+  };
+
+  const formattedMachineId = formatMachineId(machineId);
+
   return (
     <Card className="bg-white dark:bg-gray-800 mb-6 border-gray-200 dark:border-gray-700">
       <CardContent className="p-6">
@@ -43,8 +67,10 @@ const MachineInfoHeader = ({ machineId, machineName, location, status, launchDat
               </Badge>
             </div>
             <div className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
-              <p><span className="font-medium">Machine ID:</span> {machineId}</p>
-              <p><span className="font-medium">Location:</span> {location}</p>
+              <p><span className="font-medium">Machine ID:</span> {formattedMachineId}</p>
+              {userRole !== 'client' && (
+                <p><span className="font-medium">Location:</span> {location}</p>
+              )}
               <p><span className="font-medium">Active since:</span> {launchDate}</p>
             </div>
           </div>

@@ -15,7 +15,7 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
-  const [role, setRole] = useState<'client' | 'kumulus_personnel'>('client');
+  const [role, setRole] = useState<'client' | 'commercial' | 'admin'>('client');
   const [loading, setLoading] = useState(false);
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
@@ -75,24 +75,6 @@ const Login = () => {
     setLoading(false);
   };
 
-  // Quick login buttons for demo accounts
-  const quickLogin = async (demoEmail: string) => {
-    console.log('Quick login attempt with:', demoEmail);
-    setLoading(true);
-    const { error } = await signIn(demoEmail, '0000');
-    if (error) {
-      console.error('Quick login error:', error);
-      toast({
-        title: "Error signing in",
-        description: error.message,
-        variant: "destructive"
-      });
-    } else {
-      console.log('Quick login successful');
-    }
-    setLoading(false);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
       <div className="absolute top-4 right-4">
@@ -102,8 +84,18 @@ const Login = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
-              <span className="text-white text-xl">💧</span>
+            <div className="w-12 h-12 bg-blue-600 dark:bg-blue-500 rounded-lg flex items-center justify-center">
+              <img 
+                src="/kumulus-logo-white.png" 
+                alt="Kumulus" 
+                className="w-8 h-8 object-contain"
+                onError={(e) => {
+                  // Fallback to text if image doesn't load
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.nextElementSibling!.style.display = 'block';
+                }}
+              />
+              <span className="text-white text-xl font-bold hidden">K</span>
             </div>
             <CardTitle className="text-2xl">Kumulus AWG</CardTitle>
           </div>
@@ -143,44 +135,6 @@ const Login = () => {
                   {loading ? 'Signing in...' : 'Sign In'}
                 </Button>
               </form>
-
-              <div className="mt-6">
-                <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">Demo Accounts (Password: 0000):</div>
-                <div className="space-y-2">
-                  <Button 
-                    variant="outline" 
-                    className="w-full text-sm" 
-                    onClick={() => quickLogin('client1@demo.com')}
-                    disabled={loading}
-                  >
-                    Client 1 (1 machine)
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full text-sm" 
-                    onClick={() => quickLogin('client2@demo.com')}
-                    disabled={loading}
-                  >
-                    Client 2 (2 machines)
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full text-sm" 
-                    onClick={() => quickLogin('client3@demo.com')}
-                    disabled={loading}
-                  >
-                    Client 3 (3 machines)
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full text-sm bg-blue-50 dark:bg-blue-950" 
-                    onClick={() => quickLogin('kumulus1@demo.com')}
-                    disabled={loading}
-                  >
-                    Kumulus Personnel (All access)
-                  </Button>
-                </div>
-              </div>
             </TabsContent>
 
             <TabsContent value="signup">
@@ -216,13 +170,14 @@ const Login = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="role">Role</Label>
-                  <Select value={role} onValueChange={(value: 'client' | 'kumulus_personnel') => setRole(value)}>
+                  <Select value={role} onValueChange={(value: 'client' | 'commercial' | 'admin') => setRole(value)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="client">Client</SelectItem>
-                      <SelectItem value="kumulus_personnel">Kumulus Personnel</SelectItem>
+                      <SelectItem value="commercial">Commercial</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
