@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,6 +27,25 @@ interface MachineSelectorProps {
   onMachineSelect: (machine: Machine) => void;
   selectedMachine: Machine | null;
 }
+
+// Helper function to get model name based on machine ID
+const getModelName = (machineId: string): string => {
+  if (machineId === 'KU079') return 'Amphore'; // Live data machine
+  if (machineId.startsWith('KU0')) return 'Amphore';
+  if (machineId.startsWith('KU1')) return 'BoKs';
+  if (machineId.startsWith('KU2')) return 'Dispenser';
+  return 'Amphore'; // Default to Amphore
+};
+
+// Helper function to get operating since date
+const getOperatingSince = (machineId: string): string => {
+  if (machineId === 'KU079') return '15 March 2024'; // Live data machine
+  if (machineId === 'KU001') return '23 June 1999';
+  if (machineId === 'KU002') return '15 January 2024';
+  if (machineId === 'KU003') return '8 November 2023';
+  if (machineId === 'KU004') return '30 September 2023';
+  return '15 March 2024'; // Default date
+};
 
 const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorProps) => {
   const { profile } = useAuth();
@@ -177,7 +195,7 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
         <CardTitle className="flex items-center justify-between">
           Machine Selection
           <Badge variant={profile?.role === 'commercial' || profile?.role === 'admin' ? 'default' : 'secondary'}>
-            {profile?.role === 'commercial' || profile?.role === 'admin' ? 'Kumulus Personnel' : 'Client'}
+            {profile?.role === 'commercial' || profile?.role === 'admin' ? 'KUMULUS Personnel' : 'Client'}
           </Badge>
         </CardTitle>
       </CardHeader>
@@ -241,12 +259,9 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
               {clientMachines.map((machine) => (
                 <SelectItem key={machine.id} value={machine.machine_id}>
                   <div className="flex flex-col">
-                    <span className="font-medium">{machine.machine_id} - {machine.name}</span>
+                    <span className="font-medium">{machine.machine_id} - {getModelName(machine.machine_id)}</span>
                     <span className="text-sm text-gray-500 dark:text-gray-400">
-                      {machine.location}
-                      {(profile?.role === 'commercial' || profile?.role === 'admin') && machine.client_profile && 
-                        ` • Owner: ${machine.client_profile.username}`
-                      }
+                      Operating since {getOperatingSince(machine.machine_id)}
                     </span>
                   </div>
                 </SelectItem>
@@ -254,6 +269,14 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
             </SelectContent>
           </Select>
         </div>
+
+        {selectedMachine && (
+          <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+            <h3 className="font-medium text-blue-900 dark:text-blue-100">Selected Machine</h3>
+            <p className="text-blue-800 dark:text-blue-200">{selectedMachine.machine_id} - {getModelName(selectedMachine.machine_id)}</p>
+            <p className="text-sm text-blue-600 dark:text-blue-300">Location: {selectedMachine.location}</p>
+          </div>
+        )}
 
         {clientMachines.length === 0 && (
           <p className="text-gray-500 dark:text-gray-400 text-center py-4">

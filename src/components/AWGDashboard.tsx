@@ -58,7 +58,6 @@ const AWGDashboard = () => {
 
         <MetricsCards
           waterTank={waterTank}
-          launchDate={machineInfo.launchDate}
           machineStatus={machineInfo.status}
           totalWaterProduced={totalWaterProduced}
         />

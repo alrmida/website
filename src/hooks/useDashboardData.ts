@@ -14,6 +14,15 @@ interface Machine {
   };
 }
 
+// Helper function to get model name based on machine ID
+const getModelName = (machineId: string): string => {
+  if (machineId === 'KU079') return 'Amphore'; // Live data machine
+  if (machineId.startsWith('KU0')) return 'Amphore';
+  if (machineId.startsWith('KU1')) return 'BoKs';
+  if (machineId.startsWith('KU2')) return 'Dispenser';
+  return 'Amphore'; // Default to Amphore
+};
+
 export const useDashboardData = (selectedMachine: Machine | null) => {
   // Fetch live/static machine data based on selected machine
   const { data: liveData, isLoading: dataLoading, error: dataError } = useLiveMachineData(selectedMachine?.machine_id);
@@ -25,7 +34,7 @@ export const useDashboardData = (selectedMachine: Machine | null) => {
       machineName: 'No machine selected',
       location: 'N/A',
       status: 'Offline',
-      launchDate: 'N/A',
+      modelName: 'N/A',
       isOnline: false
     };
 
@@ -35,7 +44,7 @@ export const useDashboardData = (selectedMachine: Machine | null) => {
       machineName: selectedMachine.name,
       location: selectedMachine.location,
       status: liveData.status || 'Loading...',
-      launchDate: 'March 15, 2024',
+      modelName: getModelName(selectedMachine.machine_id),
       isOnline: liveData.isOnline
     } : defaultMachineInfo;
 
@@ -48,11 +57,11 @@ export const useDashboardData = (selectedMachine: Machine | null) => {
 
     // Get production data based on machine - varied for different machines
     const productionMultiplier = selectedMachine ? 
-      (selectedMachine.machine_id === 'ID79' ? 1.0 : 
-       selectedMachine.machine_id === 'AWG001' ? 1.3 :
-       selectedMachine.machine_id === 'AWG002' ? 0.8 :
-       selectedMachine.machine_id === 'AWG003' ? 0.6 :
-       selectedMachine.machine_id === 'AWG004' ? 0.4 : 0.9) : 0;
+      (selectedMachine.machine_id === 'KU079' ? 1.0 : 
+       selectedMachine.machine_id === 'KU001' ? 1.3 :
+       selectedMachine.machine_id === 'KU002' ? 0.8 :
+       selectedMachine.machine_id === 'KU003' ? 0.6 :
+       selectedMachine.machine_id === 'KU004' ? 0.4 : 0.9) : 0;
 
     const productionData = getStaticProductionData(selectedMachine?.machine_id, productionMultiplier);
 
@@ -75,9 +84,9 @@ export const useDashboardData = (selectedMachine: Machine | null) => {
 
     // Monthly status data (last 3 months) - varied based on machine
     const monthlyStatusMultiplier = selectedMachine ? 
-      (selectedMachine.machine_id === 'AWG004' ? 0.3 : 
-       selectedMachine.machine_id === 'AWG003' ? 0.7 :
-       selectedMachine.machine_id === 'AWG002' ? 0.9 : 1.0) : 0;
+      (selectedMachine.machine_id === 'KU004' ? 0.3 : 
+       selectedMachine.machine_id === 'KU003' ? 0.7 :
+       selectedMachine.machine_id === 'KU002' ? 0.9 : 1.0) : 0;
 
     const monthlyStatusData = selectedMachine ? [
       { month: '2025-03', producing: 68.9 * monthlyStatusMultiplier, idle: 14.1, fullWater: 5.2, disconnected: 11.8 },

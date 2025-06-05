@@ -37,16 +37,10 @@ function calculateMachineStatus(waterLevel: number, compressorOn: number, dataAg
   }
 }
 
-// Static data generator for demo machines
+// Static data generator for demo machines using proper KUMULUS IDs
 function generateStaticMachineData(machineId: string): LiveMachineData {
-  // Format machine ID to standard format for lookup
-  let lookupId = machineId;
-  if (machineId.startsWith('AWG-')) {
-    lookupId = machineId.replace('AWG-', 'AWG');
-  }
-
   const staticData: { [key: string]: LiveMachineData } = {
-    'AWG001': {
+    'KU001': {
       waterLevel: 11.2,
       status: 'Full Water',
       lastUpdated: new Date(Date.now() - 300000).toISOString(), // 5 minutes ago
@@ -54,7 +48,7 @@ function generateStaticMachineData(machineId: string): LiveMachineData {
       compressorOn: 0,
       isOnline: true
     },
-    'AWG002': {
+    'KU002': {
       waterLevel: 6.8,
       status: 'Producing',
       lastUpdated: new Date(Date.now() - 120000).toISOString(), // 2 minutes ago
@@ -62,7 +56,7 @@ function generateStaticMachineData(machineId: string): LiveMachineData {
       compressorOn: 1,
       isOnline: true
     },
-    'AWG003': {
+    'KU003': {
       waterLevel: 3.2,
       status: 'Idle',
       lastUpdated: new Date(Date.now() - 180000).toISOString(), // 3 minutes ago
@@ -70,7 +64,7 @@ function generateStaticMachineData(machineId: string): LiveMachineData {
       compressorOn: 0,
       isOnline: true
     },
-    'AWG004': {
+    'KU004': {
       waterLevel: 0,
       status: 'Disconnected',
       lastUpdated: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
@@ -88,7 +82,7 @@ function generateStaticMachineData(machineId: string): LiveMachineData {
     }
   };
 
-  return staticData[lookupId] || staticData['default'];
+  return staticData[machineId] || staticData['default'];
 }
 
 export const useLiveMachineData = (selectedMachineId?: string) => {
