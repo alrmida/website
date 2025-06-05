@@ -7,46 +7,31 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface InfluxDataPoint {
-  _time: string;
-  water_level_L: number;
-  compressor_on: number;
-  [key: string]: any;
-}
-
-function calculateMachineStatus(waterLevel: number, compressorOn: number, dataAge: number): string {
-  // If no data for 60+ seconds, machine is disconnected
-  if (dataAge > 60000) { // 60 seconds in milliseconds
-    return 'Disconnected';
-  }
-  
-  // Calculate status based on water level and compressor state
-  if (waterLevel > 9.5 && compressorOn === 0) {
-    return 'Full Water';
-  } else if (waterLevel <= 9.5 && compressorOn === 1) {
-    return 'Producing';
-  } else if (waterLevel <= 9.5 && compressorOn === 0) {
-    return 'Idle';
-  }
-  
-  return 'Unknown';
-}
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Only allow GET requests
+  if (req.method !== 'GET') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
     const influxUrl = Deno.env.get('INFLUXDB_URL');
     const influxToken = Deno.env.get('INFLUXDB_TOKEN');
     const influxOrg = Deno.env.get('INFLUXDB_ORG');
+    const influxBucket = Deno.env.get('INFLUXDB_BUCKET') || 'KumulusData';
 
     console.log('Environment check:', {
       hasUrl: !!influxUrl,
       hasToken: !!influxToken,
       hasOrg: !!influxOrg,
+      bucket: influxBucket,
       url: influxUrl
     });
 
@@ -54,30 +39,29 @@ serve(async (req) => {
       throw new Error('Missing InfluxDB configuration');
     }
 
-    // Query to get the latest data point
-    const query = `
-      from(bucket: "KumulusData")
-        |> range(start: -10m)
-        |> filter(fn: (r) => r._measurement == "awg_data_full")
-        |> pivot(
-             rowKey: ["_time"],
-             columnKey: ["_field"], 
-             valueColumn: "_value"
-           )
-        |> sort(columns: ["_time"], desc: true)
-        |> limit(n: 1)
-    `;
+    // Flux query exactly as specified by ChatGPT
+    const fluxQuery = `from(bucket: "${influxBucket}")
+  |> range(start: -10m)
+  |> filter(fn: (r) => r._measurement == "awg_data_full")
+  |> group(columns: [])
+  |> last()
+  |> pivot(
+       rowKey:   ["_time"],
+       columnKey: ["_field"],
+       valueColumn: "_value"
+     )
+  |> limit(n: 1)`;
 
-    console.log('Querying InfluxDB with:', { url: influxUrl, org: influxOrg });
+    console.log('Executing Flux query:', fluxQuery);
 
     const response = await fetch(`${influxUrl}/api/v2/query?org=${encodeURIComponent(influxOrg)}`, {
       method: 'POST',
       headers: {
         'Authorization': `Token ${influxToken}`,
         'Content-Type': 'application/vnd.flux',
-        'Accept': 'application/csv',
+        'Accept': 'application/json',
       },
-      body: query,
+      body: fluxQuery,
     });
 
     console.log('InfluxDB response status:', response.status);
@@ -85,73 +69,61 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('InfluxDB query failed:', response.status, errorText);
-      throw new Error(`InfluxDB query failed: ${response.status} - ${errorText}`);
+      console.error('InfluxDB query failed:', response.status, response.statusText, errorText);
+      return new Response(JSON.stringify({ 
+        error: `InfluxDB returned ${response.status} ${response.statusText}` 
+      }), {
+        status: 502,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    const csvData = await response.text();
-    console.log('Raw CSV response length:', csvData.length);
-    console.log('First 500 chars of CSV:', csvData.substring(0, 500));
+    const jsonData = await response.json();
+    console.log('InfluxDB JSON response:', JSON.stringify(jsonData, null, 2));
 
-    // Parse CSV response (basic CSV parsing for InfluxDB format)
-    const lines = csvData.trim().split('\n');
-    console.log('CSV lines count:', lines.length);
+    // Check if we have tables and records
+    if (!jsonData.tables || jsonData.tables.length === 0) {
+      console.log('No tables found in response');
+      return new Response(JSON.stringify({ error: 'No data returned from InfluxDB' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const table = jsonData.tables[0];
+    if (!table.records || table.records.length === 0) {
+      console.log('No records found in table');
+      return new Response(JSON.stringify({ error: 'No data returned from InfluxDB' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Build the flat object from the first record
+    const record = table.records[0];
+    console.log('Processing record:', record);
+
+    // Extract all field data from the record
+    const data: any = {};
     
-    if (lines.length < 2) {
-      console.error('No data lines found in CSV');
-      throw new Error('No data returned from InfluxDB');
+    // Add timestamp
+    if (record._time) {
+      data._time = record._time;
     }
 
-    // Skip empty lines and comments
-    const dataLines = lines.filter(line => line.trim() && !line.startsWith('#'));
-    console.log('Data lines count:', dataLines.length);
-    
-    if (dataLines.length < 2) {
-      throw new Error('No valid data rows found');
-    }
-
-    // Get headers and data
-    const headers = dataLines[0].split(',').map(h => h.trim());
-    const dataLine = dataLines[dataLines.length - 1].split(',').map(d => d.trim());
-
-    console.log('Headers:', headers);
-    console.log('Data line:', dataLine);
-
-    // Create object from headers and data
-    const dataPoint: any = {};
-    headers.forEach((header, index) => {
-      const value = dataLine[index];
-      
-      if (header === '_time') {
-        dataPoint[header] = value;
-      } else if (header === 'water_level_L' || header === 'compressor_on') {
-        dataPoint[header] = parseFloat(value) || 0;
+    // Add all other fields (excluding metadata fields that start with _)
+    Object.keys(record).forEach(key => {
+      if (!key.startsWith('_') || key === '_time') {
+        data[key] = record[key];
       }
     });
 
-    console.log('Parsed data point:', dataPoint);
-
-    // Calculate data age
-    const dataTime = new Date(dataPoint._time);
-    const now = new Date();
-    const dataAge = now.getTime() - dataTime.getTime();
-
-    // Calculate machine status
-    const status = calculateMachineStatus(
-      dataPoint.water_level_L || 0,
-      dataPoint.compressor_on || 0,
-      dataAge
-    );
+    console.log('Extracted data:', data);
 
     const result = {
-      waterLevel: dataPoint.water_level_L || 0,
-      status: status,
-      lastUpdated: dataPoint._time,
-      dataAge: dataAge,
-      compressorOn: dataPoint.compressor_on || 0
+      status: 'ok',
+      data: data
     };
-
-    console.log('Returning result:', result);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -160,14 +132,9 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in get-machine-data function:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
-      waterLevel: 0,
-      status: 'Disconnected',
-      lastUpdated: new Date().toISOString(),
-      dataAge: 999999,
-      compressorOn: 0
+      error: error.message 
     }), {
-      status: 500,
+      status: 502,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

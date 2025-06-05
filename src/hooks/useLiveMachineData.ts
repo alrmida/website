@@ -10,6 +10,24 @@ interface LiveMachineData {
   compressorOn: number;
 }
 
+function calculateMachineStatus(waterLevel: number, compressorOn: number, dataAge: number): string {
+  // If no data for 60+ seconds, machine is disconnected
+  if (dataAge > 60000) { // 60 seconds in milliseconds
+    return 'Disconnected';
+  }
+  
+  // Calculate status based on water level and compressor state
+  if (waterLevel > 9.5 && compressorOn === 0) {
+    return 'Full Water';
+  } else if (waterLevel <= 9.5 && compressorOn === 1) {
+    return 'Producing';
+  } else if (waterLevel <= 9.5 && compressorOn === 0) {
+    return 'Idle';
+  }
+  
+  return 'Unknown';
+}
+
 export const useLiveMachineData = () => {
   const [data, setData] = useState<LiveMachineData>({
     waterLevel: 0,
@@ -32,8 +50,34 @@ export const useLiveMachineData = () => {
       }
 
       console.log('Received data:', result);
-      setData(result);
-      setError(null);
+
+      // Handle the new response format
+      if (result.status === 'ok' && result.data) {
+        const machineData = result.data;
+        
+        // Calculate data age
+        const dataTime = new Date(machineData._time);
+        const now = new Date();
+        const dataAge = now.getTime() - dataTime.getTime();
+
+        // Calculate machine status
+        const waterLevel = machineData.water_level_L || 0;
+        const compressorOn = machineData.compressor_on || 0;
+        const status = calculateMachineStatus(waterLevel, compressorOn, dataAge);
+
+        const processedData = {
+          waterLevel: waterLevel,
+          status: status,
+          lastUpdated: machineData._time,
+          dataAge: dataAge,
+          compressorOn: compressorOn
+        };
+
+        setData(processedData);
+        setError(null);
+      } else {
+        throw new Error('Invalid response format from edge function');
+      }
     } catch (err) {
       console.error('Error fetching machine data:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
