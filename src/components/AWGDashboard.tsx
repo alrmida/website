@@ -7,6 +7,7 @@ import ProductionAnalytics from '@/components/ProductionAnalytics';
 import MachineSelector from '@/components/MachineSelector';
 import DashboardNotifications from '@/components/DashboardNotifications';
 import DashboardFooter from '@/components/DashboardFooter';
+import ImpersonationControls from '@/components/admin/ImpersonationControls';
 import { useDashboardData } from '@/hooks/useDashboardData';
 
 interface Machine {
@@ -45,6 +46,9 @@ const AWGDashboard = () => {
       <DashboardHeader />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Show impersonation controls only to admins */}
+        {profile?.role === 'admin' && <ImpersonationControls />}
+
         <MachineSelector 
           onMachineSelect={setSelectedMachine}
           selectedMachine={selectedMachine}

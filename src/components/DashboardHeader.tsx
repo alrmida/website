@@ -1,92 +1,121 @@
+
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Settings, Shield, LogOut } from 'lucide-react';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Settings, LogOut, Shield, Eye } from 'lucide-react';
 import SettingsModal from './SettingsModal';
 import AdminPanel from './AdminPanel';
+import ImpersonationControls from './admin/ImpersonationControls';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 
 const DashboardHeader = () => {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, isImpersonating, impersonatedProfile, stopImpersonation } = useAuth();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [adminOpen, setAdminOpen] = useState(false);
+  const [adminPanelOpen, setAdminPanelOpen] = useState(false);
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
+  const getInitials = (username: string) => {
+    return username
+      .split(' ')
+      .map(word => word.charAt(0))
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const displayProfile = isImpersonating ? impersonatedProfile : profile;
 
   return (
-    <div className="bg-white dark:bg-gray-900 shadow-sm border-b dark:border-gray-700 sticky top-0 z-50">
+    <header className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
-          {/* Fixed container for consistent logo spacing */}
+        <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-4">
-            <div className="w-20 h-20 flex items-center justify-center">
-              <img 
-                src="/lovable-uploads/913ab43b-9664-4082-88da-18b2190e49c2.png" 
-                alt="KUMULUS" 
-                className="max-h-full max-w-full object-contain dark:hidden block"
-                onError={(e) => {
-                  const target = e.currentTarget;
-                  target.style.display = 'none';
-                  const fallback = target.nextElementSibling as HTMLElement;
-                  if (fallback) {
-                    fallback.style.display = 'block';
-                  }
-                }}
-              />
-              <img 
-                src="/lovable-uploads/6b2020dd-160c-4c6a-bac9-5f824123d5d1.png" 
-                alt="KUMULUS" 
-                className="max-h-full max-w-full object-contain dark:block hidden"
-                onError={(e) => {
-                  const target = e.currentTarget;
-                  target.style.display = 'none';
-                }}
-              />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white font-poppins">KUMULUS</h1>
-              <p className="text-sm text-gray-600 dark:text-gray-300 font-poppins">Your Drinking Water From Air. Mineralized, Fresh, Sustainable</p>
-            </div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              Kumulus AWG Dashboard
+            </h1>
+            {isImpersonating && (
+              <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-300">
+                <Eye className="h-3 w-3 mr-1" />
+                Viewing as {impersonatedProfile?.username}
+              </Badge>
+            )}
           </div>
           
-          <div className="flex items-center space-x-2">
-            {/* User Info */}
-            {profile && (
-              <div className="text-right mr-3">
-                <span className="text-sm text-gray-600 dark:text-gray-300 font-medium">
-                  {profile.username}
-                </span>
-              </div>
+          <div className="flex items-center space-x-4">
+            {(profile?.role === 'admin' || profile?.role === 'commercial') && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAdminPanelOpen(true)}
+                className="flex items-center gap-2"
+              >
+                <Shield className="h-4 w-4" />
+                Admin Panel
+              </Button>
             )}
             
-            {/* Controls Group - reduced spacing and sizes */}
-            <div className="flex items-center space-x-1">
-              <ThemeToggle />
-              
-              {(profile?.role === 'admin' || profile?.role === 'commercial') && (
-                <Button variant="outline" size="sm" onClick={() => setAdminOpen(true)}>
-                  <Shield className="w-4 h-4" />
-                  <span className="hidden sm:inline ml-1">Admin</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback>
+                      {displayProfile ? getInitials(displayProfile.username) : 'U'}
+                    </AvatarFallback>
+                  </Avatar>
                 </Button>
-              )}
-              
-              <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
-                <Settings className="w-4 h-4" />
-                <span className="hidden sm:inline ml-1">Settings</span>
-              </Button>
-              
-              <Button variant="outline" size="sm" onClick={signOut}>
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline ml-1">Sign Out</span>
-              </Button>
-            </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <div className="flex flex-col space-y-1 p-2">
+                  <p className="text-sm font-medium leading-none">
+                    {displayProfile?.username}
+                  </p>
+                  <p className="text-xs leading-none text-muted-foreground">
+                    Role: {displayProfile?.role}
+                  </p>
+                  {isImpersonating && (
+                    <p className="text-xs leading-none text-amber-600">
+                      (Impersonating)
+                    </p>
+                  )}
+                </div>
+                <DropdownMenuSeparator />
+                {isImpersonating && (
+                  <>
+                    <DropdownMenuItem onClick={stopImpersonation}>
+                      <Eye className="mr-2 h-4 w-4" />
+                      Stop Impersonation
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleSignOut}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
 
       <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
-      {(profile?.role === 'admin' || profile?.role === 'commercial') && (
-        <AdminPanel open={adminOpen} onOpenChange={setAdminOpen} />
-      )}
-    </div>
+      <AdminPanel open={adminPanelOpen} onOpenChange={setAdminPanelOpen} />
+    </header>
   );
 };
 

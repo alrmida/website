@@ -17,6 +17,11 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, username: string, role: 'client' | 'commercial' | 'admin') => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  // Impersonation features
+  isImpersonating: boolean;
+  impersonatedProfile: Profile | null;
+  startImpersonation: (targetProfile: Profile) => void;
+  stopImpersonation: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -51,6 +56,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Impersonation state
+  const [isImpersonating, setIsImpersonating] = useState(false);
+  const [impersonatedProfile, setImpersonatedProfile] = useState<Profile | null>(null);
+  const [originalProfile, setOriginalProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
     // Set up auth state listener
@@ -79,6 +89,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   role: mapDatabaseRoleToFrontend(profileData.role)
                 };
                 setProfile(mappedProfile);
+                // Reset impersonation on auth change
+                setIsImpersonating(false);
+                setImpersonatedProfile(null);
+                setOriginalProfile(null);
               }
             } catch (err) {
               console.error('Error fetching profile:', err);
@@ -86,6 +100,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }, 0);
         } else {
           setProfile(null);
+          setIsImpersonating(false);
+          setImpersonatedProfile(null);
+          setOriginalProfile(null);
         }
         setLoading(false);
       }
@@ -129,16 +146,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    setIsImpersonating(false);
+    setImpersonatedProfile(null);
+    setOriginalProfile(null);
   };
+
+  const startImpersonation = (targetProfile: Profile) => {
+    if (profile?.role === 'admin' && !isImpersonating) {
+      console.log('Starting impersonation of:', targetProfile.username);
+      setOriginalProfile(profile);
+      setImpersonatedProfile(targetProfile);
+      setIsImpersonating(true);
+    }
+  };
+
+  const stopImpersonation = () => {
+    console.log('Stopping impersonation');
+    setIsImpersonating(false);
+    setImpersonatedProfile(null);
+    setOriginalProfile(null);
+  };
+
+  // Return the impersonated profile if impersonating, otherwise the original profile
+  const currentProfile = isImpersonating ? impersonatedProfile : profile;
 
   const value = {
     user,
     session,
-    profile,
+    profile: currentProfile,
     loading,
     signIn,
     signUp,
     signOut,
+    isImpersonating,
+    impersonatedProfile,
+    startImpersonation,
+    stopImpersonation,
   };
 
   return (
