@@ -7,9 +7,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, Plus, Pencil } from 'lucide-react';
+import { Trash2, Plus, Pencil, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Machine, Profile } from './types';
+import MachineAccessManagement from './MachineAccessManagement';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 interface MachineManagementProps {
   machines: Machine[];
@@ -27,6 +29,13 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
     name: '',
     location: '',
     client_id: 'unassigned',
+    owner_entity: '',
+    assigned_entity: '',
+    machine_model: '',
+    serial_number: '',
+    purchase_date: '',
+    assignment_date: '',
+    status: 'active'
   });
 
   const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
@@ -34,7 +43,16 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
     name: '',
     location: '',
     client_id: '',
+    owner_entity: '',
+    assigned_entity: '',
+    machine_model: '',
+    serial_number: '',
+    purchase_date: '',
+    assignment_date: '',
+    status: 'active'
   });
+
+  const [accessManagementMachine, setAccessManagementMachine] = useState<Machine | null>(null);
 
   const addMachine = async () => {
     if (!newMachine.machine_id || !newMachine.name) {
@@ -54,6 +72,13 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
         name: newMachine.name.trim(),
         location: newMachine.location.trim() || null,
         client_id: newMachine.client_id === 'unassigned' ? null : newMachine.client_id,
+        owner_entity: newMachine.owner_entity.trim() || null,
+        assigned_entity: newMachine.assigned_entity.trim() || null,
+        machine_model: newMachine.machine_model.trim() || null,
+        serial_number: newMachine.serial_number.trim() || null,
+        purchase_date: newMachine.purchase_date || null,
+        assignment_date: newMachine.assignment_date || null,
+        status: newMachine.status,
         manager_id: profile?.id || null,
       };
       
@@ -76,7 +101,19 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
         description: 'Machine added successfully',
       });
       
-      setNewMachine({ machine_id: '', name: '', location: '', client_id: 'unassigned' });
+      setNewMachine({ 
+        machine_id: '', 
+        name: '', 
+        location: '', 
+        client_id: 'unassigned',
+        owner_entity: '',
+        assigned_entity: '',
+        machine_model: '',
+        serial_number: '',
+        purchase_date: '',
+        assignment_date: '',
+        status: 'active'
+      });
       onRefresh();
     } catch (error: any) {
       console.error('Error adding machine:', error);
@@ -94,6 +131,13 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
       name: machine.name,
       location: machine.location || '',
       client_id: machine.client_id || 'unassigned',
+      owner_entity: (machine as any).owner_entity || '',
+      assigned_entity: (machine as any).assigned_entity || '',
+      machine_model: (machine as any).machine_model || '',
+      serial_number: (machine as any).serial_number || '',
+      purchase_date: (machine as any).purchase_date || '',
+      assignment_date: (machine as any).assignment_date || '',
+      status: (machine as any).status || 'active',
     });
   };
 
@@ -114,6 +158,13 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
         name: editMachineData.name.trim(),
         location: editMachineData.location.trim() || null,
         client_id: editMachineData.client_id === 'unassigned' ? null : editMachineData.client_id,
+        owner_entity: editMachineData.owner_entity.trim() || null,
+        assigned_entity: editMachineData.assigned_entity.trim() || null,
+        machine_model: editMachineData.machine_model.trim() || null,
+        serial_number: editMachineData.serial_number.trim() || null,
+        purchase_date: editMachineData.purchase_date || null,
+        assignment_date: editMachineData.assignment_date || null,
+        status: editMachineData.status,
         updated_at: new Date().toISOString(),
       };
       
@@ -135,7 +186,18 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
       });
       
       setEditingMachine(null);
-      setEditMachineData({ name: '', location: '', client_id: '' });
+      setEditMachineData({ 
+        name: '', 
+        location: '', 
+        client_id: '',
+        owner_entity: '',
+        assigned_entity: '',
+        machine_model: '',
+        serial_number: '',
+        purchase_date: '',
+        assignment_date: '',
+        status: 'active'
+      });
       onRefresh();
     } catch (error: any) {
       console.error('Error updating machine:', error);
@@ -208,18 +270,82 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
               />
             </div>
           </div>
+          
           <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="machineModel">Machine Model</Label>
+              <Input
+                id="machineModel"
+                value={newMachine.machine_model}
+                onChange={(e) => setNewMachine({ ...newMachine, machine_model: e.target.value })}
+                placeholder="Amphore"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="serialNumber">Serial Number</Label>
+              <Input
+                id="serialNumber"
+                value={newMachine.serial_number}
+                onChange={(e) => setNewMachine({ ...newMachine, serial_number: e.target.value })}
+                placeholder="SN123456789"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="ownerEntity">Owner Entity</Label>
+              <Input
+                id="ownerEntity"
+                value={newMachine.owner_entity}
+                onChange={(e) => setNewMachine({ ...newMachine, owner_entity: e.target.value })}
+                placeholder="French Embassy"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="assignedEntity">Assigned Entity</Label>
+              <Input
+                id="assignedEntity"
+                value={newMachine.assigned_entity}
+                onChange={(e) => setNewMachine({ ...newMachine, assigned_entity: e.target.value })}
+                placeholder="International School Paris"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="machineLocation">Location</Label>
               <Input
                 id="machineLocation"
                 value={newMachine.location}
                 onChange={(e) => setNewMachine({ ...newMachine, location: e.target.value })}
-                placeholder="Kumulus-HOUSE"
+                placeholder="Paris, France"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="clientAssign">Assign to Client (Optional)</Label>
+              <Label htmlFor="purchaseDate">Purchase Date</Label>
+              <Input
+                id="purchaseDate"
+                type="date"
+                value={newMachine.purchase_date}
+                onChange={(e) => setNewMachine({ ...newMachine, purchase_date: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="assignmentDate">Assignment Date</Label>
+              <Input
+                id="assignmentDate"
+                type="date"
+                value={newMachine.assignment_date}
+                onChange={(e) => setNewMachine({ ...newMachine, assignment_date: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="clientAssign">Legacy Client Assignment</Label>
               <Select value={newMachine.client_id} onValueChange={(value) => setNewMachine({ ...newMachine, client_id: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a client" />
@@ -234,7 +360,22 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select value={newMachine.status} onValueChange={(value) => setNewMachine({ ...newMachine, status: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                  <SelectItem value="deployed">Deployed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+
           <Button onClick={addMachine} disabled={loading || !newMachine.machine_id || !newMachine.name}>
             <Plus className="w-4 h-4 mr-2" />
             Add Machine
@@ -259,31 +400,100 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="editMachineModel">Machine Model</Label>
+                <Input
+                  id="editMachineModel"
+                  value={editMachineData.machine_model}
+                  onChange={(e) => setEditMachineData({ ...editMachineData, machine_model: e.target.value })}
+                  placeholder="Amphore"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="editOwnerEntity">Owner Entity</Label>
+                <Input
+                  id="editOwnerEntity"
+                  value={editMachineData.owner_entity}
+                  onChange={(e) => setEditMachineData({ ...editMachineData, owner_entity: e.target.value })}
+                  placeholder="French Embassy"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editAssignedEntity">Assigned Entity</Label>
+                <Input
+                  id="editAssignedEntity"
+                  value={editMachineData.assigned_entity}
+                  onChange={(e) => setEditMachineData({ ...editMachineData, assigned_entity: e.target.value })}
+                  placeholder="International School Paris"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
                 <Label htmlFor="editMachineLocation">Location</Label>
                 <Input
                   id="editMachineLocation"
                   value={editMachineData.location}
                   onChange={(e) => setEditMachineData({ ...editMachineData, location: e.target.value })}
-                  placeholder="Kumulus-HOUSE"
+                  placeholder="Paris, France"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editPurchaseDate">Purchase Date</Label>
+                <Input
+                  id="editPurchaseDate"
+                  type="date"
+                  value={editMachineData.purchase_date}
+                  onChange={(e) => setEditMachineData({ ...editMachineData, purchase_date: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editAssignmentDate">Assignment Date</Label>
+                <Input
+                  id="editAssignmentDate"
+                  type="date"
+                  value={editMachineData.assignment_date}
+                  onChange={(e) => setEditMachineData({ ...editMachineData, assignment_date: e.target.value })}
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="editClientAssign">Assign to Client</Label>
-              <Select value={editMachineData.client_id} onValueChange={(value) => setEditMachineData({ ...editMachineData, client_id: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a client" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">No assignment</SelectItem>
-                  {profiles.filter(p => p.role === 'client').map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.username}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="editClientAssign">Legacy Client Assignment</Label>
+                <Select value={editMachineData.client_id} onValueChange={(value) => setEditMachineData({ ...editMachineData, client_id: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">No assignment</SelectItem>
+                    {profiles.filter(p => p.role === 'client').map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.username}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editStatus">Status</Label>
+                <Select value={editMachineData.status} onValueChange={(value) => setEditMachineData({ ...editMachineData, status: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="maintenance">Maintenance</SelectItem>
+                    <SelectItem value="deployed">Deployed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+
             <div className="flex gap-2">
               <Button onClick={updateMachine} disabled={loading || !editMachineData.name}>
                 Update Machine
@@ -314,8 +524,9 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                 <TableRow>
                   <TableHead>Machine ID</TableHead>
                   <TableHead>Name</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Client</TableHead>
+                  <TableHead>Owner</TableHead>
+                  <TableHead>Assigned To</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -324,8 +535,17 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                   <TableRow key={machine.id}>
                     <TableCell className="font-mono">{machine.machine_id}</TableCell>
                     <TableCell>{machine.name}</TableCell>
-                    <TableCell>{machine.location || '-'}</TableCell>
-                    <TableCell>{machine.client_profile?.username || 'Unassigned'}</TableCell>
+                    <TableCell>{(machine as any).owner_entity || machine.client_profile?.username || 'Unassigned'}</TableCell>
+                    <TableCell>{(machine as any).assigned_entity || machine.location || '-'}</TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        (machine as any).status === 'active' ? 'bg-green-100 text-green-800' :
+                        (machine as any).status === 'maintenance' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {(machine as any).status || 'active'}
+                      </span>
+                    </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         <Button
@@ -336,6 +556,29 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                         >
                           <Pencil className="w-4 h-4" />
                         </Button>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setAccessManagementMachine(machine)}
+                            >
+                              <Users className="w-4 h-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-4xl">
+                            <DialogHeader>
+                              <DialogTitle>Manage Access for {machine.machine_id}</DialogTitle>
+                            </DialogHeader>
+                            {accessManagementMachine && (
+                              <MachineAccessManagement 
+                                machine={accessManagementMachine}
+                                profiles={profiles}
+                                onRefresh={onRefresh}
+                              />
+                            )}
+                          </DialogContent>
+                        </Dialog>
                         <Button
                           variant="destructive"
                           size="sm"
