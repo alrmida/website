@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Settings, Shield } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/contexts/AuthContext';
-import { Badge } from '@/components/ui/badge';
 import SettingsModal from './SettingsModal';
 import AdminPanel from './AdminPanel';
 
@@ -12,24 +11,6 @@ const DashboardHeader = () => {
   const { profile, signOut } = useAuth();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
-
-  const getRoleBadgeVariant = (role: string) => {
-    switch (role) {
-      case 'admin': return 'destructive';
-      case 'commercial': return 'default';
-      case 'client': return 'secondary';
-      default: return 'secondary';
-    }
-  };
-
-  const getRoleLabel = (role: string) => {
-    switch (role) {
-      case 'admin': return 'Admin';
-      case 'commercial': return 'Commercial';
-      case 'client': return 'Client';
-      default: return 'User';
-    }
-  };
 
   return (
     <div className="bg-white dark:bg-gray-900 shadow-sm border-b dark:border-gray-700 sticky top-0 z-50">
@@ -65,14 +46,9 @@ const DashboardHeader = () => {
           </div>
           <div className="flex items-center space-x-4">
             {profile && (
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-600 dark:text-gray-300">
-                  {profile.username}
-                </span>
-                <Badge variant={getRoleBadgeVariant(profile.role)}>
-                  {getRoleLabel(profile.role)}
-                </Badge>
-              </div>
+              <span className="text-sm text-gray-600 dark:text-gray-300">
+                {profile.username}
+              </span>
             )}
             <ThemeToggle />
             {(profile?.role === 'admin' || profile?.role === 'commercial') && (
