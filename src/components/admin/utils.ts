@@ -3,7 +3,7 @@
 export const mapDatabaseRoleToFrontend = (dbRole: string): 'client' | 'commercial' | 'admin' => {
   switch (dbRole) {
     case 'kumulus_personnel':
-      return 'commercial';
+      return 'admin'; // Map kumulus_personnel to admin instead of commercial
     case 'client':
       return 'client';
     default:
