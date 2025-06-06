@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Settings, Shield } from 'lucide-react';
+import { Settings, Shield, LogOut } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/contexts/AuthContext';
 import SettingsModal from './SettingsModal';
@@ -44,26 +44,36 @@ const DashboardHeader = () => {
               <p className="text-sm text-gray-600 dark:text-gray-300 font-poppins">Your Drinking Water From Air. Mineralized, Fresh, Sustainable</p>
             </div>
           </div>
-          <div className="flex items-center space-x-4">
+          
+          <div className="flex items-center space-x-6">
+            {/* User Info */}
             {profile && (
-              <span className="text-sm text-gray-600 dark:text-gray-300">
+              <span className="text-sm text-gray-600 dark:text-gray-300 font-medium">
                 {profile.username}
               </span>
             )}
-            <ThemeToggle />
-            {(profile?.role === 'admin' || profile?.role === 'commercial') && (
-              <Button variant="outline" size="sm" onClick={() => setAdminOpen(true)}>
-                <Shield className="w-4 h-4 mr-2" />
-                Admin
+            
+            {/* Controls Group */}
+            <div className="flex items-center space-x-2">
+              <ThemeToggle />
+              
+              {(profile?.role === 'admin' || profile?.role === 'commercial') && (
+                <Button variant="outline" size="sm" onClick={() => setAdminOpen(true)}>
+                  <Shield className="w-4 h-4 mr-2" />
+                  Admin
+                </Button>
+              )}
+              
+              <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
+                <Settings className="w-4 h-4 mr-2" />
+                Settings
               </Button>
-            )}
-            <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
-              <Settings className="w-4 h-4 mr-2" />
-              Settings
-            </Button>
-            <Button variant="outline" size="sm" onClick={signOut}>
-              Sign Out
-            </Button>
+              
+              <Button variant="outline" size="sm" onClick={signOut}>
+                <LogOut className="w-4 h-4 mr-2" />
+                Sign Out
+              </Button>
+            </div>
           </div>
         </div>
       </div>
