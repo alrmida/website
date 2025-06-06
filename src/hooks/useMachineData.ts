@@ -32,7 +32,6 @@ export const useMachineData = () => {
         console.log('Client machines data:', machinesData, 'Error:', error);
         
         if (machinesData) {
-          // Filter out machines with empty machine_id using the helper function
           const validMachines = machinesData.filter(isValidMachine);
           console.log('Valid machines after filtering:', validMachines);
           setMachines(validMachines);
@@ -46,7 +45,6 @@ export const useMachineData = () => {
         
         console.log('Clients data:', clientsData, 'Error:', clientsError);
         
-        // Fixed query for machines with proper relationship naming
         const { data: machinesData, error: machinesError } = await supabase
           .from('machines')
           .select(`
@@ -60,7 +58,6 @@ export const useMachineData = () => {
         
         if (clientsData) setClients(clientsData);
         if (machinesData) {
-          // Filter out machines with empty machine_id using the helper function
           const validMachines = machinesData.filter(isValidMachine);
           console.log('Valid machines after filtering:', validMachines);
           setMachines(validMachines);
@@ -77,21 +74,30 @@ export const useMachineData = () => {
     fetchData();
   }, [profile]);
 
-  // Set up demo accounts when hook is first used
+  // Set up demo accounts only once when the component first mounts
   useEffect(() => {
     const setupDemoAccounts = async () => {
       try {
         console.log('Setting up demo accounts...');
         const response = await supabase.functions.invoke('setup-demo-accounts');
         console.log('Demo accounts setup result:', response);
+        
+        // Refetch data after setup
+        if (profile) {
+          setTimeout(() => {
+            fetchData();
+          }, 1000);
+        }
       } catch (error) {
         console.error('Error setting up demo accounts:', error);
       }
     };
     
-    // Only run once when the hook first mounts
-    setupDemoAccounts();
-  }, []);
+    // Only run setup if we have a profile and no machines yet
+    if (profile && machines.length === 0 && !loading) {
+      setupDemoAccounts();
+    }
+  }, [profile, machines.length, loading]);
 
   return {
     machines,
