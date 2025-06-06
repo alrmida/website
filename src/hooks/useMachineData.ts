@@ -14,7 +14,6 @@ export const useMachineData = () => {
   const [machines, setMachines] = useState<Machine[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
-  const setupInProgress = useRef(false);
 
   const fetchData = async () => {
     if (!profile) return;
@@ -71,56 +70,14 @@ export const useMachineData = () => {
     setLoading(false);
   };
 
-  const setupDemoAccounts = async () => {
-    if (setupInProgress.current) {
-      console.log('Setup already in progress, skipping...');
-      return;
-    }
-
-    setupInProgress.current = true;
-    console.log('Setting up demo accounts...');
-    
-    try {
-      const response = await supabase.functions.invoke('setup-demo-accounts');
-      console.log('Demo accounts setup result:', response);
-      
-      if (response.error) {
-        console.error('Setup function error:', response.error);
-      } else {
-        console.log('Setup completed successfully');
-        // Wait a bit for the setup to complete fully
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        // Refetch data after successful setup
-        await fetchData();
-      }
-    } catch (error) {
-      console.error('Error setting up demo accounts:', error);
-    } finally {
-      setupInProgress.current = false;
-    }
-  };
-
   useEffect(() => {
     fetchData();
   }, [profile]);
 
-  // Only trigger demo setup once when needed
-  useEffect(() => {
-    // Only run setup if:
-    // 1. We have a profile
-    // 2. We have no machines
-    // 3. We're not currently loading
-    // 4. Setup is not already in progress
-    if (profile && machines.length === 0 && !loading && !setupInProgress.current) {
-      console.log('Triggering demo accounts setup...');
-      setupDemoAccounts();
-    }
-  }, [profile, machines.length, loading]);
-
   return {
     machines,
     clients,
-    loading: loading || setupInProgress.current,
+    loading,
     profile
   };
 };
