@@ -31,11 +31,13 @@ export const getOperatingSince = (machineId: string): string => {
   return '15 March 2024'; // Default date
 };
 
-// Helper function to validate machine has valid machine_id
+// Helper function to validate machine has valid machine_id and follows proper KUMULUS format
 export const isValidMachine = (machine: any): machine is Machine => {
   return machine && 
          machine.machine_id && 
          typeof machine.machine_id === 'string' && 
          machine.machine_id.trim() !== '' &&
-         machine.machine_id.trim().length > 0;
+         machine.machine_id.trim().length > 0 &&
+         // Must follow proper KUMULUS format: KU + 12 digits
+         /^KU\d{12}$/.test(machine.machine_id.trim());
 };

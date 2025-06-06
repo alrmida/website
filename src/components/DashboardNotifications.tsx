@@ -10,18 +10,18 @@ interface DashboardNotificationsProps {
 const DashboardNotifications = ({ selectedMachine, dataError, dataLoading }: DashboardNotificationsProps) => {
   return (
     <>
-      {/* Show data error only for live data machine (KU001619000079) */}
+      {/* Show softer message for live data machine when disconnected */}
       {dataError && selectedMachine?.machine_id === 'KU001619000079' && (
-        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-          <p><strong>Live Data Connection Error:</strong> {dataError}</p>
-          <p className="text-sm">Unable to fetch live data from InfluxDB. Please check the connection.</p>
+        <div className="mb-4 p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded">
+          <p><strong>Live Machine Status:</strong> No recent data received from the machine.</p>
+          <p className="text-sm">This is normal when the machine is offline or not actively transmitting data.</p>
         </div>
       )}
 
       {/* Show loading indicator only for live data */}
       {dataLoading && selectedMachine?.machine_id === 'KU001619000079' && (
         <div className="mb-4 p-4 bg-blue-100 border border-blue-400 text-blue-700 rounded">
-          <p>Loading live machine data...</p>
+          <p>Checking for live machine data...</p>
         </div>
       )}
     </>
