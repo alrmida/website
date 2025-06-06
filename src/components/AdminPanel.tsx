@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, UserPlus, Plus } from 'lucide-react';
+import { Trash2, UserPlus, Plus, Pencil } from 'lucide-react';
 
 interface AdminPanelProps {
   open: boolean;
@@ -74,6 +75,14 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
     name: '',
     location: '',
     client_id: 'unassigned',
+  });
+
+  // Edit machine states
+  const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
+  const [editMachineData, setEditMachineData] = useState({
+    name: '',
+    location: '',
+    client_id: '',
   });
 
   // Helper function to map database roles to frontend roles
@@ -280,6 +289,67 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
     setLoading(false);
   };
 
+  const startEditMachine = (machine: Machine) => {
+    setEditingMachine(machine);
+    setEditMachineData({
+      name: machine.name,
+      location: machine.location || '',
+      client_id: machine.client_id || 'unassigned',
+    });
+  };
+
+  const updateMachine = async () => {
+    if (!editingMachine || !editMachineData.name) {
+      toast({
+        title: 'Error',
+        description: 'Machine name is required',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      console.log('Updating machine:', editingMachine.id, editMachineData);
+      
+      const updateData = {
+        name: editMachineData.name.trim(),
+        location: editMachineData.location.trim() || null,
+        client_id: editMachineData.client_id === 'unassigned' ? null : editMachineData.client_id,
+        updated_at: new Date().toISOString(),
+      };
+      
+      const { error } = await supabase
+        .from('machines')
+        .update(updateData)
+        .eq('id', editingMachine.id);
+
+      if (error) {
+        console.error('Update error:', error);
+        throw error;
+      }
+
+      console.log('Machine updated successfully');
+
+      toast({
+        title: 'Success',
+        description: 'Machine updated successfully',
+      });
+      
+      setEditingMachine(null);
+      setEditMachineData({ name: '', location: '', client_id: '' });
+      fetchData();
+    } catch (error: any) {
+      console.error('Error updating machine:', error);
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+    setLoading(false);
+  };
+
   const deleteMachine = async (id: number) => {
     if (!confirm('Are you sure you want to delete this machine?')) {
       return;
@@ -315,47 +385,6 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
     }
     setLoading(false);
   };
-
-  const addKU079Machine = async () => {
-    if ((profile?.role !== 'admin' && profile?.role !== 'commercial') || !profile?.id) return;
-    
-    try {
-      // Check if machine already exists
-      const { data: existingMachine } = await supabase
-        .from('machines')
-        .select('*')
-        .eq('machine_id', 'KU001619000079')
-        .single();
-      
-      if (!existingMachine) {
-        console.log('Adding KU079 machine...');
-        const { error } = await supabase
-          .from('machines')
-          .insert([{
-            machine_id: 'KU001619000079',
-            name: 'Atmospheric Water Generator KU079',
-            location: 'Kumulus-HOUSE',
-            manager_id: profile.id,
-            client_id: profile.id
-          }]);
-
-        if (error) {
-          console.error('Error adding KU079 machine:', error);
-        } else {
-          console.log('KU079 machine added successfully');
-          fetchData();
-        }
-      }
-    } catch (error) {
-      console.error('Error checking/adding KU079 machine:', error);
-    }
-  };
-
-  useEffect(() => {
-    if (open && (profile?.role === 'admin' || profile?.role === 'commercial')) {
-      addKU079Machine();
-    }
-  }, [open, profile]);
 
   if (profile?.role !== 'admin' && profile?.role !== 'commercial') {
     return null;
@@ -502,6 +531,60 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
               </CardContent>
             </Card>
 
+            {editingMachine && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Edit Machine: {editingMachine.machine_id}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="editMachineName">Machine Name *</Label>
+                      <Input
+                        id="editMachineName"
+                        value={editMachineData.name}
+                        onChange={(e) => setEditMachineData({ ...editMachineData, name: e.target.value })}
+                        placeholder="Atmospheric Water Generator 1"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="editMachineLocation">Location</Label>
+                      <Input
+                        id="editMachineLocation"
+                        value={editMachineData.location}
+                        onChange={(e) => setEditMachineData({ ...editMachineData, location: e.target.value })}
+                        placeholder="Kumulus-HOUSE"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editClientAssign">Assign to Client</Label>
+                    <Select value={editMachineData.client_id} onValueChange={(value) => setEditMachineData({ ...editMachineData, client_id: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a client" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">No assignment</SelectItem>
+                        {profiles.filter(p => p.role === 'client').map((client) => (
+                          <SelectItem key={client.id} value={client.id}>
+                            {client.username}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={updateMachine} disabled={loading || !editMachineData.name}>
+                      Update Machine
+                    </Button>
+                    <Button variant="outline" onClick={() => setEditingMachine(null)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader>
                 <CardTitle>Machines ({machines.length})</CardTitle>
@@ -533,14 +616,24 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
                           <TableCell>{machine.location || '-'}</TableCell>
                           <TableCell>{machine.client_profile?.username || 'Unassigned'}</TableCell>
                           <TableCell>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => deleteMachine(machine.id)}
-                              disabled={loading}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => startEditMachine(machine)}
+                                disabled={loading}
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => deleteMachine(machine.id)}
+                                disabled={loading}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
