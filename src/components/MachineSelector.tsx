@@ -7,7 +7,6 @@ import { useMachineData } from '@/hooks/useMachineData';
 import { Machine, isValidMachine } from '@/utils/machineHelpers';
 import ClientSelector from '@/components/ClientSelector';
 import MachineList from '@/components/MachineList';
-import SelectedMachineInfo from '@/components/SelectedMachineInfo';
 
 interface MachineSelectorProps {
   onMachineSelect: (machine: Machine) => void;
@@ -110,10 +109,6 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
           userRole={profile?.role || ''}
           onMachineSelect={handleDirectMachineSelect}
         />
-
-        {selectedMachine && (
-          <SelectedMachineInfo selectedMachine={selectedMachine} />
-        )}
 
         {clientMachines.length === 0 && (
           <p className="text-gray-500 dark:text-gray-400 text-center py-4">
