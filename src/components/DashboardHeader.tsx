@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Settings, Shield, LogOut } from 'lucide-react';
@@ -16,8 +15,8 @@ const DashboardHeader = () => {
     <div className="bg-white dark:bg-gray-900 shadow-sm border-b dark:border-gray-700 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
+          {/* Fixed container for consistent logo spacing */}
           <div className="flex items-center space-x-4">
-            {/* Fixed container for consistent logo spacing */}
             <div className="w-20 h-20 flex items-center justify-center">
               <img 
                 src="/lovable-uploads/913ab43b-9664-4082-88da-18b2190e49c2.png" 
@@ -48,35 +47,35 @@ const DashboardHeader = () => {
             </div>
           </div>
           
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
             {/* User Info */}
             {profile && (
-              <div className="text-right">
+              <div className="text-right mr-3">
                 <span className="text-sm text-gray-600 dark:text-gray-300 font-medium">
                   {profile.username}
                 </span>
               </div>
             )}
             
-            {/* Controls Group */}
-            <div className="flex items-center space-x-3">
+            {/* Controls Group - reduced spacing and sizes */}
+            <div className="flex items-center space-x-1">
               <ThemeToggle />
               
               {(profile?.role === 'admin' || profile?.role === 'commercial') && (
                 <Button variant="outline" size="sm" onClick={() => setAdminOpen(true)}>
-                  <Shield className="w-4 h-4 mr-2" />
-                  Admin
+                  <Shield className="w-4 h-4" />
+                  <span className="hidden sm:inline ml-1">Admin</span>
                 </Button>
               )}
               
               <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
-                <Settings className="w-4 h-4 mr-2" />
-                Settings
+                <Settings className="w-4 h-4" />
+                <span className="hidden sm:inline ml-1">Settings</span>
               </Button>
               
               <Button variant="outline" size="sm" onClick={signOut}>
-                <LogOut className="w-4 h-4 mr-2" />
-                Sign Out
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline ml-1">Sign Out</span>
               </Button>
             </div>
           </div>
