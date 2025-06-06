@@ -22,9 +22,9 @@ Deno.serve(async (req) => {
       }
     )
 
-    // Demo accounts data - keeping fewer accounts
+    // Demo accounts data - only keeping the renamed client and kumulus personnel
     const demoAccounts = [
-      { email: 'client1@demo.com', username: 'client1', role: 'client' },
+      { email: 'client1@demo.com', username: 'Kumulus', role: 'client' },
       { email: 'kumulus1@demo.com', username: 'Kumulus1', role: 'kumulus_personnel' }
     ]
 
@@ -51,13 +51,13 @@ Deno.serve(async (req) => {
     const { data: profiles } = await supabaseAdmin
       .from('profiles')
       .select('id, username')
-      .eq('username', 'client1')
+      .eq('username', 'Kumulus')
 
     if (profiles && profiles.length > 0) {
-      const client1 = profiles.find(p => p.username === 'client1')
+      const kumulusClient = profiles.find(p => p.username === 'Kumulus')
 
       // Only keep the real machine with live data
-      if (client1) {
+      if (kumulusClient) {
         // First, delete all existing machines to clean up
         await supabaseAdmin
           .from('machines')
@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
             machine_id: 'KU001619000079',
             name: 'Amphore Live Unit',
             location: 'KUMULUS Office - Paris',
-            client_id: client1.id
+            client_id: kumulusClient.id
           })
       }
     }
