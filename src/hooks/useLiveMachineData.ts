@@ -72,6 +72,22 @@ function generateStaticMachineData(machineId: string): LiveMachineData {
       compressorOn: 0,
       isOnline: false
     },
+    'KU001619000005': {
+      waterLevel: 4.7,
+      status: 'Producing',
+      lastUpdated: new Date(Date.now() - 240000).toISOString(), // 4 minutes ago
+      dataAge: 240000,
+      compressorOn: 1,
+      isOnline: true
+    },
+    'KU001619000006': {
+      waterLevel: 9.8,
+      status: 'Full Water',
+      lastUpdated: new Date(Date.now() - 150000).toISOString(), // 2.5 minutes ago
+      dataAge: 150000,
+      compressorOn: 0,
+      isOnline: true
+    },
     'default': {
       waterLevel: 8.5,
       status: 'Producing',

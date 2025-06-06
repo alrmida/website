@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
 
 interface Machine {
   id: number;
@@ -45,6 +44,8 @@ const getOperatingSince = (machineId: string): string => {
   if (machineId === 'KU001619000002') return '15 January 2024';
   if (machineId === 'KU001619000003') return '8 November 2023';
   if (machineId === 'KU001619000004') return '30 September 2023';
+  if (machineId === 'KU001619000005') return '12 December 2023';
+  if (machineId === 'KU001619000006') return '5 February 2024';
   return '15 March 2024'; // Default date
 };
 

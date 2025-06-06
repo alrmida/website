@@ -61,7 +61,9 @@ export const useDashboardData = (selectedMachine: Machine | null) => {
        selectedMachine.machine_id === 'KU001619000001' ? 1.3 :
        selectedMachine.machine_id === 'KU001619000002' ? 0.8 :
        selectedMachine.machine_id === 'KU001619000003' ? 0.6 :
-       selectedMachine.machine_id === 'KU001619000004' ? 0.4 : 0.9) : 0;
+       selectedMachine.machine_id === 'KU001619000004' ? 0.4 :
+       selectedMachine.machine_id === 'KU001619000005' ? 0.7 :
+       selectedMachine.machine_id === 'KU001619000006' ? 1.1 : 0.9) : 0;
 
     const productionData = getStaticProductionData(selectedMachine?.machine_id, productionMultiplier);
 
@@ -86,7 +88,9 @@ export const useDashboardData = (selectedMachine: Machine | null) => {
     const monthlyStatusMultiplier = selectedMachine ? 
       (selectedMachine.machine_id === 'KU001619000004' ? 0.3 : 
        selectedMachine.machine_id === 'KU001619000003' ? 0.7 :
-       selectedMachine.machine_id === 'KU001619000002' ? 0.9 : 1.0) : 0;
+       selectedMachine.machine_id === 'KU001619000002' ? 0.9 :
+       selectedMachine.machine_id === 'KU001619000005' ? 0.6 :
+       selectedMachine.machine_id === 'KU001619000006' ? 1.2 : 1.0) : 0;
 
     const monthlyStatusData = selectedMachine ? [
       { month: '2025-03', producing: 68.9 * monthlyStatusMultiplier, idle: 14.1, fullWater: 5.2, disconnected: 11.8 },
