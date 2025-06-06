@@ -14,7 +14,6 @@ const DashboardNotifications = ({ selectedMachine, dataError, dataLoading }: Das
       {dataError && selectedMachine?.machine_id === 'KU001619000079' && (
         <div className="mb-4 p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded">
           <p><strong>Live Machine Status:</strong> No recent data received from the machine.</p>
-          <p className="text-sm">This is normal when the machine is offline or not actively transmitting data.</p>
         </div>
       )}
 
