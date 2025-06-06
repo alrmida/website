@@ -17,10 +17,7 @@ interface Machine {
 // Helper function to get model name based on machine ID
 const getModelName = (machineId: string): string => {
   if (machineId === 'KU001619000079') return 'Amphore'; // Live data machine
-  if (machineId.startsWith('KU0016190000')) return 'Amphore';
-  if (machineId.startsWith('KU0016191000')) return 'BoKs';
-  if (machineId.startsWith('KU0016192000')) return 'Dispenser';
-  return 'Amphore'; // Default to Amphore
+  return 'Unknown'; // For any other machines
 };
 
 export const useDashboardData = (selectedMachine: Machine | null) => {
@@ -38,7 +35,7 @@ export const useDashboardData = (selectedMachine: Machine | null) => {
       isOnline: false
     };
 
-    // Current machine info based on selection - use live/static data when machine is selected
+    // Current machine info based on selection - use live data when machine is selected
     const machineInfo = selectedMachine ? {
       machineId: selectedMachine.machine_id,
       machineName: selectedMachine.name,
@@ -48,22 +45,16 @@ export const useDashboardData = (selectedMachine: Machine | null) => {
       isOnline: liveData.isOnline
     } : defaultMachineInfo;
 
-    // Water tank specifications - use live/static data when machine is selected
+    // Water tank specifications - use live data when machine is selected
     const waterTank = {
       currentLevel: selectedMachine ? liveData.waterLevel : 0,
       maxCapacity: 10.0,
       percentage: selectedMachine ? Math.round((liveData.waterLevel / 10.0) * 100) : 0
     };
 
-    // Get production data based on machine - varied for different machines
-    const productionMultiplier = selectedMachine ? 
-      (selectedMachine.machine_id === 'KU001619000079' ? 1.0 : 
-       selectedMachine.machine_id === 'KU001619000001' ? 1.3 :
-       selectedMachine.machine_id === 'KU001619000002' ? 0.8 :
-       selectedMachine.machine_id === 'KU001619000003' ? 0.6 :
-       selectedMachine.machine_id === 'KU001619000004' ? 0.4 :
-       selectedMachine.machine_id === 'KU001619000005' ? 0.7 :
-       selectedMachine.machine_id === 'KU001619000006' ? 1.1 : 0.9) : 0;
+    // Get production data - only meaningful for the real machine
+    const isRealMachine = selectedMachine?.machine_id === 'KU001619000079';
+    const productionMultiplier = isRealMachine ? 1.0 : 0;
 
     const productionData = getStaticProductionData(selectedMachine?.machine_id, productionMultiplier);
 
@@ -73,7 +64,7 @@ export const useDashboardData = (selectedMachine: Machine | null) => {
     const monthlyProductionData = selectedMachine ? productionData.monthly :
       [{ month: 'Mar 2025', production: 0 }, { month: 'Apr 2025', production: 0 }, { month: 'May 2025', production: 0 }];
 
-    // Status data for last 7 days - varied based on machine
+    // Status data for last 7 days - only meaningful for real machine
     const statusData = selectedMachine ? getStaticStatusData(selectedMachine.machine_id) : [
       { date: '25 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
       { date: '26 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
@@ -84,26 +75,19 @@ export const useDashboardData = (selectedMachine: Machine | null) => {
       { date: '31 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 }
     ];
 
-    // Monthly status data (last 3 months) - varied based on machine
-    const monthlyStatusMultiplier = selectedMachine ? 
-      (selectedMachine.machine_id === 'KU001619000004' ? 0.3 : 
-       selectedMachine.machine_id === 'KU001619000003' ? 0.7 :
-       selectedMachine.machine_id === 'KU001619000002' ? 0.9 :
-       selectedMachine.machine_id === 'KU001619000005' ? 0.6 :
-       selectedMachine.machine_id === 'KU001619000006' ? 1.2 : 1.0) : 0;
-
-    const monthlyStatusData = selectedMachine ? [
-      { month: '2025-03', producing: 68.9 * monthlyStatusMultiplier, idle: 14.1, fullWater: 5.2, disconnected: 11.8 },
-      { month: '2025-04', producing: 85.2 * monthlyStatusMultiplier, idle: 8.5, fullWater: 3.1, disconnected: 3.2 },
-      { month: '2025-05', producing: 72.4 * monthlyStatusMultiplier, idle: 15.6, fullWater: 6.8, disconnected: 5.2 }
+    // Monthly status data (last 3 months) - only meaningful for real machine
+    const monthlyStatusData = isRealMachine ? [
+      { month: '2025-03', producing: 68.9, idle: 14.1, fullWater: 5.2, disconnected: 11.8 },
+      { month: '2025-04', producing: 85.2, idle: 8.5, fullWater: 3.1, disconnected: 3.2 },
+      { month: '2025-05', producing: 72.4, idle: 15.6, fullWater: 6.8, disconnected: 5.2 }
     ] : [
       { month: '2025-03', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
       { month: '2025-04', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
       { month: '2025-05', producing: 0, idle: 0, fullWater: 0, disconnected: 0 }
     ];
 
-    // Calculate total water produced for ESG metrics
-    const totalWaterProduced = selectedMachine ? 1245.7 : 0;
+    // Calculate total water produced for ESG metrics - only for real machine
+    const totalWaterProduced = isRealMachine ? 1245.7 : 0;
 
     return {
       machineInfo,

@@ -1,6 +1,23 @@
 
 // Generate varied static production data based on machine ID
 export function getStaticProductionData(machineId: string | undefined, multiplier: number = 1) {
+  // Only provide data for the real machine
+  if (machineId !== 'KU001619000079') {
+    return {
+      daily: [
+        { date: '28 May', production: 0 },
+        { date: '29 May', production: 0 },
+        { date: '30 May', production: 0 },
+        { date: '31 May', production: 0 }
+      ],
+      monthly: [
+        { month: 'Mar 2025', production: 0 },
+        { month: 'Apr 2025', production: 0 },
+        { month: 'May 2025', production: 0 }
+      ]
+    };
+  }
+
   const baseDaily = [
     { date: '28 May', production: 15.2 },
     { date: '29 May', production: 31.5 },
@@ -22,17 +39,18 @@ export function getStaticProductionData(machineId: string | undefined, multiplie
 
 // Generate varied status data based on machine ID using KUMULUS format
 export function getStaticStatusData(machineId: string | undefined) {
-  const variations: { [key: string]: any } = {
-    'KU001619000001': { producingMultiplier: 1.2, idleMultiplier: 0.5, disconnectedMultiplier: 0.2 },
-    'KU001619000002': { producingMultiplier: 0.9, idleMultiplier: 1.5, disconnectedMultiplier: 0.8 },
-    'KU001619000003': { producingMultiplier: 0.7, idleMultiplier: 2.0, disconnectedMultiplier: 1.5 },
-    'KU001619000004': { producingMultiplier: 0.3, idleMultiplier: 0.8, disconnectedMultiplier: 3.0 },
-    'KU001619000005': { producingMultiplier: 0.8, idleMultiplier: 1.2, disconnectedMultiplier: 1.0 },
-    'KU001619000006': { producingMultiplier: 1.1, idleMultiplier: 0.7, disconnectedMultiplier: 0.3 },
-    'default': { producingMultiplier: 1.0, idleMultiplier: 1.0, disconnectedMultiplier: 1.0 }
-  };
-
-  const variation = variations[machineId || 'default'] || variations['default'];
+  // Only provide data for the real machine
+  if (machineId !== 'KU001619000079') {
+    return [
+      { date: '25 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
+      { date: '26 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
+      { date: '27 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
+      { date: '28 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
+      { date: '29 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
+      { date: '30 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
+      { date: '31 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 }
+    ];
+  }
   
   const baseStatusData = [
     { date: '25 May', producing: 19, idle: 2, fullWater: 2, disconnected: 1 },
@@ -44,10 +62,5 @@ export function getStaticStatusData(machineId: string | undefined) {
     { date: '31 May', producing: 10, idle: 6, fullWater: 4, disconnected: 4 }
   ];
 
-  return baseStatusData.map(day => ({
-    ...day,
-    producing: Math.round(day.producing * variation.producingMultiplier),
-    idle: Math.round(day.idle * variation.idleMultiplier),
-    disconnected: Math.round(day.disconnected * variation.disconnectedMultiplier)
-  }));
+  return baseStatusData;
 }

@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.9'
 
 const corsHeaders = {
@@ -23,11 +22,9 @@ Deno.serve(async (req) => {
       }
     )
 
-    // Demo accounts data
+    // Demo accounts data - keeping fewer accounts
     const demoAccounts = [
       { email: 'client1@demo.com', username: 'client1', role: 'client' },
-      { email: 'client2@demo.com', username: 'client2', role: 'client' },
-      { email: 'client3@demo.com', username: 'client3', role: 'client' },
       { email: 'kumulus1@demo.com', username: 'Kumulus1', role: 'kumulus_personnel' }
     ]
 
@@ -50,39 +47,37 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Get client user IDs to assign machines
+    // Get client user ID to assign the real machine
     const { data: profiles } = await supabaseAdmin
       .from('profiles')
       .select('id, username')
-      .in('username', ['client1', 'client2', 'client3'])
+      .eq('username', 'client1')
 
     if (profiles && profiles.length > 0) {
       const client1 = profiles.find(p => p.username === 'client1')
-      const client2 = profiles.find(p => p.username === 'client2')
-      const client3 = profiles.find(p => p.username === 'client3')
 
-      // Update machines with correct client assignments using official KUMULUS IDs
-      const machineAssignments = [
-        { machine_id: 'KU001619000001', client_id: client1?.id },
-        { machine_id: 'KU001619000002', client_id: client2?.id },
-        { machine_id: 'KU001619000003', client_id: client2?.id },
-        { machine_id: 'KU001619000004', client_id: client3?.id },
-        { machine_id: 'KU001619000005', client_id: client3?.id },
-        { machine_id: 'KU001619000006', client_id: client3?.id }
-      ]
+      // Only keep the real machine with live data
+      if (client1) {
+        // First, delete all existing machines to clean up
+        await supabaseAdmin
+          .from('machines')
+          .delete()
+          .neq('id', 0) // Delete all
 
-      for (const assignment of machineAssignments) {
-        if (assignment.client_id) {
-          await supabaseAdmin
-            .from('machines')
-            .update({ client_id: assignment.client_id })
-            .eq('machine_id', assignment.machine_id)
-        }
+        // Insert only the real machine
+        await supabaseAdmin
+          .from('machines')
+          .insert({
+            machine_id: 'KU001619000079',
+            name: 'Amphore Live Unit',
+            location: 'KUMULUS Office - Paris',
+            client_id: client1.id
+          })
       }
     }
 
     return new Response(
-      JSON.stringify({ message: 'Demo accounts setup completed' }),
+      JSON.stringify({ message: 'Demo accounts and real machine setup completed' }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,

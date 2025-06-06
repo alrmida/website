@@ -37,70 +37,6 @@ function calculateMachineStatus(waterLevel: number, compressorOn: number, dataAg
   }
 }
 
-// Static data generator for demo machines using proper KUMULUS IDs
-function generateStaticMachineData(machineId: string): LiveMachineData {
-  const staticData: { [key: string]: LiveMachineData } = {
-    'KU001619000001': {
-      waterLevel: 11.2,
-      status: 'Full Water',
-      lastUpdated: new Date(Date.now() - 300000).toISOString(), // 5 minutes ago
-      dataAge: 300000,
-      compressorOn: 0,
-      isOnline: true
-    },
-    'KU001619000002': {
-      waterLevel: 6.8,
-      status: 'Producing',
-      lastUpdated: new Date(Date.now() - 120000).toISOString(), // 2 minutes ago
-      dataAge: 120000,
-      compressorOn: 1,
-      isOnline: true
-    },
-    'KU001619000003': {
-      waterLevel: 3.2,
-      status: 'Idle',
-      lastUpdated: new Date(Date.now() - 180000).toISOString(), // 3 minutes ago
-      dataAge: 180000,
-      compressorOn: 0,
-      isOnline: true
-    },
-    'KU001619000004': {
-      waterLevel: 0,
-      status: 'Disconnected',
-      lastUpdated: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
-      dataAge: 3600000,
-      compressorOn: 0,
-      isOnline: false
-    },
-    'KU001619000005': {
-      waterLevel: 4.7,
-      status: 'Producing',
-      lastUpdated: new Date(Date.now() - 240000).toISOString(), // 4 minutes ago
-      dataAge: 240000,
-      compressorOn: 1,
-      isOnline: true
-    },
-    'KU001619000006': {
-      waterLevel: 9.8,
-      status: 'Full Water',
-      lastUpdated: new Date(Date.now() - 150000).toISOString(), // 2.5 minutes ago
-      dataAge: 150000,
-      compressorOn: 0,
-      isOnline: true
-    },
-    'default': {
-      waterLevel: 8.5,
-      status: 'Producing',
-      lastUpdated: new Date(Date.now() - 600000).toISOString(), // 10 minutes ago
-      dataAge: 600000,
-      compressorOn: 1,
-      isOnline: true
-    }
-  };
-
-  return staticData[machineId] || staticData['default'];
-}
-
 export const useLiveMachineData = (selectedMachineId?: string) => {
   const [data, setData] = useState<LiveMachineData>({
     waterLevel: 0,
@@ -120,11 +56,17 @@ export const useLiveMachineData = (selectedMachineId?: string) => {
     try {
       console.log('Fetching machine data for:', selectedMachineId);
       
-      // If not the live data machine, return static data
+      // If not the live data machine, return offline status
       if (!isLiveDataMachine) {
-        const staticData = generateStaticMachineData(selectedMachineId || 'default');
-        console.log('Using static data for machine:', selectedMachineId, staticData);
-        setData(staticData);
+        console.log('Not the live data machine, returning offline status');
+        setData({
+          waterLevel: 0,
+          status: 'Offline',
+          lastUpdated: new Date().toISOString(),
+          dataAge: 0,
+          compressorOn: 0,
+          isOnline: false
+        });
         setError(null);
         setIsLoading(false);
         return;
