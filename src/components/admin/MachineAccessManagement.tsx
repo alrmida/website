@@ -9,13 +9,14 @@ import { Trash2, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Machine, Profile } from './types';
 
-interface MachineAccess {
+// Temporary interface until database migration is complete
+interface TempMachineAccess {
   id: string;
   user_id: string;
   machine_id: number;
   access_level: string;
   granted_at: string;
-  user_profile: {
+  user_profile?: {
     username: string;
     role: string;
   };
@@ -29,7 +30,7 @@ interface MachineAccessManagementProps {
 
 const MachineAccessManagement = ({ machine, profiles, onRefresh }: MachineAccessManagementProps) => {
   const { toast } = useToast();
-  const [machineAccess, setMachineAccess] = useState<MachineAccess[]>([]);
+  const [machineAccess, setMachineAccess] = useState<TempMachineAccess[]>([]);
   const [loading, setLoading] = useState(false);
   const [newAccess, setNewAccess] = useState({
     user_id: '',
@@ -37,13 +38,35 @@ const MachineAccessManagement = ({ machine, profiles, onRefresh }: MachineAccess
   });
 
   useEffect(() => {
-    fetchMachineAccess();
+    // For now, just show an empty state since machine_access table doesn't exist yet
+    setMachineAccess([]);
   }, [machine.id]);
 
+  const checkTableExists = async () => {
+    try {
+      // Try to query the machine_access table to see if it exists
+      const { error } = await supabase
+        .from('machine_access' as any)
+        .select('id')
+        .limit(1);
+      
+      return !error;
+    } catch {
+      return false;
+    }
+  };
+
   const fetchMachineAccess = async () => {
+    const tableExists = await checkTableExists();
+    if (!tableExists) {
+      console.log('machine_access table does not exist yet. Please run the SQL migration first.');
+      setMachineAccess([]);
+      return;
+    }
+
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('machine_access')
         .select(`
           id,
@@ -81,8 +104,18 @@ const MachineAccessManagement = ({ machine, profiles, onRefresh }: MachineAccess
       return;
     }
 
+    const tableExists = await checkTableExists();
+    if (!tableExists) {
+      toast({
+        title: 'Database Migration Required',
+        description: 'Please run the SQL migration to create the machine_access table first.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('machine_access')
         .insert([{
           user_id: newAccess.user_id,
@@ -115,7 +148,7 @@ const MachineAccessManagement = ({ machine, profiles, onRefresh }: MachineAccess
     }
 
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('machine_access')
         .delete()
         .eq('id', accessId);
@@ -140,7 +173,7 @@ const MachineAccessManagement = ({ machine, profiles, onRefresh }: MachineAccess
 
   const updateAccessLevel = async (accessId: string, newLevel: string) => {
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('machine_access')
         .update({ access_level: newLevel })
         .eq('id', accessId);
@@ -175,6 +208,12 @@ const MachineAccessManagement = ({ machine, profiles, onRefresh }: MachineAccess
           <CardTitle>Grant Machine Access</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded">
+            <p className="text-yellow-800 text-sm">
+              <strong>Note:</strong> Machine access management requires running the SQL migration first. 
+              The machine_access table needs to be created in your database.
+            </p>
+          </div>
           <div className="flex gap-4">
             <div className="flex-1">
               <Select value={newAccess.user_id} onValueChange={(value) => setNewAccess({ ...newAccess, user_id: value })}>
@@ -218,6 +257,7 @@ const MachineAccessManagement = ({ machine, profiles, onRefresh }: MachineAccess
           {machineAccess.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-500">No users have access to this machine</p>
+              <p className="text-sm text-gray-400 mt-2">Run the SQL migration to enable machine access management</p>
             </div>
           ) : (
             <Table>
