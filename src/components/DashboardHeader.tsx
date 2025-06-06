@@ -45,16 +45,18 @@ const DashboardHeader = () => {
             </div>
           </div>
           
-          <div className="flex items-center space-x-6">
+          <div className="flex items-center space-x-4">
             {/* User Info */}
             {profile && (
-              <span className="text-sm text-gray-600 dark:text-gray-300 font-medium">
-                {profile.username}
-              </span>
+              <div className="text-right">
+                <span className="text-sm text-gray-600 dark:text-gray-300 font-medium">
+                  {profile.username}
+                </span>
+              </div>
             )}
             
             {/* Controls Group */}
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-3">
               <ThemeToggle />
               
               {(profile?.role === 'admin' || profile?.role === 'commercial') && (
