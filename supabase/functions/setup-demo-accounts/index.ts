@@ -61,14 +61,14 @@ Deno.serve(async (req) => {
       const client2 = profiles.find(p => p.username === 'client2')
       const client3 = profiles.find(p => p.username === 'client3')
 
-      // Update machines with correct client assignments
+      // Update machines with correct client assignments using official KUMULUS IDs
       const machineAssignments = [
-        { machine_id: 'AWG-001', client_id: client1?.id },
-        { machine_id: 'AWG-002', client_id: client2?.id },
-        { machine_id: 'AWG-003', client_id: client2?.id },
-        { machine_id: 'AWG-004', client_id: client3?.id },
-        { machine_id: 'AWG-005', client_id: client3?.id },
-        { machine_id: 'AWG-006', client_id: client3?.id }
+        { machine_id: 'KU001619000001', client_id: client1?.id },
+        { machine_id: 'KU001619000002', client_id: client2?.id },
+        { machine_id: 'KU001619000003', client_id: client2?.id },
+        { machine_id: 'KU001619000004', client_id: client3?.id },
+        { machine_id: 'KU001619000005', client_id: client3?.id },
+        { machine_id: 'KU001619000006', client_id: client3?.id }
       ]
 
       for (const assignment of machineAssignments) {
