@@ -23,9 +23,9 @@ Deno.serve(async (req) => {
       }
     )
 
-    console.log('Cleaning up existing demo accounts and machines...')
+    console.log('Starting comprehensive cleanup...')
     
-    // Delete all existing machines first
+    // Step 1: Delete all machines first (this removes foreign key dependencies)
     const { error: deleteMachinesError } = await supabaseAdmin
       .from('machines')
       .delete()
@@ -33,9 +33,23 @@ Deno.serve(async (req) => {
 
     if (deleteMachinesError) {
       console.log('Error deleting machines:', deleteMachinesError)
+    } else {
+      console.log('All machines deleted successfully')
     }
 
-    // Get all existing demo users to delete
+    // Step 2: Delete all profiles (except the real admin account)
+    const { error: deleteProfilesError } = await supabaseAdmin
+      .from('profiles')
+      .delete()
+      .neq('username', 'mksibi@kumuluswater.com') // Keep only the real admin
+
+    if (deleteProfilesError) {
+      console.log('Error deleting profiles:', deleteProfilesError)
+    } else {
+      console.log('Demo profiles deleted successfully')
+    }
+
+    // Step 3: Get all existing demo users and delete them (except real admin)
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers()
     
     if (existingUsers?.users) {
@@ -52,7 +66,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Create only the Kumulus client account
+    // Wait for cleanup to complete
+    await new Promise(resolve => setTimeout(resolve, 2000))
+
+    console.log('Creating new demo accounts...')
+
+    // Step 4: Create the Kumulus client account
     const { data: kumulusUser, error: kumulusSignUpError } = await supabaseAdmin.auth.admin.createUser({
       email: 'kumulus@demo.com',
       password: '0000',
@@ -65,11 +84,12 @@ Deno.serve(async (req) => {
 
     if (kumulusSignUpError) {
       console.log(`Error creating Kumulus account:`, kumulusSignUpError.message)
+      throw new Error(`Failed to create Kumulus account: ${kumulusSignUpError.message}`)
     } else {
       console.log(`Created Kumulus client account`)
     }
 
-    // Create Kumulus personnel account
+    // Step 5: Create Kumulus personnel account
     const { data: kumulusPersonnelUser, error: personnelSignUpError } = await supabaseAdmin.auth.admin.createUser({
       email: 'kumulus1@demo.com',
       password: '0000',
@@ -82,42 +102,72 @@ Deno.serve(async (req) => {
 
     if (personnelSignUpError) {
       console.log(`Error creating Kumulus personnel account:`, personnelSignUpError.message)
+      throw new Error(`Failed to create Kumulus personnel account: ${personnelSignUpError.message}`)
     } else {
       console.log(`Created Kumulus personnel account`)
     }
 
-    // Wait a moment for the profiles to be created by the trigger
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    // Step 6: Wait for profiles to be created by the trigger
+    await new Promise(resolve => setTimeout(resolve, 3000))
 
-    // Get the Kumulus client profile to assign the machine
-    const { data: profiles } = await supabaseAdmin
+    // Step 7: Verify the Kumulus client profile exists and get it
+    const { data: profiles, error: profilesError } = await supabaseAdmin
       .from('profiles')
       .select('id, username')
       .eq('username', 'Kumulus')
 
-    if (profiles && profiles.length > 0) {
-      const kumulusClient = profiles[0]
+    if (profilesError) {
+      console.log('Error fetching profiles:', profilesError)
+      throw new Error(`Failed to fetch profiles: ${profilesError.message}`)
+    }
 
-      // Insert only the real machine
-      const { data: machineData, error: machineError } = await supabaseAdmin
-        .from('machines')
-        .insert({
-          machine_id: 'KU001619000079',
-          name: 'Amphore Live Unit',
-          location: 'KUMULUS Office - Paris',
-          client_id: kumulusClient.id
-        })
-        .select()
-
-      if (machineError) {
-        console.log('Error creating machine:', machineError)
-      } else {
-        console.log('Created machine:', machineData)
+    if (!profiles || profiles.length === 0) {
+      console.log('No Kumulus profile found, waiting longer...')
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Try again
+      const { data: retryProfiles } = await supabaseAdmin
+        .from('profiles')
+        .select('id, username')
+        .eq('username', 'Kumulus')
+      
+      if (!retryProfiles || retryProfiles.length === 0) {
+        throw new Error('Kumulus profile was not created by the trigger')
       }
+      
+      console.log('Found Kumulus profile on retry')
+    }
+
+    const kumulusClient = profiles[0]
+    console.log('Using Kumulus client profile:', kumulusClient)
+
+    // Step 8: Create the real machine
+    const { data: machineData, error: machineError } = await supabaseAdmin
+      .from('machines')
+      .insert({
+        machine_id: 'KU001619000079',
+        name: 'Amphore Live Unit',
+        location: 'KUMULUS Office - Paris',
+        client_id: kumulusClient.id
+      })
+      .select()
+
+    if (machineError) {
+      console.log('Error creating machine:', machineError)
+      throw new Error(`Failed to create machine: ${machineError.message}`)
+    } else {
+      console.log('Created machine successfully:', machineData)
     }
 
     return new Response(
-      JSON.stringify({ message: 'Demo accounts and real machine setup completed successfully' }),
+      JSON.stringify({ 
+        message: 'Demo accounts and real machine setup completed successfully',
+        created: {
+          client: 'Kumulus',
+          personnel: 'Kumulus1',
+          machine: 'KU001619000079'
+        }
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
@@ -127,7 +177,10 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.log('Setup error:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        details: 'Check function logs for more information'
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,

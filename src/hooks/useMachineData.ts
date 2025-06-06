@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Machine, isValidMachine } from '@/utils/machineHelpers';
@@ -14,6 +14,7 @@ export const useMachineData = () => {
   const [machines, setMachines] = useState<Machine[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
+  const setupInProgress = useRef(false);
 
   const fetchData = async () => {
     if (!profile) return;
@@ -70,31 +71,48 @@ export const useMachineData = () => {
     setLoading(false);
   };
 
+  const setupDemoAccounts = async () => {
+    if (setupInProgress.current) {
+      console.log('Setup already in progress, skipping...');
+      return;
+    }
+
+    setupInProgress.current = true;
+    console.log('Setting up demo accounts...');
+    
+    try {
+      const response = await supabase.functions.invoke('setup-demo-accounts');
+      console.log('Demo accounts setup result:', response);
+      
+      if (response.error) {
+        console.error('Setup function error:', response.error);
+      } else {
+        console.log('Setup completed successfully');
+        // Wait a bit for the setup to complete fully
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Refetch data after successful setup
+        await fetchData();
+      }
+    } catch (error) {
+      console.error('Error setting up demo accounts:', error);
+    } finally {
+      setupInProgress.current = false;
+    }
+  };
+
   useEffect(() => {
     fetchData();
   }, [profile]);
 
-  // Set up demo accounts only once when the component first mounts
+  // Only trigger demo setup once when needed
   useEffect(() => {
-    const setupDemoAccounts = async () => {
-      try {
-        console.log('Setting up demo accounts...');
-        const response = await supabase.functions.invoke('setup-demo-accounts');
-        console.log('Demo accounts setup result:', response);
-        
-        // Refetch data after setup
-        if (profile) {
-          setTimeout(() => {
-            fetchData();
-          }, 1000);
-        }
-      } catch (error) {
-        console.error('Error setting up demo accounts:', error);
-      }
-    };
-    
-    // Only run setup if we have a profile and no machines yet
-    if (profile && machines.length === 0 && !loading) {
+    // Only run setup if:
+    // 1. We have a profile
+    // 2. We have no machines
+    // 3. We're not currently loading
+    // 4. Setup is not already in progress
+    if (profile && machines.length === 0 && !loading && !setupInProgress.current) {
+      console.log('Triggering demo accounts setup...');
       setupDemoAccounts();
     }
   }, [profile, machines.length, loading]);
@@ -102,7 +120,7 @@ export const useMachineData = () => {
   return {
     machines,
     clients,
-    loading,
+    loading: loading || setupInProgress.current,
     profile
   };
 };
