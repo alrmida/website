@@ -8,6 +8,7 @@ interface LiveMachineData {
   dataAge: number;
   compressorOn: number;
   isOnline: boolean;
+  lastConnection?: string;
 }
 
 function calculateMachineStatus(waterLevel: number, compressorOn: number, dataAge: number): { status: string, isOnline: boolean } {
@@ -44,7 +45,8 @@ export const useLiveMachineData = (selectedMachineId?: string) => {
     lastUpdated: new Date().toISOString(),
     dataAge: 0,
     compressorOn: 0,
-    isOnline: false
+    isOnline: false,
+    lastConnection: undefined
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +67,8 @@ export const useLiveMachineData = (selectedMachineId?: string) => {
           lastUpdated: new Date().toISOString(),
           dataAge: 0,
           compressorOn: 0,
-          isOnline: false
+          isOnline: false,
+          lastConnection: undefined
         });
         setError(null);
         setIsLoading(false);
@@ -117,7 +120,8 @@ export const useLiveMachineData = (selectedMachineId?: string) => {
           lastUpdated: machineData._time,
           dataAge: dataAge,
           compressorOn: compressorOn,
-          isOnline: isOnline
+          isOnline: isOnline,
+          lastConnection: isOnline ? machineData._time : data.lastConnection || machineData._time
         };
 
         console.log('Processed live machine data:', processedData);
@@ -129,7 +133,7 @@ export const useLiveMachineData = (selectedMachineId?: string) => {
     } catch (err) {
       console.error('Error fetching machine data:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
-      // Set fallback data when there's an error
+      // Set fallback data when there's an error, but preserve last connection time
       setData(prev => ({
         ...prev,
         status: 'Disconnected',

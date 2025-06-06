@@ -54,6 +54,7 @@ const AWGDashboard = () => {
           selectedMachine={selectedMachine}
           dataError={dataError}
           dataLoading={dataLoading}
+          liveData={liveData}
         />
 
         <MetricsCards

@@ -22,6 +22,31 @@ Deno.serve(async (req) => {
       }
     )
 
+    // Clean up existing demo accounts first
+    console.log('Cleaning up existing demo accounts...')
+    
+    // Delete existing machines
+    await supabaseAdmin
+      .from('machines')
+      .delete()
+      .neq('id', 0) // Delete all
+
+    // Delete existing profiles for demo accounts
+    const { data: existingProfiles } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .in('username', ['client1', 'Kumulus', 'Kumulus1'])
+
+    if (existingProfiles && existingProfiles.length > 0) {
+      for (const profile of existingProfiles) {
+        // Delete from auth.users first
+        const { error: deleteUserError } = await supabaseAdmin.auth.admin.deleteUser(profile.id)
+        if (deleteUserError) {
+          console.log(`Could not delete user ${profile.id}:`, deleteUserError.message)
+        }
+      }
+    }
+
     // Demo accounts data - only keeping the renamed client and kumulus personnel
     const demoAccounts = [
       { email: 'client1@demo.com', username: 'Kumulus', role: 'client' },
@@ -58,12 +83,6 @@ Deno.serve(async (req) => {
 
       // Only keep the real machine with live data
       if (kumulusClient) {
-        // First, delete all existing machines to clean up
-        await supabaseAdmin
-          .from('machines')
-          .delete()
-          .neq('id', 0) // Delete all
-
         // Insert only the real machine
         await supabaseAdmin
           .from('machines')
