@@ -74,7 +74,6 @@ const MetricsCards = ({ waterTank, machineStatus = 'Offline', totalWaterProduced
           </CardHeader>
           <CardContent className="pb-3">
             <div className="text-lg font-bold text-gray-900 dark:text-white">{totalWaterProduced.toFixed(1)} L</div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Since activation</p>
           </CardContent>
         </Card>
 
@@ -85,7 +84,6 @@ const MetricsCards = ({ waterTank, machineStatus = 'Offline', totalWaterProduced
           </CardHeader>
           <CardContent className="pb-3">
             <div className="text-lg font-bold text-green-600 dark:text-green-400">€622.85</div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Since activation</p>
           </CardContent>
         </Card>
 
