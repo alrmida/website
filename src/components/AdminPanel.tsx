@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,7 +14,8 @@ import { useToast } from '@/hooks/use-toast';
 import UserManagement from './admin/UserManagement';
 import MachineManagement from './admin/MachineManagement';
 import InvitationManagement from './admin/InvitationManagement';
-import { Profile, Machine, Invitation } from './admin/types';
+import { Profile, Invitation } from './admin/types';
+import { MachineWithClient } from '@/types/machine';
 import { mapDatabaseRoleToFrontend } from './admin/utils';
 
 interface AdminPanelProps {
@@ -31,7 +31,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
   
   // State for different tabs
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [machines, setMachines] = useState<Machine[]>([]);
+  const [machines, setMachines] = useState<MachineWithClient[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
 
   useEffect(() => {

@@ -7,12 +7,12 @@ import ProductionAnalytics from '@/components/ProductionAnalytics';
 import MachineSelector from '@/components/MachineSelector';
 import DashboardNotifications from '@/components/DashboardNotifications';
 import { useDashboardData } from '@/hooks/useDashboardData';
-import { Machine } from '@/utils/machineHelpers';
+import { MachineWithClient } from '@/types/machine';
 
 const AWGDashboard = () => {
   const { profile } = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState('daily');
-  const [selectedMachine, setSelectedMachine] = useState<Machine | null>(null);
+  const [selectedMachine, setSelectedMachine] = useState<MachineWithClient | null>(null);
   
   const {
     machineInfo,

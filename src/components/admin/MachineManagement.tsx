@@ -8,10 +8,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Trash2, Plus, Pencil } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { Machine, Profile } from './types';
+import { MachineWithClient, MachineFormData, isValidMachineId, getDisplayModelName, getOperatingSince } from '@/types/machine';
+import { Profile } from './types';
 
 interface MachineManagementProps {
-  machines: Machine[];
+  machines: MachineWithClient[];
   profiles: Profile[];
   profile: any;
   loading: boolean;
@@ -21,7 +22,7 @@ interface MachineManagementProps {
 const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: MachineManagementProps) => {
   const { toast } = useToast();
   
-  const [newMachine, setNewMachine] = useState({
+  const [newMachine, setNewMachine] = useState<MachineFormData>({
     machine_id: '',
     machine_model: '',
     name: '',
@@ -29,19 +30,36 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
     purchase_date: ''
   });
 
-  const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
-  const [editMachineData, setEditMachineData] = useState({
+  const [editingMachine, setEditingMachine] = useState<MachineWithClient | null>(null);
+  const [editMachineData, setEditMachineData] = useState<Omit<MachineFormData, 'machine_id'>>({
     machine_model: '',
     name: '',
     location: '',
     purchase_date: ''
   });
 
+  const validateMachineForm = (data: MachineFormData): string | null => {
+    if (!data.machine_id.trim()) {
+      return 'Machine ID is required';
+    }
+    
+    if (!isValidMachineId(data.machine_id)) {
+      return 'Machine ID must follow format: KU + 12 digits (e.g., KU001619000079)';
+    }
+    
+    if (!data.name.trim()) {
+      return 'Owner name is required';
+    }
+    
+    return null;
+  };
+
   const addMachine = async () => {
-    if (!newMachine.machine_id || !newMachine.name) {
+    const validationError = validateMachineForm(newMachine);
+    if (validationError) {
       toast({
-        title: 'Error',
-        description: 'Machine ID and Owner are required',
+        title: 'Validation Error',
+        description: validationError,
         variant: 'destructive',
       });
       return;
@@ -96,7 +114,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
     }
   };
 
-  const startEditMachine = (machine: Machine) => {
+  const startEditMachine = (machine: MachineWithClient) => {
     setEditingMachine(machine);
     setEditMachineData({
       machine_model: machine.machine_model || '',
@@ -107,9 +125,9 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
   };
 
   const updateMachine = async () => {
-    if (!editingMachine || !editMachineData.name) {
+    if (!editingMachine || !editMachineData.name.trim()) {
       toast({
-        title: 'Error',
+        title: 'Validation Error',
         description: 'Owner name is required',
         variant: 'destructive',
       });
@@ -211,7 +229,11 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                 value={newMachine.machine_id}
                 onChange={(e) => setNewMachine({ ...newMachine, machine_id: e.target.value })}
                 placeholder="KU001619000079"
+                className={!isValidMachineId(newMachine.machine_id) && newMachine.machine_id ? 'border-red-500' : ''}
               />
+              {newMachine.machine_id && !isValidMachineId(newMachine.machine_id) && (
+                <p className="text-sm text-red-500">Format: KU + 12 digits</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="machineModel">Model</Label>
@@ -254,7 +276,10 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
             </div>
           </div>
 
-          <Button onClick={addMachine} disabled={loading || !newMachine.machine_id || !newMachine.name}>
+          <Button 
+            onClick={addMachine} 
+            disabled={loading || !newMachine.machine_id || !newMachine.name}
+          >
             <Plus className="w-4 h-4 mr-2" />
             Add Machine
           </Button>
@@ -341,7 +366,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                   <TableHead>Model</TableHead>
                   <TableHead>Owner</TableHead>
                   <TableHead>Location</TableHead>
-                  <TableHead>Purchase Date</TableHead>
+                  <TableHead>Operating Since</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -349,10 +374,10 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                 {machines.map((machine) => (
                   <TableRow key={machine.id}>
                     <TableCell className="font-mono">{machine.machine_id}</TableCell>
-                    <TableCell>{machine.machine_model || '-'}</TableCell>
+                    <TableCell>{getDisplayModelName(machine)}</TableCell>
                     <TableCell>{machine.name}</TableCell>
                     <TableCell>{machine.location || '-'}</TableCell>
-                    <TableCell>{machine.purchase_date ? new Date(machine.purchase_date).toLocaleDateString() : '-'}</TableCell>
+                    <TableCell>{getOperatingSince(machine)}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         <Button

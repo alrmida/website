@@ -3,12 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useMachineData } from '@/hooks/useMachineData';
-import { Machine, isValidMachine } from '@/utils/machineHelpers';
+import { MachineWithClient, isValidMachineId } from '@/types/machine';
 import MachineList from '@/components/MachineList';
 
 interface MachineSelectorProps {
-  onMachineSelect: (machine: Machine) => void;
-  selectedMachine: Machine | null;
+  onMachineSelect: (machine: MachineWithClient) => void;
+  selectedMachine: MachineWithClient | null;
 }
 
 const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorProps) => {
@@ -45,7 +45,7 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
     );
   }
 
-  const availableMachines = machines.filter(isValidMachine);
+  const availableMachines = machines.filter(machine => isValidMachineId(machine.machine_id));
 
   return (
     <Card className="bg-white dark:bg-gray-800 mb-6">

@@ -8,21 +8,8 @@ export interface Profile {
   created_at: string;
 }
 
-export interface Machine {
-  id: number;
-  machine_id: string;
-  name: string;
-  location: string;
-  machine_model?: string;
-  purchase_date?: string;
-  client_id?: string;
-  manager_id?: string;
-  created_at?: string;
-  updated_at?: string;
-  client_profile?: {
-    username: string;
-  };
-}
+// Re-export machine types from unified location
+export type { MachineWithClient as Machine } from '@/types/machine';
 
 export interface Invitation {
   id: string;

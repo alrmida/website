@@ -2,15 +2,9 @@
 import { useMemo } from 'react';
 import { useLiveMachineData } from '@/hooks/useLiveMachineData';
 import { getStaticProductionData, getStaticStatusData } from '@/utils/staticDataGenerator';
-import { Machine } from '@/utils/machineHelpers';
+import { MachineWithClient, getDisplayModelName } from '@/types/machine';
 
-// Helper function to get model name based on machine ID
-const getModelName = (machineId: string): string => {
-  if (machineId === 'KU001619000079') return 'Amphore'; // Live data machine
-  return 'Unknown'; // For any other machines
-};
-
-export const useDashboardData = (selectedMachine: Machine | null) => {
+export const useDashboardData = (selectedMachine: MachineWithClient | null) => {
   // Fetch live/static machine data based on selected machine
   const { data: liveData, isLoading: dataLoading, error: dataError } = useLiveMachineData(selectedMachine?.machine_id);
 
@@ -29,9 +23,9 @@ export const useDashboardData = (selectedMachine: Machine | null) => {
     const machineInfo = selectedMachine ? {
       machineId: selectedMachine.machine_id,
       machineName: selectedMachine.name,
-      location: selectedMachine.location,
+      location: selectedMachine.location || 'N/A',
       status: liveData.status || 'Loading...',
-      modelName: getModelName(selectedMachine.machine_id),
+      modelName: getDisplayModelName(selectedMachine),
       isOnline: liveData.isOnline
     } : defaultMachineInfo;
 

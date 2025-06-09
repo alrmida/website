@@ -2,11 +2,11 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Machine, isValidMachine } from '@/utils/machineHelpers';
+import { MachineWithClient, isValidMachineId } from '@/types/machine';
 
 export const useMachineData = () => {
   const { profile } = useAuth();
-  const [machines, setMachines] = useState<Machine[]>([]);
+  const [machines, setMachines] = useState<MachineWithClient[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
@@ -26,7 +26,7 @@ export const useMachineData = () => {
         console.log('Client machines data:', machinesData, 'Error:', error);
         
         if (machinesData) {
-          const validMachines = machinesData.filter(isValidMachine);
+          const validMachines = machinesData.filter(machine => isValidMachineId(machine.machine_id));
           console.log('Valid machines after filtering:', validMachines);
           setMachines(validMachines);
         }
@@ -44,7 +44,7 @@ export const useMachineData = () => {
         console.log('All machines data:', machinesData, 'Error:', machinesError);
         
         if (machinesData) {
-          const validMachines = machinesData.filter(isValidMachine);
+          const validMachines = machinesData.filter(machine => isValidMachineId(machine.machine_id));
           console.log('Valid machines after filtering:', validMachines);
           setMachines(validMachines);
         }
