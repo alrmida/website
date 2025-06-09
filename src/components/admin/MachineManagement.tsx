@@ -34,7 +34,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
     name: '',
     location: '',
     purchase_date: '',
-    client_id: ''
+    client_id: 'unassigned'
   });
 
   const [editingMachine, setEditingMachine] = useState<MachineWithClient | null>(null);
@@ -43,7 +43,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
     name: '',
     location: '',
     purchase_date: '',
-    client_id: ''
+    client_id: 'unassigned'
   });
 
   // Get client profiles only
@@ -85,7 +85,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
         location: newMachine.location.trim() || null,
         machine_model: newMachine.machine_model.trim() || null,
         purchase_date: newMachine.purchase_date || null,
-        client_id: newMachine.client_id || null,
+        client_id: newMachine.client_id === 'unassigned' ? null : newMachine.client_id,
         manager_id: profile?.id || null,
       };
       
@@ -114,7 +114,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
         name: '', 
         location: '', 
         purchase_date: '',
-        client_id: ''
+        client_id: 'unassigned'
       });
       onRefresh();
     } catch (error: any) {
@@ -134,7 +134,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
       name: machine.name,
       location: machine.location || '',
       purchase_date: machine.purchase_date || '',
-      client_id: machine.client_id || '',
+      client_id: machine.client_id || 'unassigned',
     });
   };
 
@@ -156,7 +156,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
         location: editMachineData.location.trim() || null,
         machine_model: editMachineData.machine_model.trim() || null,
         purchase_date: editMachineData.purchase_date || null,
-        client_id: editMachineData.client_id || null,
+        client_id: editMachineData.client_id === 'unassigned' ? null : editMachineData.client_id,
         updated_at: new Date().toISOString(),
       };
       
@@ -183,7 +183,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
         name: '', 
         location: '', 
         purchase_date: '',
-        client_id: ''
+        client_id: 'unassigned'
       });
       onRefresh();
     } catch (error: any) {
@@ -288,7 +288,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                   <SelectValue placeholder="Select a client (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No client assigned</SelectItem>
+                  <SelectItem value="unassigned">No client assigned</SelectItem>
                   {clientProfiles.map((client) => (
                     <SelectItem key={client.id} value={client.id}>
                       {client.username}
@@ -368,7 +368,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                     <SelectValue placeholder="Select a client (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No client assigned</SelectItem>
+                    <SelectItem value="unassigned">No client assigned</SelectItem>
                     {clientProfiles.map((client) => (
                       <SelectItem key={client.id} value={client.id}>
                         {client.username}
