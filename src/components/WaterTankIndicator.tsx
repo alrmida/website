@@ -19,6 +19,17 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
   
   // State for animated percentage counter
   const [animatedPercentage, setAnimatedPercentage] = useState(0);
+  const [lastTargetPercentage, setLastTargetPercentage] = useState(0);
+
+  // Reset and animate the percentage counter when target changes
+  useEffect(() => {
+    // Reset animation if the target percentage changed significantly or if it's a new value
+    if (Math.abs(cappedPercentage - lastTargetPercentage) > 0.1 || animatedPercentage === 0) {
+      console.log('Resetting animation:', { cappedPercentage, lastTargetPercentage, animatedPercentage });
+      setAnimatedPercentage(0);
+      setLastTargetPercentage(cappedPercentage);
+    }
+  }, [cappedPercentage, lastTargetPercentage]);
 
   // Animate the percentage counter
   useEffect(() => {
@@ -27,7 +38,8 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
     if (animatedPercentage < cappedPercentage) {
       interval = setInterval(() => {
         setAnimatedPercentage(prev => {
-          const next = prev + 1;
+          const increment = cappedPercentage > 50 ? 2 : 1; // Faster animation for higher percentages
+          const next = prev + increment;
           return next >= cappedPercentage ? cappedPercentage : next;
         });
       }, 30);
@@ -37,13 +49,6 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
       if (interval) clearInterval(interval);
     };
   }, [cappedPercentage, animatedPercentage]);
-
-  // Reset animation when percentage changes significantly
-  useEffect(() => {
-    if (Math.abs(animatedPercentage - cappedPercentage) > 5) {
-      setAnimatedPercentage(0);
-    }
-  }, [cappedPercentage]);
 
   return (
     <>
@@ -131,7 +136,7 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
                   <div className="absolute inset-0 flex items-center justify-center z-10">
                     <div className="text-center">
                       <div className="text-lg font-bold text-white">
-                        {animatedPercentage}
+                        {Math.round(animatedPercentage)}
                       </div>
                       <div className="text-xs text-white opacity-80">%</div>
                     </div>
