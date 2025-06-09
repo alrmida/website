@@ -41,10 +41,10 @@ const MachineList = ({
             <SelectItem key={machine.id} value={machine.machine_id}>
               <div className="flex flex-col">
                 <span className="font-medium">
-                  {machine.machine_id} - {getModelName(machine.machine_id)}
+                  {machine.machine_id} - {machine.machine_model || getModelName(machine.machine_id)}
                 </span>
                 <span className="text-sm text-gray-500 dark:text-gray-400">
-                  {machine.location} • Operating since {getOperatingSince(machine.machine_id)}
+                  {machine.name} • {machine.location} • Operating since {getOperatingSince(machine.machine_id)}
                 </span>
                 {(userRole === 'commercial' || userRole === 'admin') && machine.client_profile?.username && (
                   <span className="text-xs text-blue-600 dark:text-blue-400">

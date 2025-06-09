@@ -4,7 +4,9 @@ export interface Machine {
   machine_id: string;
   name: string;
   location: string;
-  client_id: string;
+  machine_model?: string;
+  purchase_date?: string;
+  client_id?: string;
   client_profile?: {
     username: string;
   };
