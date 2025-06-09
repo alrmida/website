@@ -31,30 +31,41 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
             </p>
           </div>
           
-          {/* Animated Water Tank Visual */}
+          {/* Animated Water Droplet Visual */}
           <div className="relative">
-            <div className="w-16 h-24 border-2 border-gray-300 dark:border-gray-500 rounded-b-lg rounded-t-sm bg-gray-50 dark:bg-gray-600 overflow-hidden">
-              {/* Water fill animation */}
+            {/* Droplet shape container */}
+            <div className="relative w-16 h-20 overflow-hidden">
+              {/* Droplet outline using CSS to create the shape */}
               <div 
-                className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-blue-500 to-blue-300 dark:from-blue-600 dark:to-blue-400 transition-all duration-1000 ease-out"
-                style={{ height: `${cappedPercentage}%` }}
+                className="absolute inset-0 border-2 border-gray-300 dark:border-gray-500 bg-gray-50 dark:bg-gray-600"
+                style={{
+                  borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%',
+                  transform: 'rotate(45deg)',
+                  transformOrigin: 'center'
+                }}
               >
-                {/* Animated water droplet */}
-                <div className="absolute top-1 left-1/2 transform -translate-x-1/2">
-                  <Droplet className="h-3 w-3 text-blue-200 dark:text-blue-100 animate-bounce" />
+                {/* Water fill animation inside droplet */}
+                <div 
+                  className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-blue-500 to-blue-300 dark:from-blue-600 dark:to-blue-400 transition-all duration-1000 ease-out"
+                  style={{ 
+                    height: `${cappedPercentage}%`,
+                    borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%'
+                  }}
+                >
+                  {/* Small animated droplet inside */}
+                  <div className="absolute top-1 left-1/2 transform -translate-x-1/2 -rotate-45">
+                    <Droplet className="h-2 w-2 text-blue-200 dark:text-blue-100 animate-bounce" />
+                  </div>
+                </div>
+                
+                {/* Percentage indicator */}
+                <div className="absolute inset-0 flex items-center justify-center transform -rotate-45">
+                  <span className="text-xs font-bold text-white drop-shadow-md">
+                    {cappedPercentage}%
+                  </span>
                 </div>
               </div>
-              
-              {/* Percentage indicator */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-xs font-bold text-white drop-shadow-md">
-                  {cappedPercentage}%
-                </span>
-              </div>
             </div>
-            
-            {/* Tank cap */}
-            <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-8 h-2 bg-gray-400 dark:bg-gray-500 rounded-t"></div>
           </div>
         </div>
       </CardContent>
