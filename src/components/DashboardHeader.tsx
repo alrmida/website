@@ -7,6 +7,7 @@ import { Settings, LogOut, Shield, Eye, EyeOff, User } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import SettingsModal from './SettingsModal';
 import AdminPanel from './AdminPanel';
+import { ThemeToggle } from './ThemeToggle';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -80,9 +81,22 @@ const DashboardHeader = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-4">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Kumulus AWG Dashboard
-            </h1>
+            {/* Logo */}
+            <div className="flex items-center space-x-3">
+              <img 
+                src="/lovable-uploads/6b2020dd-160c-4c6a-bac9-5f824123d5d1.png" 
+                alt="Kumulus Logo" 
+                className="h-8 w-8"
+              />
+              <div className="flex flex-col">
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                  Kumulus AWG Dashboard
+                </h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Sustainable Water Generation Technology
+                </p>
+              </div>
+            </div>
             {isImpersonating && (
               <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-300">
                 <Eye className="h-3 w-3 mr-1" />
@@ -92,6 +106,9 @@ const DashboardHeader = () => {
           </div>
           
           <div className="flex items-center space-x-4">
+            {/* Theme Toggle */}
+            <ThemeToggle />
+            
             {(profile?.role === 'admin' || profile?.role === 'commercial') && (
               <Button
                 variant="outline"
