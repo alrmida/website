@@ -1,7 +1,7 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Activity, Droplet } from 'lucide-react';
+import { Activity } from 'lucide-react';
 
 interface WaterTankIndicatorProps {
   currentLevel: number;
@@ -13,6 +13,34 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
   // Cap the values to avoid noise above limits
   const cappedLevel = Math.min(currentLevel, maxCapacity);
   const cappedPercentage = Math.min(percentage, 100);
+  
+  // State for animated percentage counter
+  const [animatedPercentage, setAnimatedPercentage] = useState(0);
+
+  // Animate the percentage counter
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    if (animatedPercentage < cappedPercentage) {
+      interval = setInterval(() => {
+        setAnimatedPercentage(prev => {
+          const next = prev + 1;
+          return next >= cappedPercentage ? cappedPercentage : next;
+        });
+      }, 30);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [cappedPercentage, animatedPercentage]);
+
+  // Reset animation when percentage changes significantly
+  useEffect(() => {
+    if (Math.abs(animatedPercentage - cappedPercentage) > 5) {
+      setAnimatedPercentage(0);
+    }
+  }, [cappedPercentage]);
 
   return (
     <Card className="bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow border-gray-200 dark:border-gray-700">
@@ -31,36 +59,81 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
             </p>
           </div>
           
-          {/* Water Droplet Visual */}
+          {/* Circular Water Fill Animation */}
           <div className="relative">
-            <div className="relative w-16 h-20">
-              {/* Droplet shape using CSS */}
+            {/* Hidden SVG wave definition */}
+            <svg 
+              version="1.1" 
+              xmlns="http://www.w3.org/2000/svg" 
+              xmlnsXlink="http://www.w3.org/1999/xlink" 
+              className="absolute w-0 h-0"
+              style={{ display: 'none' }}
+            >
+              <defs>
+                <symbol id="wave">
+                  <path d="M420,20c21.5-0.4,38.8-2.5,51.1-4.5c13.4-2.2,26.5-5.2,27.3-5.4C514,6.5,518,4.7,528.5,2.7c7.1-1.3,17.9-2.8,31.5-2.7c0,0,0,0,0,0v20H420z"></path>
+                  <path d="M420,20c-21.5-0.4-38.8-2.5-51.1-4.5c-13.4-2.2-26.5-5.2-27.3-5.4C326,6.5,322,4.7,311.5,2.7C304.3,1.4,293.6-0.1,280,0c0,0,0,0,0,0v20H420z"></path>
+                  <path d="M140,20c21.5-0.4,38.8-2.5,51.1-4.5c13.4-2.2,26.5-5.2,27.3-5.4C234,6.5,238,4.7,248.5,2.7c7.1-1.3,17.9-2.8,31.5-2.7c0,0,0,0,0,0v20H140z"></path>
+                  <path d="M140,20c-21.5-0.4-38.8-2.5-51.1-4.5c-13.4-2.2-26.5-5.2-27.3-5.4C46,6.5,42,4.7,31.5,2.7C24.3,1.4,13.6-0.1,0,0c0,0,0,0,0,0l0,20H140z"></path>
+                </symbol>
+              </defs>
+            </svg>
+
+            {/* Circular container */}
+            <div className="relative w-20 h-20 bg-gray-900 dark:bg-gray-800 rounded-full overflow-hidden border-2 border-gray-700 dark:border-gray-600">
+              {/* Percentage display */}
+              <div className="absolute inset-0 flex items-center justify-center z-10">
+                <div className="text-center">
+                  <div className="text-lg font-bold text-white">
+                    {animatedPercentage}
+                  </div>
+                  <div className="text-xs text-white opacity-80">%</div>
+                </div>
+              </div>
+              
+              {/* Water fill */}
               <div 
-                className="relative w-full h-full border-2 border-blue-300 dark:border-blue-500 bg-gray-50 dark:bg-gray-700 overflow-hidden"
-                style={{
-                  borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%'
+                className="absolute inset-0 bg-blue-500 transition-transform duration-300 ease-out"
+                style={{ 
+                  transform: `translate(0, ${100 - animatedPercentage}%)`,
                 }}
               >
-                {/* Water fill */}
-                <div 
-                  className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-blue-500 to-blue-400 dark:from-blue-600 dark:to-blue-500 transition-all duration-1000 ease-out"
-                  style={{ 
-                    height: `${cappedPercentage}%`,
-                    borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%'
-                  }}
-                />
+                {/* Back wave */}
+                <svg 
+                  viewBox="0 0 560 20" 
+                  className="absolute bottom-full right-0 w-full h-4 animate-[wave-back_1.4s_infinite_linear]"
+                  style={{ width: '200%' }}
+                >
+                  <use xlinkHref="#wave" fill="#C7EEFF" />
+                </svg>
                 
-                {/* Percentage text */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-xs font-bold text-gray-700 dark:text-white drop-shadow-sm">
-                    {cappedPercentage}%
-                  </span>
-                </div>
+                {/* Front wave */}
+                <svg 
+                  viewBox="0 0 560 20" 
+                  className="absolute bottom-full left-0 w-full h-4 animate-[wave-front_0.7s_infinite_linear] -mb-px"
+                  style={{ width: '200%' }}
+                >
+                  <use xlinkHref="#wave" fill="#4D6DE3" />
+                </svg>
               </div>
             </div>
           </div>
         </div>
       </CardContent>
+      
+      <style jsx>{`
+        @keyframes wave-front {
+          100% {
+            transform: translate(-50%, 0);
+          }
+        }
+
+        @keyframes wave-back {
+          100% {
+            transform: translate(50%, 0);
+          }
+        }
+      `}</style>
     </Card>
   );
 };
