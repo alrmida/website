@@ -85,13 +85,13 @@ const DashboardHeader = () => {
             <div className="flex items-center space-x-3">
               {/* Light mode logo (blue) */}
               <img 
-                src="/lovable-uploads/c05664f4-db3f-441e-bea0-70e86e173d09.png" 
+                src="/lovable-uploads/9303e210-3810-462b-8736-e32b9e824785.png" 
                 alt="Kumulus Logo" 
                 className="h-10 block dark:hidden"
               />
               {/* Dark mode logo (white) */}
               <img 
-                src="/lovable-uploads/2feef9bd-0972-438a-a5c1-a16aa709976b.png" 
+                src="/lovable-uploads/eeaac34d-4c12-4741-92cd-11685773ee0f.png" 
                 alt="Kumulus Logo" 
                 className="h-10 hidden dark:block"
               />
