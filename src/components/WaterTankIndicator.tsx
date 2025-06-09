@@ -37,66 +37,85 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
             </p>
           </div>
           
-          {/* Water Gauge Container */}
-          <div className="relative w-32 h-32">
-            <div className="water-gauge" style={{ '--fill-level': `${cappedPercentage}%` } as React.CSSProperties}>
-              <svg className="wave-svg" viewBox="0 0 200 200">
+          {/* Ocean Water Level Container */}
+          <div className="relative w-32 h-48">
+            <div className="ocean-container" style={{ '--water-level': `${100 - cappedPercentage}%` } as React.CSSProperties}>
+              <svg className="ocean-svg" viewBox="0 0 200 300" preserveAspectRatio="xMidYMid meet">
                 <defs>
-                  <clipPath id="water-clip">
-                    <rect x="0" y="0" width="200" height="200" />
+                  <clipPath id="ocean-clip">
+                    <rect x="0" y="0" width="200" height="300" rx="100" ry="100" />
                   </clipPath>
-                  <linearGradient id="sunset" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" style={{ stopColor: '#ff6b6b', stopOpacity: 1 }} />
-                    <stop offset="50%" style={{ stopColor: '#feca57', stopOpacity: 1 }} />
-                    <stop offset="100%" style={{ stopColor: '#48dbfb', stopOpacity: 1 }} />
+                  <linearGradient id="sky-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" style={{ stopColor: '#87CEEB', stopOpacity: 1 }} />
+                    <stop offset="30%" style={{ stopColor: '#B0E0E6', stopOpacity: 1 }} />
+                    <stop offset="60%" style={{ stopColor: '#F0F8FF', stopOpacity: 1 }} />
+                    <stop offset="100%" style={{ stopColor: '#FFFFFF', stopOpacity: 1 }} />
+                  </linearGradient>
+                  <linearGradient id="ocean-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" style={{ stopColor: '#4FC3F7', stopOpacity: 0.8 }} />
+                    <stop offset="50%" style={{ stopColor: '#29B6F6', stopOpacity: 0.9 }} />
+                    <stop offset="100%" style={{ stopColor: '#0277BD', stopOpacity: 1 }} />
                   </linearGradient>
                 </defs>
                 
-                {/* Sky/Sunset Background */}
-                <rect width="200" height="200" fill="url(#sunset)" />
-                
-                {/* Sun */}
-                <circle className="sun" cx="100" cy="60" r="20" fill="#fff3cd" opacity="0.8" />
-                
-                {/* Water */}
-                <g clipPath="url(#water-clip)">
-                  <path className="wave-front" d="M0,100 Q50,80 100,100 T200,100 V200 H0 Z" />
-                  <path className="wave-back" d="M0,110 Q50,90 100,110 T200,110 V200 H0 Z" />
+                <g clipPath="url(#ocean-clip)">
+                  {/* Sky Background */}
+                  <rect width="200" height="300" fill="url(#sky-gradient)" />
+                  
+                  {/* Sun */}
+                  <circle className="sun" cx="100" cy="80" r="25" fill="#FFE082" opacity="0.9" />
+                  
+                  {/* Ocean Water - positioned based on fill level */}
+                  <g className="ocean-water">
+                    <rect x="0" y="150" width="200" height="150" fill="url(#ocean-gradient)" />
+                    
+                    {/* Wave animations */}
+                    <path className="wave wave-1" 
+                          d="M0,150 Q50,140 100,150 T200,150 V300 H0 Z" 
+                          fill="rgba(79, 195, 247, 0.6)" />
+                    <path className="wave wave-2" 
+                          d="M0,160 Q50,150 100,160 T200,160 V300 H0 Z" 
+                          fill="rgba(41, 182, 246, 0.4)" />
+                    
+                    {/* Whales */}
+                    <g className="whale whale-1">
+                      <ellipse cx="60" cy="200" rx="20" ry="12" fill="#263238" />
+                      <ellipse cx="52" cy="196" rx="4" ry="3" fill="#37474F" />
+                      <path d="M40,200 Q32,192 24,200 Q32,208 40,200" fill="#263238" />
+                      <circle cx="64" cy="194" r="2" fill="white" />
+                      <path d="M64,185 Q68,180 72,185 Q68,190 64,185" fill="#37474F" />
+                    </g>
+                    
+                    <g className="whale whale-2">
+                      <ellipse cx="140" cy="240" rx="16" ry="10" fill="#37474F" />
+                      <ellipse cx="134" cy="237" rx="3" ry="2" fill="#455A64" />
+                      <path d="M124,240 Q118,234 112,240 Q118,246 124,240" fill="#37474F" />
+                      <circle cx="143" cy="236" r="1.5" fill="white" />
+                      <path d="M143,228 Q146,224 149,228 Q146,232 143,228" fill="#455A64" />
+                    </g>
+                    
+                    {/* Small fish */}
+                    <g className="fish fish-1">
+                      <ellipse cx="100" cy="220" rx="8" ry="4" fill="#42A5F5" />
+                      <path d="M92,220 L86,217 L86,223 Z" fill="#42A5F5" />
+                      <circle cx="103" cy="218" r="1" fill="white" />
+                    </g>
+                    
+                    <g className="fish fish-2">
+                      <ellipse cx="170" cy="260" rx="6" ry="3" fill="#66BB6A" />
+                      <path d="M164,260 L160,258 L160,262 Z" fill="#66BB6A" />
+                      <circle cx="172" cy="259" r="0.8" fill="white" />
+                    </g>
+                  </g>
                 </g>
                 
-                {/* Whales */}
-                <g className="whale whale-1">
-                  <ellipse cx="40" cy="120" rx="15" ry="8" fill="#2c3e50" />
-                  <ellipse cx="35" cy="118" rx="3" ry="2" fill="#34495e" />
-                  <path d="M25,120 Q20,115 15,120 Q20,125 25,120" fill="#2c3e50" />
-                  <circle cx="42" cy="117" r="1" fill="white" />
-                </g>
-                
-                <g className="whale whale-2">
-                  <ellipse cx="150" cy="140" rx="12" ry="6" fill="#34495e" />
-                  <ellipse cx="146" cy="138" rx="2" ry="1.5" fill="#2c3e50" />
-                  <path d="M138,140 Q134,136 130,140 Q134,144 138,140" fill="#34495e" />
-                  <circle cx="151" cy="138" r="0.8" fill="white" />
-                </g>
-                
-                {/* Fish */}
-                <g className="fish fish-1">
-                  <ellipse cx="70" cy="150" rx="6" ry="3" fill="#3498db" />
-                  <path d="M64,150 L60,148 L60,152 Z" fill="#3498db" />
-                  <circle cx="72" cy="149" r="0.5" fill="white" />
-                </g>
-                
-                <g className="fish fish-2">
-                  <ellipse cx="120" cy="160" rx="5" ry="2.5" fill="#e74c3c" />
-                  <path d="M115,160 L112,158 L112,162 Z" fill="#e74c3c" />
-                  <circle cx="121" cy="159" r="0.4" fill="white" />
-                </g>
+                {/* Percentage overlay */}
+                <foreignObject x="75" y="30" width="50" height="30">
+                  <div className="percentage-overlay-ocean">
+                    <span className="percentage-text-ocean">{Math.round(cappedPercentage)}%</span>
+                  </div>
+                </foreignObject>
               </svg>
-              
-              {/* Percentage overlay */}
-              <div className="percentage-overlay">
-                <span className="percentage-text">{Math.round(cappedPercentage)}%</span>
-              </div>
             </div>
           </div>
         </div>
