@@ -14,6 +14,9 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
   const cappedLevel = Math.min(currentLevel, maxCapacity);
   const cappedPercentage = Math.min(percentage, 100);
   
+  // Round the water level to 1 decimal place
+  const roundedLevel = Math.round(cappedLevel * 10) / 10;
+  
   // State for animated percentage counter
   const [animatedPercentage, setAnimatedPercentage] = useState(0);
 
@@ -57,33 +60,49 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
           }
         }
 
+        @keyframes gentle-float {
+          0%, 100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-2px);
+          }
+        }
+
         .water-wave-front {
-          animation: wave-front 0.7s infinite linear;
+          animation: wave-front 0.8s infinite linear;
         }
 
         .water-wave-back {
-          animation: wave-back 1.4s infinite linear;
+          animation: wave-back 1.6s infinite linear;
+        }
+
+        .droplet-float {
+          animation: gentle-float 3s ease-in-out infinite;
         }
       `}</style>
       
       <Card className="bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow border-gray-200 dark:border-gray-700">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
           <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">💧 Current Water Level</CardTitle>
           <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400" />
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center space-x-4">
-            <div className="flex-1">
-              <div className="text-3xl font-bold text-gray-900 dark:text-white">
-                {cappedLevel} L <span className="text-xl">({cappedPercentage}%)</span>
+        <CardContent className="pb-6">
+          <div className="flex items-center justify-between space-x-6">
+            <div className="flex-1 min-w-0">
+              <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
+                {roundedLevel} L
               </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              <div className="text-lg text-gray-600 dark:text-gray-400 mb-2">
+                ({cappedPercentage}%)
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 Water Tank Fill • Capacity: {maxCapacity}L
               </p>
             </div>
             
-            {/* Circular Water Fill Animation */}
-            <div className="relative">
+            {/* Water Droplet Shape Animation */}
+            <div className="relative droplet-float">
               {/* Hidden SVG wave definition */}
               <svg 
                 version="1.1" 
@@ -102,42 +121,51 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
                 </defs>
               </svg>
 
-              {/* Circular container */}
-              <div className="relative w-20 h-20 bg-gray-900 dark:bg-gray-800 rounded-full overflow-hidden border-2 border-gray-700 dark:border-gray-600">
-                {/* Percentage display */}
-                <div className="absolute inset-0 flex items-center justify-center z-10">
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-white">
-                      {animatedPercentage}
-                    </div>
-                    <div className="text-xs text-white opacity-80">%</div>
-                  </div>
-                </div>
-                
-                {/* Water fill */}
+              {/* Water Droplet Container */}
+              <div className="relative w-24 h-32 overflow-hidden">
+                {/* Droplet shape using CSS */}
                 <div 
-                  className="absolute inset-0 bg-blue-500 transition-transform duration-300 ease-out"
-                  style={{ 
-                    transform: `translate(0, ${100 - animatedPercentage}%)`,
+                  className="absolute inset-0 bg-gray-900 dark:bg-gray-800 border-2 border-gray-700 dark:border-gray-600"
+                  style={{
+                    borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%',
+                    transform: 'rotate(180deg)'
                   }}
                 >
-                  {/* Back wave */}
-                  <svg 
-                    viewBox="0 0 560 20" 
-                    className="absolute bottom-full right-0 w-full h-4 water-wave-back"
-                    style={{ width: '200%' }}
-                  >
-                    <use xlinkHref="#wave" fill="#C7EEFF" />
-                  </svg>
+                  {/* Percentage display */}
+                  <div className="absolute inset-0 flex items-center justify-center z-10" style={{ transform: 'rotate(180deg)' }}>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-white">
+                        {animatedPercentage}
+                      </div>
+                      <div className="text-xs text-white opacity-80">%</div>
+                    </div>
+                  </div>
                   
-                  {/* Front wave */}
-                  <svg 
-                    viewBox="0 0 560 20" 
-                    className="absolute bottom-full left-0 w-full h-4 water-wave-front -mb-px"
-                    style={{ width: '200%' }}
+                  {/* Water fill */}
+                  <div 
+                    className="absolute inset-0 bg-blue-500 transition-transform duration-500 ease-out"
+                    style={{ 
+                      transform: `translate(0, ${100 - animatedPercentage}%)`,
+                    }}
                   >
-                    <use xlinkHref="#wave" fill="#4D6DE3" />
-                  </svg>
+                    {/* Back wave */}
+                    <svg 
+                      viewBox="0 0 560 20" 
+                      className="absolute bottom-full right-0 w-full h-4 water-wave-back"
+                      style={{ width: '200%' }}
+                    >
+                      <use xlinkHref="#wave" fill="#C7EEFF" />
+                    </svg>
+                    
+                    {/* Front wave */}
+                    <svg 
+                      viewBox="0 0 560 20" 
+                      className="absolute bottom-full left-0 w-full h-4 water-wave-front -mb-px"
+                      style={{ width: '200%' }}
+                    >
+                      <use xlinkHref="#wave" fill="#4D6DE3" />
+                    </svg>
+                  </div>
                 </div>
               </div>
             </div>
