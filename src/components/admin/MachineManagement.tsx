@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,11 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, Plus, Pencil, Users } from 'lucide-react';
+import { Trash2, Plus, Pencil } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Machine, Profile } from './types';
-import MachineAccessManagement from './MachineAccessManagement';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 interface MachineManagementProps {
   machines: Machine[];
@@ -51,8 +48,6 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
     assignment_date: '',
     status: 'active'
   });
-
-  const [accessManagementMachine, setAccessManagementMachine] = useState<Machine | null>(null);
 
   const addMachine = async () => {
     if (!newMachine.machine_id || !newMachine.name) {
@@ -556,29 +551,6 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                         >
                           <Pencil className="w-4 h-4" />
                         </Button>
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setAccessManagementMachine(machine)}
-                            >
-                              <Users className="w-4 h-4" />
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="max-w-4xl">
-                            <DialogHeader>
-                              <DialogTitle>Manage Access for {machine.machine_id}</DialogTitle>
-                            </DialogHeader>
-                            {accessManagementMachine && (
-                              <MachineAccessManagement 
-                                machine={accessManagementMachine}
-                                profiles={profiles}
-                                onRefresh={onRefresh}
-                              />
-                            )}
-                          </DialogContent>
-                        </Dialog>
                         <Button
                           variant="destructive"
                           size="sm"
