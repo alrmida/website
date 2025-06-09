@@ -1,5 +1,5 @@
 
-import React, { useId } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity } from 'lucide-react';
 
@@ -10,8 +10,6 @@ interface WaterTankIndicatorProps {
 }
 
 const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTankIndicatorProps) => {
-  const waveId = useId();
-  
   // Cap the values to avoid noise above limits
   const cappedLevel = Math.min(currentLevel, maxCapacity);
   const cappedPercentage = Math.min(percentage, 100);
@@ -39,49 +37,20 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
             </p>
           </div>
           
-          {/* Water Circle Container – new wave animation */}
-          <div className="relative w-24 h-24 rounded-full overflow-hidden">
-            {/* % label */}
-            <div className="absolute inset-0 z-10 flex items-center justify-center text-white">
-              <span className="text-lg font-bold">{Math.round(cappedPercentage)}</span>
-              <span className="text-xs opacity-80 ml-[2px]">%</span>
+          {/* Water Cup Container */}
+          <div className="relative w-24 h-24">
+            {/* Glass/Cup Container */}
+            <div className="water-cup" style={{ '--fill-level': `${cappedPercentage}%` } as React.CSSProperties}>
+              <div className="water-fill">
+                <div className="wave"></div>
+              </div>
+              
+              {/* Percentage label overlay */}
+              <div className="absolute inset-0 z-10 flex items-center justify-center text-white mix-blend-difference">
+                <span className="text-lg font-bold">{Math.round(cappedPercentage)}</span>
+                <span className="text-xs opacity-80 ml-[2px]">%</span>
+              </div>
             </div>
-
-            {/* Waves (two layers, clipped to the circle) */}
-            <svg
-              viewBox="0 0 560 560"
-              className="absolute inset-0"
-              style={{ transform: `translateY(${100 - cappedPercentage}%)`, transition: 'transform .3s ease-out' }}
-            >
-              <defs>
-                {/* circle mask */}
-                <clipPath id={`clip-${waveId}`}>
-                  <circle cx="280" cy="280" r="280" />
-                </clipPath>
-
-                {/* reusable wave crest row */}
-                <symbol id={`wave-${waveId}`} viewBox="0 0 560 20">
-                  <path d="M0 20c21.5-.4 38.8-2.5 51.1-4.5
-                           13.4-2.2 26.5-5.2 27.3-5.4
-                           12.6-2.1 16.6-3.9 27.1-5.9
-                           7.1-1.3 17.9-2.8 31.5-2.7V20z" />
-                  <path d="M280 20c-21.5-.4-38.8-2.5-51.1-4.5
-                           -13.4-2.2-26.5-5.2-27.3-5.4
-                           -12.6-2.1-16.6-3.9-27.1-5.9
-                           -7.2-1.3-17.9-2.8-31.5-2.7V20z" />
-                </symbol>
-              </defs>
-
-              {/* group is clipped to circle */}
-              <g clipPath={`url(#clip-${waveId})`}>
-                <g className="wave wave-back">
-                  <use href={`#wave-${waveId}`} x="0" y="540" />
-                </g>
-                <g className="wave wave-front">
-                  <use href={`#wave-${waveId}`} x="0" y="540" />
-                </g>
-              </g>
-            </svg>
           </div>
         </div>
       </CardContent>
