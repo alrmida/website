@@ -16,14 +16,6 @@ const DashboardFooter = ({ profile, selectedMachine, liveData }: DashboardFooter
           Logged in as: {profile.username} ({profile.role})
         </span>
       )}
-      {selectedMachine && (
-        <span className="ml-4 text-xs">
-          {selectedMachine.machine_id === 'KU001619000079' ? 
-            `Data age: ${Math.round(liveData.dataAge / 1000)}s • Compressor: ${liveData.compressorOn ? 'ON' : 'OFF'}` :
-            'Static Demo Data'
-          }
-        </span>
-      )}
     </div>
   );
 };
