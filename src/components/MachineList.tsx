@@ -16,70 +16,42 @@ interface MachineListProps {
   selectedClient: string;
   userRole: string;
   onMachineSelect: (machineId: string) => void;
-  showDirectSelection?: boolean;
   title?: string;
 }
 
 const MachineList = ({ 
   machines, 
-  clients, 
   selectedMachine, 
-  selectedClient, 
   userRole, 
   onMachineSelect,
-  showDirectSelection = false,
-  title
+  title = "Available Machines"
 }: MachineListProps) => {
-  const getFilteredMachines = () => {
-    if (userRole === 'client') {
-      return machines;
-    }
-    
-    if (selectedClient && !showDirectSelection) {
-      return machines.filter(machine => machine.client_id === selectedClient);
-    }
-    
-    return machines;
-  };
-
-  const filteredMachines = getFilteredMachines();
-
-  const getTitle = () => {
-    if (title) return title;
-    if ((userRole === 'commercial' || userRole === 'admin') && selectedClient && !showDirectSelection) {
-      return `Machines for ${clients.find(c => c.id === selectedClient)?.username}`;
-    }
-    return 'Available Machines';
-  };
-
   return (
     <div className="space-y-2">
-      <Label>
-        {showDirectSelection ? 
-          'Or select machine directly by ID:' : 
-          getTitle()
-        }
-      </Label>
+      <Label>{title}</Label>
       <Select 
         value={selectedMachine?.machine_id || undefined} 
         onValueChange={onMachineSelect}
       >
-        <SelectTrigger className={showDirectSelection ? "mt-2" : ""}>
-          <SelectValue placeholder={showDirectSelection ? "Choose machine ID..." : "Choose a machine..."} />
+        <SelectTrigger>
+          <SelectValue placeholder="Choose a machine..." />
         </SelectTrigger>
         <SelectContent>
-          {filteredMachines.map((machine) => (
+          {machines.map((machine) => (
             <SelectItem key={machine.id} value={machine.machine_id}>
-              {showDirectSelection ? (
-                `${machine.machine_id} - ${machine.client_profile?.username}`
-              ) : (
-                <div className="flex flex-col">
-                  <span className="font-medium">{machine.machine_id} - {getModelName(machine.machine_id)}</span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    Operating since {getOperatingSince(machine.machine_id)}
+              <div className="flex flex-col">
+                <span className="font-medium">
+                  {machine.machine_id} - {getModelName(machine.machine_id)}
+                </span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  {machine.location} • Operating since {getOperatingSince(machine.machine_id)}
+                </span>
+                {(userRole === 'commercial' || userRole === 'admin') && machine.client_profile?.username && (
+                  <span className="text-xs text-blue-600 dark:text-blue-400">
+                    Client: {machine.client_profile.username}
                   </span>
-                </div>
-              )}
+                )}
+              </div>
             </SelectItem>
           ))}
         </SelectContent>

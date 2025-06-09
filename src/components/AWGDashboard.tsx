@@ -6,7 +6,6 @@ import MetricsCards from '@/components/MetricsCards';
 import ProductionAnalytics from '@/components/ProductionAnalytics';
 import MachineSelector from '@/components/MachineSelector';
 import DashboardNotifications from '@/components/DashboardNotifications';
-import DashboardFooter from '@/components/DashboardFooter';
 import { useDashboardData } from '@/hooks/useDashboardData';
 
 interface Machine {
@@ -70,12 +69,6 @@ const AWGDashboard = () => {
           monthlyProductionData={monthlyProductionData}
           statusData={statusData}
           monthlyStatusData={monthlyStatusData}
-        />
-
-        <DashboardFooter 
-          profile={profile}
-          selectedMachine={selectedMachine}
-          liveData={liveData}
         />
       </div>
     </div>

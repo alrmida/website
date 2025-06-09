@@ -1,18 +1,12 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Machine, isValidMachine } from '@/utils/machineHelpers';
 
-interface Client {
-  id: string;
-  username: string;
-}
-
 export const useMachineData = () => {
   const { profile } = useAuth();
   const [machines, setMachines] = useState<Machine[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
@@ -37,14 +31,7 @@ export const useMachineData = () => {
           setMachines(validMachines);
         }
       } else {
-        // Commercial and admin users see all machines and clients
-        const { data: clientsData, error: clientsError } = await supabase
-          .from('profiles')
-          .select('id, username')
-          .eq('role', 'client');
-        
-        console.log('Clients data:', clientsData, 'Error:', clientsError);
-        
+        // Commercial and admin users see all machines
         const { data: machinesData, error: machinesError } = await supabase
           .from('machines')
           .select(`
@@ -56,7 +43,6 @@ export const useMachineData = () => {
         
         console.log('All machines data:', machinesData, 'Error:', machinesError);
         
-        if (clientsData) setClients(clientsData);
         if (machinesData) {
           const validMachines = machinesData.filter(isValidMachine);
           console.log('Valid machines after filtering:', validMachines);
@@ -76,7 +62,6 @@ export const useMachineData = () => {
 
   return {
     machines,
-    clients,
     loading,
     profile
   };
