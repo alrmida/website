@@ -77,7 +77,7 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
           animation: wave-back 1.6s infinite linear;
         }
 
-        .droplet-float {
+        .circle-float {
           animation: gentle-float 3s ease-in-out infinite;
         }
       `}</style>
@@ -101,8 +101,8 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
               </p>
             </div>
             
-            {/* Water Droplet Shape Animation */}
-            <div className="relative droplet-float">
+            {/* Water Circle Animation */}
+            <div className="relative circle-float">
               {/* Hidden SVG wave definition */}
               <svg 
                 version="1.1" 
@@ -121,18 +121,14 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
                 </defs>
               </svg>
 
-              {/* Water Droplet Container */}
-              <div className="relative w-24 h-32 overflow-hidden">
-                {/* Droplet shape using CSS */}
+              {/* Water Circle Container */}
+              <div className="relative w-24 h-24 overflow-hidden">
+                {/* Perfect circle shape */}
                 <div 
-                  className="absolute inset-0 bg-gray-900 dark:bg-gray-800 border-2 border-gray-700 dark:border-gray-600"
-                  style={{
-                    borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%',
-                    transform: 'rotate(180deg)'
-                  }}
+                  className="absolute inset-0 bg-gray-900 dark:bg-gray-800 border-2 border-gray-700 dark:border-gray-600 rounded-full"
                 >
                   {/* Percentage display */}
-                  <div className="absolute inset-0 flex items-center justify-center z-10" style={{ transform: 'rotate(180deg)' }}>
+                  <div className="absolute inset-0 flex items-center justify-center z-10">
                     <div className="text-center">
                       <div className="text-lg font-bold text-white">
                         {animatedPercentage}
@@ -143,7 +139,7 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
                   
                   {/* Water fill */}
                   <div 
-                    className="absolute inset-0 bg-blue-500 transition-transform duration-500 ease-out"
+                    className="absolute inset-0 bg-blue-500 transition-transform duration-500 ease-out rounded-full"
                     style={{ 
                       transform: `translate(0, ${100 - animatedPercentage}%)`,
                     }}
