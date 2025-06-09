@@ -13,15 +13,12 @@ export interface Machine {
   machine_id: string;
   name: string;
   location: string;
+  machine_model?: string;
+  purchase_date?: string;
   client_id?: string;
   manager_id?: string;
-  owner_entity?: string;
-  assigned_entity?: string;
-  machine_model?: string;
-  serial_number?: string;
-  purchase_date?: string;
-  assignment_date?: string;
-  status?: string;
+  created_at?: string;
+  updated_at?: string;
   client_profile?: {
     username: string;
   };

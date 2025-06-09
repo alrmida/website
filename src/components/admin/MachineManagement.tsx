@@ -23,17 +23,17 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
   
   const [newMachine, setNewMachine] = useState({
     machine_id: '',
+    machine_model: '',
     name: '',
     location: '',
-    machine_model: '',
     purchase_date: ''
   });
 
   const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
   const [editMachineData, setEditMachineData] = useState({
+    machine_model: '',
     name: '',
     location: '',
-    machine_model: '',
     purchase_date: ''
   });
 
@@ -41,7 +41,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
     if (!newMachine.machine_id || !newMachine.name) {
       toast({
         title: 'Error',
-        description: 'Machine ID and Name are required',
+        description: 'Machine ID and Owner are required',
         variant: 'destructive',
       });
       return;
@@ -80,9 +80,9 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
       
       setNewMachine({ 
         machine_id: '', 
+        machine_model: '',
         name: '', 
         location: '', 
-        machine_model: '',
         purchase_date: ''
       });
       onRefresh();
@@ -99,10 +99,10 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
   const startEditMachine = (machine: Machine) => {
     setEditingMachine(machine);
     setEditMachineData({
+      machine_model: machine.machine_model || '',
       name: machine.name,
       location: machine.location || '',
-      machine_model: (machine as any).machine_model || '',
-      purchase_date: (machine as any).purchase_date || '',
+      purchase_date: machine.purchase_date || '',
     });
   };
 
@@ -110,7 +110,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
     if (!editingMachine || !editMachineData.name) {
       toast({
         title: 'Error',
-        description: 'Machine name is required',
+        description: 'Owner name is required',
         variant: 'destructive',
       });
       return;
@@ -146,9 +146,9 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
       
       setEditingMachine(null);
       setEditMachineData({ 
+        machine_model: '',
         name: '', 
         location: '', 
-        machine_model: '',
         purchase_date: ''
       });
       onRefresh();
@@ -214,24 +214,24 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="machineName">Machine Name (Owner) *</Label>
-              <Input
-                id="machineName"
-                value={newMachine.name}
-                onChange={(e) => setNewMachine({ ...newMachine, name: e.target.value })}
-                placeholder="French Embassy"
-              />
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
               <Label htmlFor="machineModel">Model</Label>
               <Input
                 id="machineModel"
                 value={newMachine.machine_model}
                 onChange={(e) => setNewMachine({ ...newMachine, machine_model: e.target.value })}
                 placeholder="Amphore"
+              />
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="machineName">Owner *</Label>
+              <Input
+                id="machineName"
+                value={newMachine.name}
+                onChange={(e) => setNewMachine({ ...newMachine, name: e.target.value })}
+                placeholder="French Embassy"
               />
             </div>
             <div className="space-y-2">
@@ -269,21 +269,21 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="editMachineName">Machine Name (Owner) *</Label>
-                <Input
-                  id="editMachineName"
-                  value={editMachineData.name}
-                  onChange={(e) => setEditMachineData({ ...editMachineData, name: e.target.value })}
-                  placeholder="French Embassy"
-                />
-              </div>
-              <div className="space-y-2">
                 <Label htmlFor="editMachineModel">Model</Label>
                 <Input
                   id="editMachineModel"
                   value={editMachineData.machine_model}
                   onChange={(e) => setEditMachineData({ ...editMachineData, machine_model: e.target.value })}
                   placeholder="Amphore"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editMachineName">Owner *</Label>
+                <Input
+                  id="editMachineName"
+                  value={editMachineData.name}
+                  onChange={(e) => setEditMachineData({ ...editMachineData, name: e.target.value })}
+                  placeholder="French Embassy"
                 />
               </div>
             </div>
@@ -338,8 +338,8 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
               <TableHeader>
                 <TableRow>
                   <TableHead>Machine ID</TableHead>
-                  <TableHead>Owner</TableHead>
                   <TableHead>Model</TableHead>
+                  <TableHead>Owner</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead>Purchase Date</TableHead>
                   <TableHead>Actions</TableHead>
@@ -349,10 +349,10 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                 {machines.map((machine) => (
                   <TableRow key={machine.id}>
                     <TableCell className="font-mono">{machine.machine_id}</TableCell>
+                    <TableCell>{machine.machine_model || '-'}</TableCell>
                     <TableCell>{machine.name}</TableCell>
-                    <TableCell>{(machine as any).machine_model || '-'}</TableCell>
                     <TableCell>{machine.location || '-'}</TableCell>
-                    <TableCell>{(machine as any).purchase_date ? new Date((machine as any).purchase_date).toLocaleDateString() : '-'}</TableCell>
+                    <TableCell>{machine.purchase_date ? new Date(machine.purchase_date).toLocaleDateString() : '-'}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         <Button

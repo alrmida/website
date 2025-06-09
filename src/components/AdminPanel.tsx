@@ -63,7 +63,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
         role: mapDatabaseRoleToFrontend(p.role)
       })) || [];
 
-      // Fetch machines with better error handling
+      // Fetch machines with the correct columns
       const { data: machinesData, error: machinesError } = await supabase
         .from('machines')
         .select(`
@@ -71,6 +71,8 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
           machine_id,
           name,
           location,
+          machine_model,
+          purchase_date,
           client_id,
           manager_id,
           created_at,

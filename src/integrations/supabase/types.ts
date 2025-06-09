@@ -57,8 +57,10 @@ export type Database = {
           id: number
           location: string | null
           machine_id: string
+          machine_model: string | null
           manager_id: string | null
           name: string
+          purchase_date: string | null
           updated_at: string | null
         }
         Insert: {
@@ -67,8 +69,10 @@ export type Database = {
           id?: number
           location?: string | null
           machine_id: string
+          machine_model?: string | null
           manager_id?: string | null
           name: string
+          purchase_date?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -77,8 +81,10 @@ export type Database = {
           id?: number
           location?: string | null
           machine_id?: string
+          machine_model?: string | null
           manager_id?: string | null
           name?: string
+          purchase_date?: string | null
           updated_at?: string | null
         }
         Relationships: [
