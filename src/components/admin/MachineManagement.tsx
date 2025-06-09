@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { Trash2, Plus, Pencil } from 'lucide-react';
@@ -19,26 +20,36 @@ interface MachineManagementProps {
   onRefresh: () => void;
 }
 
+// Extended form data to include client assignment
+interface ExtendedMachineFormData extends MachineFormData {
+  client_id: string;
+}
+
 const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: MachineManagementProps) => {
   const { toast } = useToast();
   
-  const [newMachine, setNewMachine] = useState<MachineFormData>({
+  const [newMachine, setNewMachine] = useState<ExtendedMachineFormData>({
     machine_id: '',
     machine_model: '',
     name: '',
     location: '',
-    purchase_date: ''
+    purchase_date: '',
+    client_id: ''
   });
 
   const [editingMachine, setEditingMachine] = useState<MachineWithClient | null>(null);
-  const [editMachineData, setEditMachineData] = useState<Omit<MachineFormData, 'machine_id'>>({
+  const [editMachineData, setEditMachineData] = useState<Omit<ExtendedMachineFormData, 'machine_id'>>({
     machine_model: '',
     name: '',
     location: '',
-    purchase_date: ''
+    purchase_date: '',
+    client_id: ''
   });
 
-  const validateMachineForm = (data: MachineFormData): string | null => {
+  // Get client profiles only
+  const clientProfiles = profiles.filter(p => p.role === 'client');
+
+  const validateMachineForm = (data: ExtendedMachineFormData): string | null => {
     if (!data.machine_id.trim()) {
       return 'Machine ID is required';
     }
@@ -74,6 +85,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
         location: newMachine.location.trim() || null,
         machine_model: newMachine.machine_model.trim() || null,
         purchase_date: newMachine.purchase_date || null,
+        client_id: newMachine.client_id || null,
         manager_id: profile?.id || null,
       };
       
@@ -101,7 +113,8 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
         machine_model: '',
         name: '', 
         location: '', 
-        purchase_date: ''
+        purchase_date: '',
+        client_id: ''
       });
       onRefresh();
     } catch (error: any) {
@@ -121,6 +134,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
       name: machine.name,
       location: machine.location || '',
       purchase_date: machine.purchase_date || '',
+      client_id: machine.client_id || '',
     });
   };
 
@@ -142,6 +156,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
         location: editMachineData.location.trim() || null,
         machine_model: editMachineData.machine_model.trim() || null,
         purchase_date: editMachineData.purchase_date || null,
+        client_id: editMachineData.client_id || null,
         updated_at: new Date().toISOString(),
       };
       
@@ -167,7 +182,8 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
         machine_model: '',
         name: '', 
         location: '', 
-        purchase_date: ''
+        purchase_date: '',
+        client_id: ''
       });
       onRefresh();
     } catch (error: any) {
@@ -214,6 +230,12 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
     }
   };
 
+  const getClientName = (clientId: string | null) => {
+    if (!clientId) return 'Unassigned';
+    const client = clientProfiles.find(p => p.id === clientId);
+    return client?.username || 'Unknown Client';
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -246,7 +268,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
             </div>
           </div>
           
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="machineName">Owner *</Label>
               <Input
@@ -256,6 +278,28 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                 placeholder="French Embassy"
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="clientSelect">Assign to Client</Label>
+              <Select
+                value={newMachine.client_id}
+                onValueChange={(value) => setNewMachine({ ...newMachine, client_id: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a client (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No client assigned</SelectItem>
+                  {clientProfiles.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.username}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="machineLocation">Location</Label>
               <Input
@@ -315,6 +359,25 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
+                <Label htmlFor="editClientSelect">Assign to Client</Label>
+                <Select
+                  value={editMachineData.client_id}
+                  onValueChange={(value) => setEditMachineData({ ...editMachineData, client_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a client (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No client assigned</SelectItem>
+                    {clientProfiles.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.username}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="editMachineLocation">Location</Label>
                 <Input
                   id="editMachineLocation"
@@ -323,15 +386,16 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                   placeholder="Paris, France"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="editPurchaseDate">Purchase Date</Label>
-                <Input
-                  id="editPurchaseDate"
-                  type="date"
-                  value={editMachineData.purchase_date}
-                  onChange={(e) => setEditMachineData({ ...editMachineData, purchase_date: e.target.value })}
-                />
-              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="editPurchaseDate">Purchase Date</Label>
+              <Input
+                id="editPurchaseDate"
+                type="date"
+                value={editMachineData.purchase_date}
+                onChange={(e) => setEditMachineData({ ...editMachineData, purchase_date: e.target.value })}
+              />
             </div>
 
             <div className="flex gap-2">
@@ -365,6 +429,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                   <TableHead>Machine ID</TableHead>
                   <TableHead>Model</TableHead>
                   <TableHead>Owner</TableHead>
+                  <TableHead>Client</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead>Operating Since</TableHead>
                   <TableHead>Actions</TableHead>
@@ -376,6 +441,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                     <TableCell className="font-mono">{machine.machine_id}</TableCell>
                     <TableCell>{getDisplayModelName(machine)}</TableCell>
                     <TableCell>{machine.name}</TableCell>
+                    <TableCell>{getClientName(machine.client_id)}</TableCell>
                     <TableCell>{machine.location || '-'}</TableCell>
                     <TableCell>{getOperatingSince(machine)}</TableCell>
                     <TableCell>
