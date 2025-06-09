@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Activity } from 'lucide-react';
+import { Activity, Droplet } from 'lucide-react';
 
 interface WaterTankIndicatorProps {
   currentLevel: number;
@@ -10,6 +10,10 @@ interface WaterTankIndicatorProps {
 }
 
 const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTankIndicatorProps) => {
+  // Cap the values to avoid noise above limits
+  const cappedLevel = Math.min(currentLevel, maxCapacity);
+  const cappedPercentage = Math.min(percentage, 100);
+
   return (
     <Card className="bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow border-gray-200 dark:border-gray-700">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -20,7 +24,7 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
         <div className="flex items-center space-x-4">
           <div className="flex-1">
             <div className="text-3xl font-bold text-gray-900 dark:text-white">
-              {currentLevel} L <span className="text-xl">({percentage}%)</span>
+              {cappedLevel} L <span className="text-xl">({cappedPercentage}%)</span>
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               Water Tank Fill • Capacity: {maxCapacity}L
@@ -33,16 +37,18 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
               {/* Water fill animation */}
               <div 
                 className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-blue-500 to-blue-300 dark:from-blue-600 dark:to-blue-400 transition-all duration-1000 ease-out"
-                style={{ height: `${percentage}%` }}
+                style={{ height: `${cappedPercentage}%` }}
               >
-                {/* Water wave animation */}
-                <div className="absolute top-0 left-0 right-0 h-2 bg-blue-400 dark:bg-blue-300 opacity-60 animate-pulse"></div>
+                {/* Animated water droplet */}
+                <div className="absolute top-1 left-1/2 transform -translate-x-1/2">
+                  <Droplet className="h-3 w-3 text-blue-200 dark:text-blue-100 animate-bounce" />
+                </div>
               </div>
               
               {/* Percentage indicator */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <span className="text-xs font-bold text-white drop-shadow-md">
-                  {percentage}%
+                  {cappedPercentage}%
                 </span>
               </div>
             </div>
