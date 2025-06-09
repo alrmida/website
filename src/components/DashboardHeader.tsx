@@ -81,19 +81,26 @@ const DashboardHeader = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-4">
-            {/* Logo */}
+            {/* Logo with theme-specific versions */}
             <div className="flex items-center space-x-3">
+              {/* Light mode logo (blue) */}
               <img 
-                src="/lovable-uploads/6b2020dd-160c-4c6a-bac9-5f824123d5d1.png" 
+                src="/lovable-uploads/c05664f4-db3f-441e-bea0-70e86e173d09.png" 
                 alt="Kumulus Logo" 
-                className="h-8 w-8"
+                className="h-10 block dark:hidden"
+              />
+              {/* Dark mode logo (white) */}
+              <img 
+                src="/lovable-uploads/2feef9bd-0972-438a-a5c1-a16aa709976b.png" 
+                alt="Kumulus Logo" 
+                className="h-10 hidden dark:block"
               />
               <div className="flex flex-col">
                 <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                  Kumulus AWG Dashboard
+                  KUMULUS
                 </h1>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Sustainable Water Generation Technology
+                  Your Drinking Water From Air. Mineralized, Fresh, Sustainable
                 </p>
               </div>
             </div>
