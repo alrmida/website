@@ -7,17 +7,7 @@ import ProductionAnalytics from '@/components/ProductionAnalytics';
 import MachineSelector from '@/components/MachineSelector';
 import DashboardNotifications from '@/components/DashboardNotifications';
 import { useDashboardData } from '@/hooks/useDashboardData';
-
-interface Machine {
-  id: number;
-  machine_id: string;
-  name: string;
-  location: string;
-  client_id: string;
-  profiles?: {
-    username: string;
-  };
-}
+import { Machine } from '@/utils/machineHelpers';
 
 const AWGDashboard = () => {
   const { profile } = useAuth();

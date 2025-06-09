@@ -2,17 +2,7 @@
 import { useMemo } from 'react';
 import { useLiveMachineData } from '@/hooks/useLiveMachineData';
 import { getStaticProductionData, getStaticStatusData } from '@/utils/staticDataGenerator';
-
-interface Machine {
-  id: number;
-  machine_id: string;
-  name: string;
-  location: string;
-  client_id: string;
-  profiles?: {
-    username: string;
-  };
-}
+import { Machine } from '@/utils/machineHelpers';
 
 // Helper function to get model name based on machine ID
 const getModelName = (machineId: string): string => {
