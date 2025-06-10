@@ -112,13 +112,50 @@
   .water-fill-box {
     height: 140px;
     width: 140px;
-    background: #020438;
+    background: transparent;
+    border: 3px solid #e5e7eb;
     border-radius: 50%;
     overflow: hidden;
     position: relative;
+    /* Anti-aliasing for smoother edges */
+    -webkit-border-radius: 50%;
+    -moz-border-radius: 50%;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-perspective: 1000;
+    perspective: 1000;
   }
 
-  .water-percent {
+  /* Dark mode border */
+  .dark .water-fill-box {
+    border-color: #374151;
+  }
+
+  /* Background text (always dark) */
+  .water-percent-bg {
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #1f2937;
+    font-size: 32px;
+    font-weight: bold;
+  }
+
+  /* Dark mode background text */
+  .dark .water-percent-bg {
+    color: #f9fafb;
+  }
+
+  /* Foreground text (white, clipped by water) */
+  .water-percent-fg {
     position: absolute;
     left: 0;
     top: 0;
@@ -128,9 +165,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: #ffffff;
     font-size: 32px;
     font-weight: bold;
+    /* Clip this text to only show where water is present */
+    clip-path: polygon(0% 100%, 100% 100%, 100% 0%, 0% 0%);
+    transition: clip-path 1s ease-out;
   }
 
   .water-percent-num {
@@ -151,12 +191,19 @@
     height: 100%;
     background: #4D6DE3;
     transform: translate(0, 100%);
+    /* Smoother transitions */
+    -webkit-transition: transform 1s ease-out;
+    transition: transform 1s ease-out;
   }
 
   .water-wave {
     width: 200%;
     position: absolute;
     bottom: 100%;
+    /* Smoother rendering */
+    shape-rendering: auto;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
   }
 
   .water-wave-back {
@@ -182,5 +229,26 @@
     100% {
       transform: translate(50%, 0);
     }
+  }
+
+  /* Dynamic clipping based on water level */
+  .water-fill[style*="translate(0, 0%)"] ~ .water-percent-fg {
+    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
+  }
+  
+  .water-fill[style*="translate(0, 25%)"] ~ .water-percent-fg {
+    clip-path: polygon(0% 75%, 100% 75%, 100% 100%, 0% 100%);
+  }
+  
+  .water-fill[style*="translate(0, 50%)"] ~ .water-percent-fg {
+    clip-path: polygon(0% 50%, 100% 50%, 100% 100%, 0% 100%);
+  }
+  
+  .water-fill[style*="translate(0, 75%)"] ~ .water-percent-fg {
+    clip-path: polygon(0% 25%, 100% 25%, 100% 100%, 0% 100%);
+  }
+  
+  .water-fill[style*="translate(0, 100%)"] ~ .water-percent-fg {
+    clip-path: polygon(0% 100%, 100% 100%, 100% 100%, 0% 100%);
   }
 }
