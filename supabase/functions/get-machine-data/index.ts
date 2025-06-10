@@ -64,7 +64,8 @@ from(bucket: "${influxBucket}")
 
     console.log('Executing Flux query for latest data point:', fluxQuery);
 
-    const baseUrl = influxUrl.endsWith('/') ? influxUrl.slice(0, -1) : influxUrl;
+    // Fix URL construction - remove double slashes and ensure proper formatting
+    const baseUrl = influxUrl.replace(/\/+$/, ''); // Remove trailing slashes
     const queryUrl = `${baseUrl}/api/v2/query?org=${encodeURIComponent(influxOrg)}`;
     
     console.log('Query URL:', queryUrl);
@@ -80,12 +81,14 @@ from(bucket: "${influxBucket}")
     });
 
     console.log('InfluxDB response status:', response.status);
+    console.log('InfluxDB response headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('InfluxDB query failed:', response.status, response.statusText, errorText);
       return new Response(JSON.stringify({ 
-        error: `InfluxDB returned ${response.status} ${response.statusText}: ${errorText}` 
+        error: `InfluxDB returned ${response.status} ${response.statusText}: ${errorText}`,
+        details: { url: queryUrl, status: response.status }
       }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -99,7 +102,10 @@ from(bucket: "${influxBucket}")
     const lines = responseText.trim().split('\n');
     if (lines.length < 2) {
       console.log('No data found in CSV response');
-      return new Response(JSON.stringify({ error: 'No data returned from InfluxDB' }), {
+      return new Response(JSON.stringify({ 
+        error: 'No data returned from InfluxDB',
+        details: { responseLines: lines.length, rawResponse: responseText.substring(0, 200) }
+      }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -130,20 +136,22 @@ from(bucket: "${influxBucket}")
       }
     }
 
+    console.log('Parsed data from InfluxDB:', data);
+
     // Convert timestamp to proper format
     const timestamp = new Date(data._time);
     
-    // Prepare data point for storage
+    // Prepare data point for storage with proper field mapping
     const dataPoint = {
       machine_id: 'KU001619000079', // The actual machine ID
       timestamp_utc: timestamp.toISOString(),
-      water_level_l: data.water_level_L || null,
+      water_level_l: data.water_level_L || data['water_level_L'] || null,
       compressor_on: data.compressor_on || 0,
-      ambient_temp_c: data.ambient_temp_C || null,
-      ambient_rh_pct: data.ambient_rh_pct || null,
-      refrigerant_temp_c: data.refrigerant_temp_C || null,
-      exhaust_temp_c: data.exhaust_temp_C || null,
-      current_a: data.current_A || null,
+      ambient_temp_c: data.ambient_temp_C || data['ambient_temp_C'] || null,
+      ambient_rh_pct: data.ambient_rh_pct || data['ambient_rh_pct'] || null,
+      refrigerant_temp_c: data.refrigerant_temp_C || data['refrigerant_temp_C'] || null,
+      exhaust_temp_c: data.exhaust_temp_C || data['exhaust_temp_C'] || null,
+      current_a: data.current_A || data['current_A'] || null,
       treating_water: data.treating_water === 1 || data.treating_water === true,
       serving_water: data.serving_water === 1 || data.serving_water === true,
       producing_water: data.producing_water === 1 || data.producing_water === true,
@@ -151,7 +159,7 @@ from(bucket: "${influxBucket}")
       disinfecting: data.disinfecting === 1 || data.disinfecting === true
     };
 
-    console.log('Processed data point:', dataPoint);
+    console.log('Processed data point for storage:', dataPoint);
 
     // Store data point in Supabase (check for existing timestamp first)
     try {
@@ -190,8 +198,15 @@ from(bucket: "${influxBucket}")
 
     const result = {
       status: 'ok',
-      data: responseData
+      data: responseData,
+      debug: {
+        influxHeaders: headers,
+        influxData: data,
+        storedData: dataPoint
+      }
     };
+
+    console.log('Final response:', result);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -200,7 +215,8 @@ from(bucket: "${influxBucket}")
   } catch (error) {
     console.error('Error in get-machine-data function:', error);
     return new Response(JSON.stringify({ 
-      error: error.message 
+      error: error.message,
+      stack: error.stack
     }), {
       status: 502,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
