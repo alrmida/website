@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import UserManagement from './admin/UserManagement';
 import MachineManagement from './admin/MachineManagement';
 import InvitationManagement from './admin/InvitationManagement';
+import RawDataManagement from './admin/RawDataManagement';
 import { Profile, Invitation } from './admin/types';
 import { MachineWithClient } from '@/types/machine';
 import { mapDatabaseRoleToFrontend } from './admin/utils';
@@ -172,10 +174,11 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
         )}
 
         <Tabs defaultValue="users" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="machines">Machines</TabsTrigger>
             <TabsTrigger value="invitations">Invitations</TabsTrigger>
+            <TabsTrigger value="rawdata">Raw Data</TabsTrigger>
           </TabsList>
 
           <TabsContent value="users" className="space-y-4">
@@ -196,6 +199,13 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
             <InvitationManagement 
               invitations={invitations}
               profile={profile}
+              loading={loading}
+              onRefresh={fetchData}
+            />
+          </TabsContent>
+
+          <TabsContent value="rawdata" className="space-y-4">
+            <RawDataManagement 
               loading={loading}
               onRefresh={fetchData}
             />
