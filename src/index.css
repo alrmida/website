@@ -147,11 +147,31 @@
     color: #1f2937;
     font-size: 32px;
     font-weight: bold;
+    /* Add blue outline for better readability */
+    text-shadow: 
+      -1px -1px 0 #4D6DE3,
+      1px -1px 0 #4D6DE3,
+      -1px 1px 0 #4D6DE3,
+      1px 1px 0 #4D6DE3,
+      -2px 0 0 #4D6DE3,
+      2px 0 0 #4D6DE3,
+      0 -2px 0 #4D6DE3,
+      0 2px 0 #4D6DE3;
   }
 
   /* Dark mode background text */
   .dark .water-percent-bg {
     color: #f9fafb;
+    /* Keep the same blue outline in dark mode */
+    text-shadow: 
+      -1px -1px 0 #4D6DE3,
+      1px -1px 0 #4D6DE3,
+      -1px 1px 0 #4D6DE3,
+      1px 1px 0 #4D6DE3,
+      -2px 0 0 #4D6DE3,
+      2px 0 0 #4D6DE3,
+      0 -2px 0 #4D6DE3,
+      0 2px 0 #4D6DE3;
   }
 
   /* Foreground text (white, clipped by water) */
@@ -168,6 +188,16 @@
     color: #ffffff;
     font-size: 32px;
     font-weight: bold;
+    /* Add blue outline for better readability */
+    text-shadow: 
+      -1px -1px 0 #4D6DE3,
+      1px -1px 0 #4D6DE3,
+      -1px 1px 0 #4D6DE3,
+      1px 1px 0 #4D6DE3,
+      -2px 0 0 #4D6DE3,
+      2px 0 0 #4D6DE3,
+      0 -2px 0 #4D6DE3,
+      0 2px 0 #4D6DE3;
     /* Clip this text to only show where water is present */
     clip-path: polygon(0% 100%, 100% 100%, 100% 0%, 0% 0%);
     transition: clip-path 1s ease-out;
@@ -209,14 +239,16 @@
   .water-wave-back {
     right: 0;
     fill: #C7EEFF;
-    animation: wave-back 1.4s infinite linear;
+    /* Slowed down by 25%: was 1.4s, now 1.75s */
+    animation: wave-back 1.75s infinite linear;
   }
 
   .water-wave-front {
     left: 0;
     fill: #4D6DE3;
     margin-bottom: -1px;
-    animation: wave-front 0.7s infinite linear;
+    /* Slowed down by 25%: was 0.7s, now 0.875s */
+    animation: wave-front 0.875s infinite linear;
   }
 
   @keyframes wave-front {
