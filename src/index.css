@@ -194,7 +194,7 @@
     position: absolute;
     bottom: 100%;
     left: 0;
-    shape-rendering: auto;
+    shape-rendering: geometricPrecision;
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
   }

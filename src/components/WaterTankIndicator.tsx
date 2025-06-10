@@ -39,7 +39,7 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
           
           {/* Water Fill Animation Container */}
           <div className="water-tank-container">
-            {/* Hidden SVG definitions */}
+            {/* Hidden SVG definitions for smooth waves */}
             <svg className="hidden">
               <defs>
                 <g id="wave">
@@ -71,7 +71,7 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
                   <span className="water-percent-symbol">%</span>
                 </div>
                 
-                {/* Animated waves */}
+                {/* Animated waves with smooth edges */}
                 <svg viewBox="0 0 560 20" className="water-wave water-wave-back">
                   <use href="#wave"></use>
                 </svg>
