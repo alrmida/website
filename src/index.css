@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -117,9 +116,6 @@
     border-radius: 50%;
     overflow: hidden;
     position: relative;
-    /* Anti-aliasing for smoother edges */
-    -webkit-border-radius: 50%;
-    -moz-border-radius: 50%;
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
     -webkit-backface-visibility: hidden;
@@ -133,7 +129,7 @@
     border-color: #374151;
   }
 
-  /* Background text (always dark) - positioned absolutely */
+  /* Background text (always visible - dark in light mode, light in dark mode) */
   .water-percent-bg {
     position: absolute;
     left: 0;
@@ -155,12 +151,12 @@
     color: #f3f4f6;
   }
 
-  /* Foreground text (white) - inside water fill for clipping */
+  /* Foreground text (white) - positioned to align with background text */
   .water-percent-fg {
     position: absolute;
     left: 0;
     top: 0;
-    z-index: 1;
+    z-index: 3;
     width: 100%;
     height: 100%;
     display: flex;
@@ -170,9 +166,6 @@
     font-size: 28px;
     font-weight: bold;
     pointer-events: none;
-    /* Move it up by the same amount the water is translated down */
-    transform: translateY(calc(-100% + var(--water-level, 0%)));
-    transition: transform 1s ease-out;
   }
 
   .water-percent-num {
@@ -191,11 +184,8 @@
     z-index: 2;
     width: 100%;
     height: 100%;
-    background: #4D6DE3;
-    transform: translate(0, 100%);
-    overflow: hidden;
-    /* Smoother transitions */
-    -webkit-transition: transform 1s ease-out;
+    background: linear-gradient(to bottom, #60a5fa 0%, #3b82f6 100%);
+    transform: translateY(100%);
     transition: transform 1s ease-out;
   }
 
@@ -203,34 +193,40 @@
     width: 200%;
     position: absolute;
     bottom: 100%;
-    /* Smoother rendering */
+    left: 0;
     shape-rendering: auto;
-    -webkit-transform: translateZ(0);
     transform: translateZ(0);
+    -webkit-transform: translateZ(0);
   }
 
   .water-wave-back {
-    right: 0;
-    fill: #C7EEFF;
+    fill: rgba(147, 197, 253, 0.5);
     animation: wave-back 1.4s infinite linear;
+    z-index: 1;
   }
 
   .water-wave-front {
-    left: 0;
-    fill: #4D6DE3;
+    fill: #3b82f6;
     margin-bottom: -1px;
     animation: wave-front 0.7s infinite linear;
+    z-index: 2;
   }
 
   @keyframes wave-front {
+    0% {
+      transform: translateX(0);
+    }
     100% {
-      transform: translate(-50%, 0);
+      transform: translateX(-50%);
     }
   }
 
   @keyframes wave-back {
+    0% {
+      transform: translateX(0);
+    }
     100% {
-      transform: translate(50%, 0);
+      transform: translateX(50%);
     }
   }
 }

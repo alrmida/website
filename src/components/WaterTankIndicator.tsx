@@ -39,41 +39,44 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
           
           {/* Water Fill Animation Container */}
           <div className="water-tank-container">
-            <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink" x="0px" y="0px" style={{ display: 'none' }}>
-              <symbol id="wave">
-                <path d="M420,20c21.5-0.4,38.8-2.5,51.1-4.5c13.4-2.2,26.5-5.2,27.3-5.4C514,6.5,518,4.7,528.5,2.7c7.1-1.3,17.9-2.8,31.5-2.7c0,0,0,0,0,0v20H420z"></path>
-                <path d="M420,20c-21.5-0.4-38.8-2.5-51.1-4.5c-13.4-2.2-26.5-5.2-27.3-5.4C326,6.5,322,4.7,311.5,2.7C304.3,1.4,293.6-0.1,280,0c0,0,0,0,0,0v20H420z"></path>
-                <path d="M140,20c21.5-0.4,38.8-2.5,51.1-4.5c13.4-2.2,26.5-5.2,27.3-5.4C234,6.5,238,4.7,248.5,2.7c7.1-1.3,17.9-2.8,31.5-2.7c0,0,0,0,0,0v20H140z"></path>
-                <path d="M140,20c-21.5-0.4-38.8-2.5-51.1-4.5c-13.4-2.2-26.5-5.2-27.3-5.4C46,6.5,42,4.7,31.5,2.7C24.3,1.4,13.6-0.1,0,0c0,0,0,0,0,0l0,20H140z"></path>
-              </symbol>
+            {/* Hidden SVG definitions */}
+            <svg className="hidden">
+              <defs>
+                <g id="wave">
+                  <path d="M420,20c21.5-0.4,38.8-2.5,51.1-4.5c13.4-2.2,26.5-5.2,27.3-5.4C514,6.5,518,4.7,528.5,2.7c7.1-1.3,17.9-2.8,31.5-2.7c0,0,0,0,0,0v20H420z"></path>
+                  <path d="M420,20c-21.5-0.4-38.8-2.5-51.1-4.5c-13.4-2.2-26.5-5.2-27.3-5.4C326,6.5,322,4.7,311.5,2.7C304.3,1.4,293.6-0.1,280,0c0,0,0,0,0,0v20H420z"></path>
+                  <path d="M140,20c21.5-0.4,38.8-2.5,51.1-4.5c13.4-2.2,26.5-5.2,27.3-5.4C234,6.5,238,4.7,248.5,2.7c7.1-1.3,17.9-2.8,31.5-2.7c0,0,0,0,0,0v20H140z"></path>
+                  <path d="M140,20c-21.5-0.4-38.8-2.5-51.1-4.5c-13.4-2.2-26.5-5.2-27.3-5.4C46,6.5,42,4.7,31.5,2.7C24.3,1.4,13.6-0.1,0,0c0,0,0,0,0,0l0,20H140z"></path>
+                </g>
+              </defs>
             </svg>
             
             <div className="water-fill-box">
               {/* Background text (dark) - always visible */}
-              <div className="water-percent water-percent-bg">
-                <div className="water-percent-num">{Math.round(cappedPercentage)}</div>
-                <div className="water-percent-symbol">%</div>
+              <div className="water-percent-bg">
+                <span className="water-percent-num">{Math.round(cappedPercentage)}</span>
+                <span className="water-percent-symbol">%</span>
               </div>
               
               {/* Water fill with overflow hidden for clipping */}
               <div 
                 className="water-fill" 
                 style={{ 
-                  transform: `translate(0, ${100 - cappedPercentage}%)`,
-                  transition: 'transform 1s ease-out'
+                  transform: `translateY(${100 - cappedPercentage}%)`,
                 }}
               >
                 {/* Foreground text (white) - only visible where water is present */}
-                <div className="water-percent water-percent-fg">
-                  <div className="water-percent-num">{Math.round(cappedPercentage)}</div>
-                  <div className="water-percent-symbol">%</div>
+                <div className="water-percent-fg">
+                  <span className="water-percent-num">{Math.round(cappedPercentage)}</span>
+                  <span className="water-percent-symbol">%</span>
                 </div>
                 
+                {/* Animated waves */}
                 <svg viewBox="0 0 560 20" className="water-wave water-wave-back">
-                  <use xlinkHref="#wave"></use>
+                  <use href="#wave"></use>
                 </svg>
                 <svg viewBox="0 0 560 20" className="water-wave water-wave-front">
-                  <use xlinkHref="#wave"></use>
+                  <use href="#wave"></use>
                 </svg>
               </div>
             </div>
