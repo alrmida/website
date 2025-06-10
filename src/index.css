@@ -133,7 +133,7 @@
     border-color: #374151;
   }
 
-  /* Background text (always dark) */
+  /* Background text (always dark) - positioned absolutely */
   .water-percent-bg {
     position: absolute;
     left: 0;
@@ -144,33 +144,35 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #1f2937;
-    font-size: 32px;
+    color: #374151;
+    font-size: 28px;
     font-weight: bold;
+    pointer-events: none;
   }
 
   /* Dark mode background text */
   .dark .water-percent-bg {
-    color: #f9fafb;
+    color: #f3f4f6;
   }
 
-  /* Foreground text (white, clipped by water) */
+  /* Foreground text (white) - inside water fill for clipping */
   .water-percent-fg {
     position: absolute;
     left: 0;
     top: 0;
-    z-index: 3;
+    z-index: 1;
     width: 100%;
     height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #ffffff;
-    font-size: 32px;
+    font-size: 28px;
     font-weight: bold;
-    /* Clip this text to only show where water is present */
-    clip-path: polygon(0% 100%, 100% 100%, 100% 0%, 0% 0%);
-    transition: clip-path 1s ease-out;
+    pointer-events: none;
+    /* Move it up by the same amount the water is translated down */
+    transform: translateY(calc(-100% + var(--water-level, 0%)));
+    transition: transform 1s ease-out;
   }
 
   .water-percent-num {
@@ -178,7 +180,7 @@
   }
 
   .water-percent-symbol {
-    font-size: 16px;
+    font-size: 14px;
     margin-left: 2px;
   }
 
@@ -191,6 +193,7 @@
     height: 100%;
     background: #4D6DE3;
     transform: translate(0, 100%);
+    overflow: hidden;
     /* Smoother transitions */
     -webkit-transition: transform 1s ease-out;
     transition: transform 1s ease-out;
@@ -229,26 +232,5 @@
     100% {
       transform: translate(50%, 0);
     }
-  }
-
-  /* Dynamic clipping based on water level */
-  .water-fill[style*="translate(0, 0%)"] ~ .water-percent-fg {
-    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
-  }
-  
-  .water-fill[style*="translate(0, 25%)"] ~ .water-percent-fg {
-    clip-path: polygon(0% 75%, 100% 75%, 100% 100%, 0% 100%);
-  }
-  
-  .water-fill[style*="translate(0, 50%)"] ~ .water-percent-fg {
-    clip-path: polygon(0% 50%, 100% 50%, 100% 100%, 0% 100%);
-  }
-  
-  .water-fill[style*="translate(0, 75%)"] ~ .water-percent-fg {
-    clip-path: polygon(0% 25%, 100% 25%, 100% 100%, 0% 100%);
-  }
-  
-  .water-fill[style*="translate(0, 100%)"] ~ .water-percent-fg {
-    clip-path: polygon(0% 100%, 100% 100%, 100% 100%, 0% 100%);
   }
 }

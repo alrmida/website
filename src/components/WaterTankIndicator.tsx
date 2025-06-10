@@ -40,23 +40,6 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
           {/* Water Fill Animation Container */}
           <div className="water-tank-container">
             <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink" x="0px" y="0px" style={{ display: 'none' }}>
-              <defs>
-                <clipPath id="circle-clip">
-                  <circle cx="70" cy="70" r="70" />
-                </clipPath>
-                <mask id="water-mask">
-                  <rect width="100%" height="100%" fill="black"/>
-                  <div 
-                    style={{ 
-                      position: 'absolute',
-                      width: '100%',
-                      height: `${cappedPercentage}%`,
-                      bottom: 0,
-                      background: 'white'
-                    }}
-                  />
-                </mask>
-              </defs>
               <symbol id="wave">
                 <path d="M420,20c21.5-0.4,38.8-2.5,51.1-4.5c13.4-2.2,26.5-5.2,27.3-5.4C514,6.5,518,4.7,528.5,2.7c7.1-1.3,17.9-2.8,31.5-2.7c0,0,0,0,0,0v20H420z"></path>
                 <path d="M420,20c-21.5-0.4-38.8-2.5-51.1-4.5c-13.4-2.2-26.5-5.2-27.3-5.4C326,6.5,322,4.7,311.5,2.7C304.3,1.4,293.6-0.1,280,0c0,0,0,0,0,0v20H420z"></path>
@@ -66,18 +49,13 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
             </svg>
             
             <div className="water-fill-box">
-              {/* Background text (dark) */}
+              {/* Background text (dark) - always visible */}
               <div className="water-percent water-percent-bg">
                 <div className="water-percent-num">{Math.round(cappedPercentage)}</div>
                 <div className="water-percent-symbol">%</div>
               </div>
               
-              {/* Foreground text (white, clipped by water) */}
-              <div className="water-percent water-percent-fg">
-                <div className="water-percent-num">{Math.round(cappedPercentage)}</div>
-                <div className="water-percent-symbol">%</div>
-              </div>
-              
+              {/* Water fill with overflow hidden for clipping */}
               <div 
                 className="water-fill" 
                 style={{ 
@@ -85,6 +63,12 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
                   transition: 'transform 1s ease-out'
                 }}
               >
+                {/* Foreground text (white) - only visible where water is present */}
+                <div className="water-percent water-percent-fg">
+                  <div className="water-percent-num">{Math.round(cappedPercentage)}</div>
+                  <div className="water-percent-symbol">%</div>
+                </div>
+                
                 <svg viewBox="0 0 560 20" className="water-wave water-wave-back">
                   <use xlinkHref="#wave"></use>
                 </svg>
