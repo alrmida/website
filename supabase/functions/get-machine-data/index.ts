@@ -1,6 +1,6 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -26,53 +26,42 @@ serve(async (req) => {
     const influxToken = Deno.env.get('INFLUXDB_TOKEN');
     const influxOrg = Deno.env.get('INFLUXDB_ORG');
     const influxBucket = Deno.env.get('INFLUXDB_BUCKET') || 'KumulusData';
+    
+    // Supabase credentials for storing data
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
     console.log('Environment check:', {
       hasUrl: !!influxUrl,
       hasToken: !!influxToken,
       hasOrg: !!influxOrg,
       bucket: influxBucket,
-      url: influxUrl
+      url: influxUrl,
+      hasSupabaseUrl: !!supabaseUrl,
+      hasSupabaseKey: !!supabaseServiceKey
     });
 
     if (!influxUrl || !influxToken || !influxOrg) {
       throw new Error('Missing InfluxDB configuration');
     }
 
-    // Modified Flux query to get both fields separately and then join them
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Missing Supabase configuration');
+    }
+
+    // Initialize Supabase client with service role key
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Query to get recent data points (last 10 minutes) to collect and store
     const fluxQuery = `
-import "join"
-
-water_level = from(bucket: "${influxBucket}")
+from(bucket: "${influxBucket}")
   |> range(start: -10m)
   |> filter(fn: (r) => r._measurement == "awg_data_full")
-  |> filter(fn: (r) => r._field == "water_level_L")
-  |> group(columns: [])
-  |> last()
-  |> drop(columns: ["_start", "_stop"])
-
-compressor = from(bucket: "${influxBucket}")
-  |> range(start: -10m)
-  |> filter(fn: (r) => r._measurement == "awg_data_full")
-  |> filter(fn: (r) => r._field == "compressor_on")
-  |> group(columns: [])
-  |> last()
-  |> drop(columns: ["_start", "_stop"])
-
-join.left(
-  left: water_level,
-  right: compressor,
-  on: (l, r) => l._time == r._time,
-  as: (l, r) => ({
-    _time: l._time,
-    water_level_L: l._value,
-    compressor_on: if exists r._value then r._value else 0.0
-  })
-)`;
+  |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+  |> sort(columns: ["_time"])`;
 
     console.log('Executing Flux query:', fluxQuery);
 
-    // Ensure the URL doesn't have a trailing slash and construct the proper query endpoint
     const baseUrl = influxUrl.endsWith('/') ? influxUrl.slice(0, -1) : influxUrl;
     const queryUrl = `${baseUrl}/api/v2/query?org=${encodeURIComponent(influxOrg)}`;
     
@@ -83,13 +72,12 @@ join.left(
       headers: {
         'Authorization': `Token ${influxToken}`,
         'Content-Type': 'application/vnd.flux',
-        'Accept': 'application/csv', // Request CSV format which is more reliable
+        'Accept': 'application/csv',
       },
       body: fluxQuery,
     });
 
     console.log('InfluxDB response status:', response.status);
-    console.log('InfluxDB response headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -115,52 +103,107 @@ join.left(
       });
     }
 
-    // Parse CSV headers - handle carriage returns
+    // Parse CSV headers
     const headers = lines[0].split(',').map(h => h.trim().replace(/\r$/, ''));
     console.log('CSV headers:', headers);
 
-    // Parse data row (skip first line which is headers)
-    const dataRow = lines[1].split(',').map(d => d.trim().replace(/\r$/, ''));
-    console.log('CSV data row:', dataRow);
+    // Process each data row (skip header)
+    const dataPointsToStore = [];
+    let latestDataPoint = null;
 
-    if (dataRow.length !== headers.length) {
-      console.error('CSV parsing error: header/data length mismatch');
-      return new Response(JSON.stringify({ 
-        error: 'CSV parsing error: header/data length mismatch' 
-      }), {
-        status: 502,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Build the data object from CSV
-    const data: any = {};
-    for (let i = 0; i < headers.length; i++) {
-      const header = headers[i].trim();
-      const value = dataRow[i].trim();
+    for (let i = 1; i < lines.length; i++) {
+      const dataRow = lines[i].split(',').map(d => d.trim().replace(/\r$/, ''));
       
-      // Skip metadata columns but keep _time
-      if (!header.startsWith('_') || header === '_time') {
-        // Try to parse numeric values
-        if (header !== '_time' && !isNaN(Number(value))) {
+      if (dataRow.length !== headers.length) {
+        console.error(`CSV parsing error at row ${i}: header/data length mismatch`);
+        continue;
+      }
+
+      // Build data object from CSV row
+      const data: any = {};
+      for (let j = 0; j < headers.length; j++) {
+        const header = headers[j].trim();
+        const value = dataRow[j].trim();
+        
+        if (header !== '_time' && !isNaN(Number(value)) && value !== '') {
           data[header] = Number(value);
         } else {
           data[header] = value;
         }
       }
+
+      // Convert timestamp to proper format
+      const timestamp = new Date(data._time);
+      
+      // Prepare data point for storage
+      const dataPoint = {
+        machine_id: 'KU001619000079', // The actual machine ID
+        timestamp_utc: timestamp.toISOString(),
+        water_level_l: data.water_level_L || null,
+        compressor_on: data.compressor_on || 0,
+        ambient_temp_c: data.ambient_temp_C || null,
+        ambient_rh_pct: data.ambient_rh_pct || null,
+        refrigerant_temp_c: data.refrigerant_temp_C || null,
+        exhaust_temp_c: data.exhaust_temp_C || null,
+        current_a: data.current_A || null,
+        treating_water: data.treating_water === 1 || data.treating_water === true,
+        serving_water: data.serving_water === 1 || data.serving_water === true,
+        producing_water: data.producing_water === 1 || data.producing_water === true,
+        full_tank: data.full_tank === 1 || data.full_tank === true,
+        disinfecting: data.disinfecting === 1 || data.disinfecting === true
+      };
+
+      dataPointsToStore.push(dataPoint);
+      
+      // Keep track of the latest data point for the response
+      if (!latestDataPoint || timestamp > new Date(latestDataPoint.timestamp_utc)) {
+        latestDataPoint = dataPoint;
+      }
     }
 
-    // Ensure compressor_on defaults to 0 if not present
-    if (!data.hasOwnProperty('compressor_on')) {
-      console.log('compressor_on field not found, defaulting to 0');
-      data.compressor_on = 0;
+    console.log(`Processed ${dataPointsToStore.length} data points`);
+
+    // Store data points in Supabase (using upsert to avoid duplicates)
+    if (dataPointsToStore.length > 0) {
+      try {
+        const { data: insertedData, error: insertError } = await supabase
+          .from('raw_machine_data')
+          .upsert(dataPointsToStore, { 
+            onConflict: 'machine_id,timestamp_utc',
+            ignoreDuplicates: true 
+          });
+
+        if (insertError) {
+          console.error('Error storing data in Supabase:', insertError);
+          // Continue processing even if storage fails
+        } else {
+          console.log(`Successfully stored ${dataPointsToStore.length} data points`);
+        }
+      } catch (storageError) {
+        console.error('Exception storing data:', storageError);
+        // Continue processing even if storage fails
+      }
     }
 
-    console.log('Parsed data:', data);
+    // Return the latest data point for the current dashboard display
+    if (!latestDataPoint) {
+      return new Response(JSON.stringify({ error: 'No valid data points found' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Format response to match current dashboard expectations
+    const responseData = {
+      _time: latestDataPoint.timestamp_utc,
+      water_level_L: latestDataPoint.water_level_l,
+      compressor_on: latestDataPoint.compressor_on
+    };
 
     const result = {
       status: 'ok',
-      data: data
+      data: responseData,
+      stored_points: dataPointsToStore.length
     };
 
     return new Response(JSON.stringify(result), {

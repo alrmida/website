@@ -146,6 +146,63 @@ export type Database = {
         }
         Relationships: []
       }
+      raw_machine_data: {
+        Row: {
+          ambient_rh_pct: number | null
+          ambient_temp_c: number | null
+          compressor_on: number | null
+          created_at: string
+          current_a: number | null
+          disinfecting: boolean | null
+          exhaust_temp_c: number | null
+          full_tank: boolean | null
+          id: string
+          machine_id: string
+          producing_water: boolean | null
+          refrigerant_temp_c: number | null
+          serving_water: boolean | null
+          timestamp_utc: string
+          treating_water: boolean | null
+          water_level_l: number | null
+        }
+        Insert: {
+          ambient_rh_pct?: number | null
+          ambient_temp_c?: number | null
+          compressor_on?: number | null
+          created_at?: string
+          current_a?: number | null
+          disinfecting?: boolean | null
+          exhaust_temp_c?: number | null
+          full_tank?: boolean | null
+          id?: string
+          machine_id: string
+          producing_water?: boolean | null
+          refrigerant_temp_c?: number | null
+          serving_water?: boolean | null
+          timestamp_utc: string
+          treating_water?: boolean | null
+          water_level_l?: number | null
+        }
+        Update: {
+          ambient_rh_pct?: number | null
+          ambient_temp_c?: number | null
+          compressor_on?: number | null
+          created_at?: string
+          current_a?: number | null
+          disinfecting?: boolean | null
+          exhaust_temp_c?: number | null
+          full_tank?: boolean | null
+          id?: string
+          machine_id?: string
+          producing_water?: boolean | null
+          refrigerant_temp_c?: number | null
+          serving_water?: boolean | null
+          timestamp_utc?: string
+          treating_water?: boolean | null
+          water_level_l?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
