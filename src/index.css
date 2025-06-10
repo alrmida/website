@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -116,6 +117,9 @@
     border-radius: 50%;
     overflow: hidden;
     position: relative;
+    /* Anti-aliasing for smoother edges */
+    -webkit-border-radius: 50%;
+    -moz-border-radius: 50%;
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
     -webkit-backface-visibility: hidden;
@@ -129,7 +133,7 @@
     border-color: #374151;
   }
 
-  /* Background text (always visible - dark in light mode, light in dark mode) */
+  /* Background text (always dark) */
   .water-percent-bg {
     position: absolute;
     left: 0;
@@ -140,18 +144,17 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #374151;
-    font-size: 28px;
+    color: #1f2937;
+    font-size: 32px;
     font-weight: bold;
-    pointer-events: none;
   }
 
   /* Dark mode background text */
   .dark .water-percent-bg {
-    color: #f3f4f6;
+    color: #f9fafb;
   }
 
-  /* Foreground text (white) - positioned to align with background text */
+  /* Foreground text (white, clipped by water) */
   .water-percent-fg {
     position: absolute;
     left: 0;
@@ -163,9 +166,11 @@
     align-items: center;
     justify-content: center;
     color: #ffffff;
-    font-size: 28px;
+    font-size: 32px;
     font-weight: bold;
-    pointer-events: none;
+    /* Clip this text to only show where water is present */
+    clip-path: polygon(0% 100%, 100% 100%, 100% 0%, 0% 0%);
+    transition: clip-path 1s ease-out;
   }
 
   .water-percent-num {
@@ -173,7 +178,7 @@
   }
 
   .water-percent-symbol {
-    font-size: 14px;
+    font-size: 16px;
     margin-left: 2px;
   }
 
@@ -184,8 +189,10 @@
     z-index: 2;
     width: 100%;
     height: 100%;
-    background: linear-gradient(to bottom, #60a5fa 0%, #3b82f6 100%);
-    transform: translateY(100%);
+    background: #4D6DE3;
+    transform: translate(0, 100%);
+    /* Smoother transitions */
+    -webkit-transition: transform 1s ease-out;
     transition: transform 1s ease-out;
   }
 
@@ -193,40 +200,55 @@
     width: 200%;
     position: absolute;
     bottom: 100%;
-    left: 0;
-    shape-rendering: geometricPrecision;
-    transform: translateZ(0);
+    /* Smoother rendering */
+    shape-rendering: auto;
     -webkit-transform: translateZ(0);
+    transform: translateZ(0);
   }
 
   .water-wave-back {
-    fill: rgba(147, 197, 253, 0.5);
+    right: 0;
+    fill: #C7EEFF;
     animation: wave-back 1.4s infinite linear;
-    z-index: 1;
   }
 
   .water-wave-front {
-    fill: #3b82f6;
+    left: 0;
+    fill: #4D6DE3;
     margin-bottom: -1px;
     animation: wave-front 0.7s infinite linear;
-    z-index: 2;
   }
 
   @keyframes wave-front {
-    0% {
-      transform: translateX(0);
-    }
     100% {
-      transform: translateX(-50%);
+      transform: translate(-50%, 0);
     }
   }
 
   @keyframes wave-back {
-    0% {
-      transform: translateX(0);
-    }
     100% {
-      transform: translateX(50%);
+      transform: translate(50%, 0);
     }
+  }
+
+  /* Dynamic clipping based on water level */
+  .water-fill[style*="translate(0, 0%)"] ~ .water-percent-fg {
+    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
+  }
+  
+  .water-fill[style*="translate(0, 25%)"] ~ .water-percent-fg {
+    clip-path: polygon(0% 75%, 100% 75%, 100% 100%, 0% 100%);
+  }
+  
+  .water-fill[style*="translate(0, 50%)"] ~ .water-percent-fg {
+    clip-path: polygon(0% 50%, 100% 50%, 100% 100%, 0% 100%);
+  }
+  
+  .water-fill[style*="translate(0, 75%)"] ~ .water-percent-fg {
+    clip-path: polygon(0% 25%, 100% 25%, 100% 100%, 0% 100%);
+  }
+  
+  .water-fill[style*="translate(0, 100%)"] ~ .water-percent-fg {
+    clip-path: polygon(0% 100%, 100% 100%, 100% 100%, 0% 100%);
   }
 }
