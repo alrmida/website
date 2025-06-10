@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Trash2, RefreshCw } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface RawMachineData {
   id: string;
@@ -116,6 +117,11 @@ const RawDataManagement = ({ loading, onRefresh }: RawDataManagementProps) => {
     );
   };
 
+  const formatNumber = (value: number | null, decimals: number = 1) => {
+    if (value === null) return 'N/A';
+    return value.toFixed(decimals);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -153,57 +159,63 @@ const RawDataManagement = ({ loading, onRefresh }: RawDataManagementProps) => {
           <p className="mt-2">Loading raw data...</p>
         </div>
       ) : (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Machine ID</TableHead>
-                <TableHead>Timestamp</TableHead>
-                <TableHead>Water Level (L)</TableHead>
-                <TableHead>Compressor</TableHead>
-                <TableHead>Ambient Temp (°C)</TableHead>
-                <TableHead>Ambient RH (%)</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rawData.length === 0 ? (
+        <div className="border rounded-md">
+          <ScrollArea className="h-[600px]">
+            <Table>
+              <TableHeader className="sticky top-0 bg-background">
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">
-                    No raw data found
-                  </TableCell>
+                  <TableHead className="min-w-[120px]">Machine ID</TableHead>
+                  <TableHead className="min-w-[140px]">Timestamp</TableHead>
+                  <TableHead className="min-w-[100px]">Water Level (L)</TableHead>
+                  <TableHead className="min-w-[90px]">Compressor</TableHead>
+                  <TableHead className="min-w-[110px]">Ambient Temp (°C)</TableHead>
+                  <TableHead className="min-w-[110px]">Ambient RH (%)</TableHead>
+                  <TableHead className="min-w-[120px]">Refrigerant Temp (°C)</TableHead>
+                  <TableHead className="min-w-[110px]">Exhaust Temp (°C)</TableHead>
+                  <TableHead className="min-w-[100px]">Current (A)</TableHead>
+                  <TableHead className="min-w-[110px]">Treating Water</TableHead>
+                  <TableHead className="min-w-[110px]">Serving Water</TableHead>
+                  <TableHead className="min-w-[120px]">Producing Water</TableHead>
+                  <TableHead className="min-w-[90px]">Full Tank</TableHead>
+                  <TableHead className="min-w-[100px]">Disinfecting</TableHead>
+                  <TableHead className="min-w-[140px]">Created</TableHead>
                 </TableRow>
-              ) : (
-                rawData.map((record) => (
-                  <TableRow key={record.id}>
-                    <TableCell className="font-medium">{record.machine_id}</TableCell>
-                    <TableCell>{formatTimestamp(record.timestamp_utc)}</TableCell>
-                    <TableCell>
-                      {record.water_level_l !== null ? record.water_level_l.toFixed(1) : 'N/A'}
+              </TableHeader>
+              <TableBody>
+                {rawData.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={15} className="text-center py-8">
+                      No raw data found. The edge function may be having issues storing data.
                     </TableCell>
-                    <TableCell>
-                      {record.compressor_on !== null ? (record.compressor_on ? 'ON' : 'OFF') : 'N/A'}
-                    </TableCell>
-                    <TableCell>
-                      {record.ambient_temp_c !== null ? record.ambient_temp_c.toFixed(1) : 'N/A'}
-                    </TableCell>
-                    <TableCell>
-                      {record.ambient_rh_pct !== null ? record.ambient_rh_pct.toFixed(1) : 'N/A'}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {record.producing_water && getBooleanBadge(record.producing_water)}
-                        {record.full_tank && getBooleanBadge(record.full_tank)}
-                        {record.disinfecting && getBooleanBadge(record.disinfecting)}
-                      </div>
-                    </TableCell>
-                    <TableCell>{formatTimestamp(record.created_at)}</TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  rawData.map((record) => (
+                    <TableRow key={record.id}>
+                      <TableCell className="font-medium">{record.machine_id}</TableCell>
+                      <TableCell className="text-xs">{formatTimestamp(record.timestamp_utc)}</TableCell>
+                      <TableCell>{formatNumber(record.water_level_l)}</TableCell>
+                      <TableCell>
+                        <Badge variant={record.compressor_on ? "default" : "outline"}>
+                          {record.compressor_on ? 'ON' : 'OFF'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{formatNumber(record.ambient_temp_c)}</TableCell>
+                      <TableCell>{formatNumber(record.ambient_rh_pct)}</TableCell>
+                      <TableCell>{formatNumber(record.refrigerant_temp_c)}</TableCell>
+                      <TableCell>{formatNumber(record.exhaust_temp_c)}</TableCell>
+                      <TableCell>{formatNumber(record.current_a, 0)}</TableCell>
+                      <TableCell>{getBooleanBadge(record.treating_water)}</TableCell>
+                      <TableCell>{getBooleanBadge(record.serving_water)}</TableCell>
+                      <TableCell>{getBooleanBadge(record.producing_water)}</TableCell>
+                      <TableCell>{getBooleanBadge(record.full_tank)}</TableCell>
+                      <TableCell>{getBooleanBadge(record.disinfecting)}</TableCell>
+                      <TableCell className="text-xs">{formatTimestamp(record.created_at)}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </ScrollArea>
         </div>
       )}
     </div>

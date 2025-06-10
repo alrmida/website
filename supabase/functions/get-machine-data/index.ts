@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -163,21 +164,33 @@ from(bucket: "${influxBucket}")
 
     console.log(`Processed ${dataPointsToStore.length} data points`);
 
-    // Store data points in Supabase (using upsert to avoid duplicates)
+    // Store data points in Supabase (using regular insert, checking for duplicates manually)
     if (dataPointsToStore.length > 0) {
       try {
-        const { data: insertedData, error: insertError } = await supabase
+        // Check which timestamps already exist to avoid duplicates
+        const timestamps = dataPointsToStore.map(d => d.timestamp_utc);
+        const { data: existingData } = await supabase
           .from('raw_machine_data')
-          .upsert(dataPointsToStore, { 
-            onConflict: 'machine_id,timestamp_utc',
-            ignoreDuplicates: true 
-          });
+          .select('timestamp_utc')
+          .eq('machine_id', 'KU001619000079')
+          .in('timestamp_utc', timestamps);
 
-        if (insertError) {
-          console.error('Error storing data in Supabase:', insertError);
-          // Continue processing even if storage fails
+        const existingTimestamps = new Set(existingData?.map(d => d.timestamp_utc) || []);
+        const newDataPoints = dataPointsToStore.filter(d => !existingTimestamps.has(d.timestamp_utc));
+
+        if (newDataPoints.length > 0) {
+          const { data: insertedData, error: insertError } = await supabase
+            .from('raw_machine_data')
+            .insert(newDataPoints);
+
+          if (insertError) {
+            console.error('Error storing data in Supabase:', insertError);
+            // Continue processing even if storage fails
+          } else {
+            console.log(`Successfully stored ${newDataPoints.length} new data points`);
+          }
         } else {
-          console.log(`Successfully stored ${dataPointsToStore.length} data points`);
+          console.log('No new data points to store (all already exist)');
         }
       } catch (storageError) {
         console.error('Exception storing data:', storageError);
