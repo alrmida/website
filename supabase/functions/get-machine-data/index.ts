@@ -53,15 +53,16 @@ serve(async (req) => {
     // Initialize Supabase client with service role key
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Query to get recent data points (last 10 minutes) to collect and store
+    // Query to get the latest data point only
     const fluxQuery = `
 from(bucket: "${influxBucket}")
-  |> range(start: -10m)
+  |> range(start: -1h)
   |> filter(fn: (r) => r._measurement == "awg_data_full")
   |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
-  |> sort(columns: ["_time"])`;
+  |> sort(columns: ["_time"], desc: true)
+  |> limit(n: 1)`;
 
-    console.log('Executing Flux query:', fluxQuery);
+    console.log('Executing Flux query for latest data point:', fluxQuery);
 
     const baseUrl = influxUrl.endsWith('/') ? influxUrl.slice(0, -1) : influxUrl;
     const queryUrl = `${baseUrl}/api/v2/query?org=${encodeURIComponent(influxOrg)}`;
@@ -92,7 +93,7 @@ from(bucket: "${influxBucket}")
     }
 
     const responseText = await response.text();
-    console.log('InfluxDB raw response:', responseText);
+    console.log('InfluxDB raw response (first 500 chars):', responseText.substring(0, 500));
 
     // Parse CSV response
     const lines = responseText.trim().split('\n');
@@ -108,115 +109,88 @@ from(bucket: "${influxBucket}")
     const headers = lines[0].split(',').map(h => h.trim().replace(/\r$/, ''));
     console.log('CSV headers:', headers);
 
-    // Process each data row (skip header)
-    const dataPointsToStore = [];
-    let latestDataPoint = null;
+    // Process the latest data point (should be only one)
+    const dataRow = lines[1].split(',').map(d => d.trim().replace(/\r$/, ''));
+    
+    if (dataRow.length !== headers.length) {
+      console.error('CSV parsing error: header/data length mismatch');
+      throw new Error('Invalid CSV format from InfluxDB');
+    }
 
-    for (let i = 1; i < lines.length; i++) {
-      const dataRow = lines[i].split(',').map(d => d.trim().replace(/\r$/, ''));
+    // Build data object from CSV row
+    const data: any = {};
+    for (let j = 0; j < headers.length; j++) {
+      const header = headers[j].trim();
+      const value = dataRow[j].trim();
       
-      if (dataRow.length !== headers.length) {
-        console.error(`CSV parsing error at row ${i}: header/data length mismatch`);
-        continue;
-      }
-
-      // Build data object from CSV row
-      const data: any = {};
-      for (let j = 0; j < headers.length; j++) {
-        const header = headers[j].trim();
-        const value = dataRow[j].trim();
-        
-        if (header !== '_time' && !isNaN(Number(value)) && value !== '') {
-          data[header] = Number(value);
-        } else {
-          data[header] = value;
-        }
-      }
-
-      // Convert timestamp to proper format
-      const timestamp = new Date(data._time);
-      
-      // Prepare data point for storage
-      const dataPoint = {
-        machine_id: 'KU001619000079', // The actual machine ID
-        timestamp_utc: timestamp.toISOString(),
-        water_level_l: data.water_level_L || null,
-        compressor_on: data.compressor_on || 0,
-        ambient_temp_c: data.ambient_temp_C || null,
-        ambient_rh_pct: data.ambient_rh_pct || null,
-        refrigerant_temp_c: data.refrigerant_temp_C || null,
-        exhaust_temp_c: data.exhaust_temp_C || null,
-        current_a: data.current_A || null,
-        treating_water: data.treating_water === 1 || data.treating_water === true,
-        serving_water: data.serving_water === 1 || data.serving_water === true,
-        producing_water: data.producing_water === 1 || data.producing_water === true,
-        full_tank: data.full_tank === 1 || data.full_tank === true,
-        disinfecting: data.disinfecting === 1 || data.disinfecting === true
-      };
-
-      dataPointsToStore.push(dataPoint);
-      
-      // Keep track of the latest data point for the response
-      if (!latestDataPoint || timestamp > new Date(latestDataPoint.timestamp_utc)) {
-        latestDataPoint = dataPoint;
+      if (header !== '_time' && !isNaN(Number(value)) && value !== '') {
+        data[header] = Number(value);
+      } else {
+        data[header] = value;
       }
     }
 
-    console.log(`Processed ${dataPointsToStore.length} data points`);
+    // Convert timestamp to proper format
+    const timestamp = new Date(data._time);
+    
+    // Prepare data point for storage
+    const dataPoint = {
+      machine_id: 'KU001619000079', // The actual machine ID
+      timestamp_utc: timestamp.toISOString(),
+      water_level_l: data.water_level_L || null,
+      compressor_on: data.compressor_on || 0,
+      ambient_temp_c: data.ambient_temp_C || null,
+      ambient_rh_pct: data.ambient_rh_pct || null,
+      refrigerant_temp_c: data.refrigerant_temp_C || null,
+      exhaust_temp_c: data.exhaust_temp_C || null,
+      current_a: data.current_A || null,
+      treating_water: data.treating_water === 1 || data.treating_water === true,
+      serving_water: data.serving_water === 1 || data.serving_water === true,
+      producing_water: data.producing_water === 1 || data.producing_water === true,
+      full_tank: data.full_tank === 1 || data.full_tank === true,
+      disinfecting: data.disinfecting === 1 || data.disinfecting === true
+    };
 
-    // Store data points in Supabase (using regular insert, checking for duplicates manually)
-    if (dataPointsToStore.length > 0) {
-      try {
-        // Check which timestamps already exist to avoid duplicates
-        const timestamps = dataPointsToStore.map(d => d.timestamp_utc);
-        const { data: existingData } = await supabase
+    console.log('Processed data point:', dataPoint);
+
+    // Store data point in Supabase (check for existing timestamp first)
+    try {
+      const { data: existingData } = await supabase
+        .from('raw_machine_data')
+        .select('timestamp_utc')
+        .eq('machine_id', 'KU001619000079')
+        .eq('timestamp_utc', dataPoint.timestamp_utc)
+        .single();
+
+      if (!existingData) {
+        const { data: insertedData, error: insertError } = await supabase
           .from('raw_machine_data')
-          .select('timestamp_utc')
-          .eq('machine_id', 'KU001619000079')
-          .in('timestamp_utc', timestamps);
+          .insert([dataPoint]);
 
-        const existingTimestamps = new Set(existingData?.map(d => d.timestamp_utc) || []);
-        const newDataPoints = dataPointsToStore.filter(d => !existingTimestamps.has(d.timestamp_utc));
-
-        if (newDataPoints.length > 0) {
-          const { data: insertedData, error: insertError } = await supabase
-            .from('raw_machine_data')
-            .insert(newDataPoints);
-
-          if (insertError) {
-            console.error('Error storing data in Supabase:', insertError);
-            // Continue processing even if storage fails
-          } else {
-            console.log(`Successfully stored ${newDataPoints.length} new data points`);
-          }
+        if (insertError) {
+          console.error('Error storing data in Supabase:', insertError);
+          // Continue processing even if storage fails
         } else {
-          console.log('No new data points to store (all already exist)');
+          console.log('Successfully stored new data point');
         }
-      } catch (storageError) {
-        console.error('Exception storing data:', storageError);
-        // Continue processing even if storage fails
+      } else {
+        console.log('Data point already exists, skipping insert');
       }
+    } catch (storageError) {
+      console.error('Exception storing data:', storageError);
+      // Continue processing even if storage fails
     }
 
-    // Return the latest data point for the current dashboard display
-    if (!latestDataPoint) {
-      return new Response(JSON.stringify({ error: 'No valid data points found' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Format response to match current dashboard expectations
+    // Format response for the dashboard (same as before)
     const responseData = {
-      _time: latestDataPoint.timestamp_utc,
-      water_level_L: latestDataPoint.water_level_l,
-      compressor_on: latestDataPoint.compressor_on
+      _time: dataPoint.timestamp_utc,
+      water_level_L: dataPoint.water_level_l,
+      compressor_on: dataPoint.compressor_on
     };
 
     const result = {
       status: 'ok',
-      data: responseData,
-      stored_points: dataPointsToStore.length
+      data: responseData
     };
 
     return new Response(JSON.stringify(result), {
