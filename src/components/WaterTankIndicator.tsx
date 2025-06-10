@@ -17,9 +17,6 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
   // Round the water level to 1 decimal place
   const roundedLevel = Math.round(cappedLevel * 10) / 10;
 
-  // Calculate water level position for the container (inverted for proper fill effect)
-  const waterLevelOffset = (100 - cappedPercentage) * 2.35; // Scale for container height
-
   return (
     <Card className="bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow border-gray-200 dark:border-gray-700">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
@@ -40,122 +37,35 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
             </p>
           </div>
           
-          {/* CodePen Container Structure */}
-          <div className="relative w-32 h-80">
-            <div className="codepen-container" style={{ '--water-offset': `${waterLevelOffset}px` } as React.CSSProperties}>
-              
-              {/* Gradient Container - The main water/ocean area */}
-              <div className="gradientContainer">
-                
-                {/* Sun rays gradient background */}
-                <div className="gradient">
-                  <div className="ray1"></div>
-                  <div className="ray2"></div>
-                  <div className="ray3"></div>
-                  <div className="ray4"></div>
-                  <div className="ray5"></div>
-                  <div className="ray6"></div>
-                  <div className="ray7"></div>
-                  <div className="ray8"></div>
-                  <div className="ray9"></div>
-                  <div className="ray10"></div>
-                  <div className="ray11"></div>
-                  <div className="ray12"></div>
-                  <div className="ray13"></div>
-                  <div className="ray14"></div>
-                  <div className="ray15"></div>
-                  <div className="ray16"></div>
-                  <div className="ray17"></div>
-                  <div className="ray18"></div>
-                  <div className="ray19"></div>
-                  <div className="ray20"></div>
-                  <div className="ray21"></div>
-                  <div className="ray22"></div>
-                  <div className="ray23"></div>
-                  <div className="ray24"></div>
-                  <div className="ray25"></div>
-                  <div className="ray26"></div>
-                </div>
-
-                {/* Sun */}
-                <div className="cPos">
-                  <div className="cc">
-                    <div className="circle one"></div>
-                    <div className="circle two"></div>
-                    <div className="circle three"></div>
-                    <div className="circle four"></div>
-                  </div>
-                </div>
-
-                {/* Wave triangles */}
-                <div className="triangleContainer">
-                  <div className="triangleBar"></div>
-                  {Array.from({ length: 20 }, (_, i) => (
-                    <div key={i} className="triangle"></div>
-                  ))}
-                </div>
-
-                {/* Whales */}
-                <div className="whaleContainer">
-                  <div className="whalePos size1">
-                    <div className="whaleRotate size1">
-                      <div className="whale">
-                        <div className="fin"></div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="whalePos size2">
-                    <div className="whaleRotate size2">
-                      <div className="whale">
-                        <div className="fin"></div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="whalePos size3">
-                    <div className="whaleRotate size3">
-                      <div className="whale">
-                        <div className="fin"></div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="whalePos size4">
-                    <div className="whaleRotate size4">
-                      <div className="whale">
-                        <div className="fin"></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Bubbles */}
-                <div className="bubbleContainer">
-                  <div className="bubbleY1"><div className="bubbleX1"></div></div>
-                  <div className="bubbleY2"><div className="bubbleX2"></div></div>
-                  <div className="bubbleY3"><div className="bubbleX3"></div></div>
-                  <div className="bubbleY4"><div className="bubbleX4"></div></div>
-                  <div className="bubbleY5"><div className="bubbleX5"></div></div>
-                  <div className="bubbleY6"><div className="bubbleX6"></div></div>
-                  <div className="bubbleY7"><div className="bubbleX7"></div></div>
-                  <div className="bubbleY8"><div className="bubbleX8"></div></div>
-                  <div className="bubbleY9"><div className="bubbleX9"></div></div>
-                  <div className="bubbleY10"><div className="bubbleX10"></div></div>
-                </div>
+          {/* Water Fill Animation Container */}
+          <div className="water-tank-container">
+            <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink" x="0px" y="0px" style={{ display: 'none' }}>
+              <symbol id="wave">
+                <path d="M420,20c21.5-0.4,38.8-2.5,51.1-4.5c13.4-2.2,26.5-5.2,27.3-5.4C514,6.5,518,4.7,528.5,2.7c7.1-1.3,17.9-2.8,31.5-2.7c0,0,0,0,0,0v20H420z"></path>
+                <path d="M420,20c-21.5-0.4-38.8-2.5-51.1-4.5c-13.4-2.2-26.5-5.2-27.3-5.4C326,6.5,322,4.7,311.5,2.7C304.3,1.4,293.6-0.1,280,0c0,0,0,0,0,0v20H420z"></path>
+                <path d="M140,20c21.5-0.4,38.8-2.5,51.1-4.5c13.4-2.2,26.5-5.2,27.3-5.4C234,6.5,238,4.7,248.5,2.7c7.1-1.3,17.9-2.8,31.5-2.7c0,0,0,0,0,0v20H140z"></path>
+                <path d="M140,20c-21.5-0.4-38.8-2.5-51.1-4.5c-13.4-2.2-26.5-5.2-27.3-5.4C46,6.5,42,4.7,31.5,2.7C24.3,1.4,13.6-0.1,0,0c0,0,0,0,0,0l0,20H140z"></path>
+              </symbol>
+            </svg>
+            
+            <div className="water-fill-box">
+              <div className="water-percent">
+                <div className="water-percent-num">{Math.round(cappedPercentage)}</div>
+                <div className="water-percent-symbol">%</div>
               </div>
-
-              {/* Overlay */}
-              <div className="overlay one"></div>
-
-              {/* Rocks */}
-              <div className="rocks">
-                <div className="rock one"></div>
-                <div className="rock two"></div>
-                <div className="rock three"></div>
-                <div className="rock four"></div>
-              </div>
-
-              {/* Percentage display */}
-              <div className="percentage-display">
-                <span className="percentage-text">{Math.round(cappedPercentage)}%</span>
+              <div 
+                className="water-fill" 
+                style={{ 
+                  transform: `translate(0, ${100 - cappedPercentage}%)`,
+                  transition: 'transform 1s ease-out'
+                }}
+              >
+                <svg viewBox="0 0 560 20" className="water-wave water-wave-back">
+                  <use xlinkHref="#wave"></use>
+                </svg>
+                <svg viewBox="0 0 560 20" className="water-wave water-wave-front">
+                  <use xlinkHref="#wave"></use>
+                </svg>
               </div>
             </div>
           </div>
