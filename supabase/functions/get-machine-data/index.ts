@@ -141,11 +141,14 @@ from(bucket: "${influxBucket}")
     // Convert timestamp to proper format
     const timestamp = new Date(data._time);
     
-    // Prepare data point for storage with proper field mapping
+    // Prepare data point for storage with proper field mapping - preserve full precision
+    const waterLevel = data.water_level_L || data['water_level_L'] || null;
+    console.log('Water level from InfluxDB (full precision):', waterLevel);
+    
     const dataPoint = {
       machine_id: 'KU001619000079', // The actual machine ID
       timestamp_utc: timestamp.toISOString(),
-      water_level_l: data.water_level_L || data['water_level_L'] || null,
+      water_level_l: waterLevel, // Store with full precision
       compressor_on: data.compressor_on || 0,
       ambient_temp_c: data.ambient_temp_C || data['ambient_temp_C'] || null,
       ambient_rh_pct: data.ambient_rh_pct || data['ambient_rh_pct'] || null,
@@ -159,7 +162,7 @@ from(bucket: "${influxBucket}")
       disinfecting: data.disinfecting === 1 || data.disinfecting === true
     };
 
-    console.log('Processed data point for storage:', dataPoint);
+    console.log('Processed data point for storage (with full precision):', dataPoint);
 
     // Store data point in Supabase (check for existing timestamp first)
     try {
@@ -179,7 +182,7 @@ from(bucket: "${influxBucket}")
           console.error('Error storing data in Supabase:', insertError);
           // Continue processing even if storage fails
         } else {
-          console.log('Successfully stored new data point');
+          console.log('Successfully stored new data point with water level:', waterLevel);
         }
       } else {
         console.log('Data point already exists, skipping insert');
@@ -189,10 +192,10 @@ from(bucket: "${influxBucket}")
       // Continue processing even if storage fails
     }
 
-    // Format response for the dashboard (same as before)
+    // Format response for the dashboard (same as before) - preserve full precision
     const responseData = {
       _time: dataPoint.timestamp_utc,
-      water_level_L: dataPoint.water_level_l,
+      water_level_L: waterLevel, // Return with full precision
       compressor_on: dataPoint.compressor_on
     };
 
@@ -202,11 +205,16 @@ from(bucket: "${influxBucket}")
       debug: {
         influxHeaders: headers,
         influxData: data,
-        storedData: dataPoint
+        storedData: dataPoint,
+        waterLevelPrecision: {
+          original: waterLevel,
+          stored: dataPoint.water_level_l,
+          returned: responseData.water_level_L
+        }
       }
     };
 
-    console.log('Final response:', result);
+    console.log('Final response with precision info:', result);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
