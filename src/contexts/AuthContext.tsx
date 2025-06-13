@@ -30,11 +30,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const mapDatabaseRoleToFrontend = (dbRole: string): 'client' | 'commercial' | 'admin' => {
   switch (dbRole) {
     case 'kumulus_personnel':
-      return 'admin'; // Map kumulus_personnel to admin instead of commercial
+      return 'commercial';
+    case 'kumulus_admin':
+      return 'admin';
     case 'client':
       return 'client';
     default:
-      return 'client'; // Default fallback
+      return 'client';
   }
 };
 
@@ -42,8 +44,9 @@ const mapDatabaseRoleToFrontend = (dbRole: string): 'client' | 'commercial' | 'a
 const mapFrontendRoleToDatabase = (frontendRole: 'client' | 'commercial' | 'admin'): string => {
   switch (frontendRole) {
     case 'commercial':
+      return 'kumulus_personnel';
     case 'admin':
-      return 'kumulus_personnel'; // Map both commercial and admin to kumulus_personnel in DB
+      return 'kumulus_admin';
     case 'client':
       return 'client';
     default:

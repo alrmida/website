@@ -24,12 +24,16 @@ const InvitationManagement = ({ invitations, profile, loading, onRefresh }: Invi
   const { toast } = useToast();
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'client' | 'commercial' | 'admin'>('client');
+  const [sending, setSending] = useState(false);
 
   const sendInvitation = async () => {
     if (!inviteEmail || !profile) return;
     
+    setSending(true);
     try {
       const dbRole = mapFrontendRoleToDatabase(inviteRole);
+      
+      // Create invitation in database
       const { data, error } = await supabase.rpc('create_invitation', {
         p_email: inviteEmail,
         p_role: dbRole,
@@ -38,10 +42,42 @@ const InvitationManagement = ({ invitations, profile, loading, onRefresh }: Invi
 
       if (error) throw error;
 
-      toast({
-        title: 'Success',
-        description: 'Invitation sent successfully',
+      // Get the created invitation to retrieve the token
+      const { data: invitation, error: fetchError } = await supabase
+        .from('invitations')
+        .select('token')
+        .eq('email', inviteEmail.toLowerCase())
+        .eq('created_by', profile.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (fetchError || !invitation) {
+        throw new Error('Failed to retrieve invitation token');
+      }
+
+      // Send invitation email
+      const { error: emailError } = await supabase.functions.invoke('send-invitation', {
+        body: {
+          email: inviteEmail,
+          token: invitation.token,
+          role: inviteRole
+        }
       });
+
+      if (emailError) {
+        console.error('Email sending failed:', emailError);
+        toast({
+          title: 'Invitation created but email failed',
+          description: 'The invitation was created in the database but the email could not be sent. Please share the invitation link manually.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Success',
+          description: 'Invitation sent successfully via email',
+        });
+      }
       
       setInviteEmail('');
       setInviteRole('client');
@@ -52,6 +88,8 @@ const InvitationManagement = ({ invitations, profile, loading, onRefresh }: Invi
         description: error.message,
         variant: 'destructive',
       });
+    } finally {
+      setSending(false);
     }
   };
 
@@ -87,9 +125,9 @@ const InvitationManagement = ({ invitations, profile, loading, onRefresh }: Invi
               </Select>
             </div>
           </div>
-          <Button onClick={sendInvitation} disabled={loading}>
+          <Button onClick={sendInvitation} disabled={loading || sending}>
             <UserPlus className="w-4 h-4 mr-2" />
-            Send Invitation
+            {sending ? 'Sending...' : 'Send Invitation'}
           </Button>
         </CardContent>
       </Card>
