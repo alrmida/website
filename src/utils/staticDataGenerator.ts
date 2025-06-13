@@ -1,8 +1,7 @@
-
 // Generate varied static production data based on machine ID
 export function getStaticProductionData(machineId: string | undefined, multiplier: number = 1) {
-  // Only provide data for the real machine
-  if (machineId !== 'KU001619000079') {
+  // For the real machine, return zero static data - we'll use live calculations instead
+  if (machineId === 'KU001619000079') {
     return {
       daily: [
         { date: '28 May', production: 0 },
@@ -18,6 +17,7 @@ export function getStaticProductionData(machineId: string | undefined, multiplie
     };
   }
 
+  // For other machines, keep dummy data
   const baseDaily = [
     { date: '28 May', production: 15.2 },
     { date: '29 May', production: 31.5 },
@@ -39,8 +39,8 @@ export function getStaticProductionData(machineId: string | undefined, multiplie
 
 // Generate varied status data based on machine ID using KUMULUS format
 export function getStaticStatusData(machineId: string | undefined) {
-  // Only provide data for the real machine
-  if (machineId !== 'KU001619000079') {
+  // For the real machine, return zero static data - we'll use live calculations instead
+  if (machineId === 'KU001619000079') {
     return [
       { date: '25 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
       { date: '26 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
