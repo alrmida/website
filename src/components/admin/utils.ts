@@ -3,9 +3,7 @@
 export const mapDatabaseRoleToFrontend = (dbRole: string): 'client' | 'commercial' | 'admin' => {
   switch (dbRole) {
     case 'kumulus_personnel':
-      return 'commercial'; // Map kumulus_personnel to commercial by default
-    case 'kumulus_admin':
-      return 'admin'; // New role for true admins
+      return 'commercial'; // We'll handle admin distinction separately
     case 'client':
       return 'client';
     default:
@@ -14,12 +12,11 @@ export const mapDatabaseRoleToFrontend = (dbRole: string): 'client' | 'commercia
 };
 
 // Helper function to map frontend roles to database roles for invitations
-export const mapFrontendRoleToDatabase = (frontendRole: 'client' | 'commercial' | 'admin'): 'client' | 'kumulus_personnel' | 'kumulus_admin' => {
+export const mapFrontendRoleToDatabase = (frontendRole: 'client' | 'commercial' | 'admin'): 'client' | 'kumulus_personnel' => {
   switch (frontendRole) {
     case 'commercial':
-      return 'kumulus_personnel';
     case 'admin':
-      return 'kumulus_admin';
+      return 'kumulus_personnel'; // Both map to kumulus_personnel in database
     case 'client':
       return 'client';
     default:
