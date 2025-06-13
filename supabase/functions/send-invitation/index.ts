@@ -30,7 +30,7 @@ const handler = async (req: Request): Promise<Response> => {
     const invitationUrl = `${req.headers.get('origin') || 'http://localhost:5173'}/login?token=${token}&email=${encodeURIComponent(email)}`;
 
     const emailResponse = await resend.emails.send({
-      from: "KUMULUS AWG <onboarding@resend.dev>",
+      from: "KUMULUS AWG <noreply@kumuluswater.com>",
       to: [email],
       subject: "You're invited to join KUMULUS AWG",
       html: `
