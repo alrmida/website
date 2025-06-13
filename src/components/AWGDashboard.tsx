@@ -6,6 +6,7 @@ import MetricsCards from '@/components/MetricsCards';
 import ProductionAnalytics from '@/components/ProductionAnalytics';
 import MachineSelector from '@/components/MachineSelector';
 import DashboardNotifications from '@/components/DashboardNotifications';
+import WaterProductionMetrics from '@/components/WaterProductionMetrics';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { MachineWithClient } from '@/types/machine';
 
@@ -45,6 +46,11 @@ const AWGDashboard = () => {
           dataLoading={dataLoading}
           liveData={liveData}
         />
+
+        {/* Add Water Production Metrics for the live data machine */}
+        {selectedMachine?.machine_id === 'KU001619000079' && (
+          <WaterProductionMetrics liveData={liveData} />
+        )}
 
         <MetricsCards
           waterTank={waterTank}
