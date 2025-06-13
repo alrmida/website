@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,8 +14,9 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, username: string, role: 'client' | 'commercial' | 'admin') => Promise<{ error: any }>;
+  signUp: (email: string, password: string, username: string, invitationToken: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  validateInvitation: (email: string, token: string) => Promise<{ valid: boolean; error?: any; role?: string }>;
   // Impersonation features
   isImpersonating: boolean;
   impersonatedProfile: Profile | null;
@@ -119,6 +119,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const validateInvitation = async (email: string, token: string) => {
+    try {
+      const { data: invitation, error } = await supabase
+        .from('invitations')
+        .select('*')
+        .eq('email', email.toLowerCase())
+        .eq('token', token)
+        .is('used_at', null)
+        .gt('expires_at', new Date().toISOString())
+        .single();
+
+      if (error || !invitation) {
+        return { valid: false, error: 'Invalid or expired invitation' };
+      }
+
+      return { 
+        valid: true, 
+        role: mapDatabaseRoleToFrontend(invitation.role)
+      };
+    } catch (error: any) {
+      return { valid: false, error: error.message };
+    }
+  };
+
   const signIn = async (email: string, password: string) => {
     console.log('Attempting to sign in with:', email);
     const { error } = await supabase.auth.signInWithPassword({
@@ -129,19 +153,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error };
   };
 
-  const signUp = async (email: string, password: string, username: string, role: 'client' | 'commercial' | 'admin') => {
-    const dbRole = mapFrontendRoleToDatabase(role);
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          username,
-          role: dbRole
-        }
+  const signUp = async (email: string, password: string, username: string, invitationToken: string) => {
+    try {
+      // First validate the invitation
+      const { valid, error: invitationError, role } = await validateInvitation(email, invitationToken);
+      
+      if (!valid) {
+        return { error: { message: invitationError || 'Invalid invitation' } };
       }
-    });
-    return { error };
+
+      // Convert role to database format
+      const dbRole = mapFrontendRoleToDatabase(role as 'client' | 'commercial' | 'admin');
+      
+      // Sign up the user
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            username,
+            role: dbRole
+          }
+        }
+      });
+
+      if (signUpError) {
+        return { error: signUpError };
+      }
+
+      // Mark invitation as used
+      if (data.user) {
+        await supabase
+          .from('invitations')
+          .update({ used_at: new Date().toISOString() })
+          .eq('email', email.toLowerCase())
+          .eq('token', invitationToken);
+      }
+
+      return { error: null };
+    } catch (error: any) {
+      return { error: { message: error.message } };
+    }
   };
 
   const signOut = async () => {
@@ -178,6 +230,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signUp,
     signOut,
+    validateInvitation,
     isImpersonating,
     impersonatedProfile,
     startImpersonation,

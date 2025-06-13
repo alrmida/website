@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -5,8 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useToast } from '@/hooks/use-toast';
 
@@ -14,11 +14,14 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
-  const [role, setRole] = useState<'client' | 'commercial' | 'admin'>('client');
+  const [invitationToken, setInvitationToken] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp, user } = useAuth();
+  const [validatingInvitation, setValidatingInvitation] = useState(false);
+  const [invitationValid, setInvitationValid] = useState<boolean | null>(null);
+  const { signIn, signUp, validateInvitation, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     if (user) {
@@ -26,6 +29,49 @@ const Login = () => {
       navigate('/');
     }
   }, [user, navigate]);
+
+  useEffect(() => {
+    // Check if there's an invitation token in the URL
+    const tokenFromUrl = searchParams.get('token');
+    const emailFromUrl = searchParams.get('email');
+    
+    if (tokenFromUrl) {
+      setInvitationToken(tokenFromUrl);
+    }
+    if (emailFromUrl) {
+      setEmail(emailFromUrl);
+    }
+  }, [searchParams]);
+
+  const handleValidateInvitation = async () => {
+    if (!email || !invitationToken) {
+      toast({
+        title: "Missing information",
+        description: "Please enter both email and invitation token",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setValidatingInvitation(true);
+    const { valid, error } = await validateInvitation(email, invitationToken);
+    
+    if (valid) {
+      setInvitationValid(true);
+      toast({
+        title: "Invitation validated",
+        description: "You can now create your account!",
+      });
+    } else {
+      setInvitationValid(false);
+      toast({
+        title: "Invalid invitation",
+        description: error || "Please check your invitation token and email",
+        variant: "destructive"
+      });
+    }
+    setValidatingInvitation(false);
+  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,9 +100,19 @@ const Login = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!invitationValid) {
+      toast({
+        title: "Invitation required",
+        description: "Please validate your invitation first",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setLoading(true);
     
-    const { error } = await signUp(email, password, username, role);
+    const { error } = await signUp(email, password, username, invitationToken);
     
     if (error) {
       toast({
@@ -146,53 +202,79 @@ const Login = () => {
             </TabsContent>
 
             <TabsContent value="signup">
-              <form onSubmit={handleSignUp} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-username">Username</Label>
-                  <Input
-                    id="signup-username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    required
-                  />
+              <div className="space-y-4">
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-sm text-blue-800 dark:text-blue-200 mb-3">
+                    Account creation requires a valid invitation. Please enter your invitation details below.
+                  </p>
+                  
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-email">Email Address</Label>
+                      <Input
+                        id="signup-email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          setInvitationValid(null);
+                        }}
+                        placeholder="Your email address"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="invitation-token">Invitation Token</Label>
+                      <Input
+                        id="invitation-token"
+                        value={invitationToken}
+                        onChange={(e) => {
+                          setInvitationToken(e.target.value);
+                          setInvitationValid(null);
+                        }}
+                        placeholder="Enter your invitation token"
+                        required
+                      />
+                    </div>
+                    <Button 
+                      type="button" 
+                      onClick={handleValidateInvitation}
+                      disabled={validatingInvitation || !email || !invitationToken}
+                      className="w-full"
+                      variant="outline"
+                    >
+                      {validatingInvitation ? 'Validating...' : 'Validate Invitation'}
+                    </Button>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Password</Label>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
-                  <Select value={role} onValueChange={(value: 'client' | 'commercial' | 'admin') => setRole(value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="client">Client</SelectItem>
-                      <SelectItem value="commercial">Commercial</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Creating account...' : 'Sign Up'}
-                </Button>
-              </form>
+
+                {invitationValid && (
+                  <form onSubmit={handleSignUp} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-username">Username</Label>
+                      <Input
+                        id="signup-username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-password">Password</Label>
+                      <Input
+                        id="signup-password"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <Button type="submit" className="w-full" disabled={loading}>
+                      {loading ? 'Creating account...' : 'Create Account'}
+                    </Button>
+                  </form>
+                )}
+              </div>
             </TabsContent>
           </Tabs>
         </CardContent>
