@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Invitation } from './types';
 import { mapFrontendRoleToDatabase } from './utils';
@@ -25,6 +25,7 @@ const InvitationManagement = ({ invitations, profile, loading, onRefresh }: Invi
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'client' | 'commercial' | 'admin'>('client');
   const [sending, setSending] = useState(false);
+  const [cancelling, setCancelling] = useState<string | null>(null);
 
   const sendInvitation = async () => {
     if (!inviteEmail || !profile) return;
@@ -93,6 +94,36 @@ const InvitationManagement = ({ invitations, profile, loading, onRefresh }: Invi
     }
   };
 
+  const cancelInvitation = async (invitationId: string) => {
+    setCancelling(invitationId);
+    try {
+      const { error } = await supabase
+        .from('invitations')
+        .update({ 
+          used_at: new Date().toISOString() // Mark as used to effectively cancel it
+        })
+        .eq('id', invitationId)
+        .is('used_at', null); // Only update if not already used
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Invitation cancelled successfully',
+      });
+      
+      onRefresh();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: `Failed to cancel invitation: ${error.message}`,
+        variant: 'destructive',
+      });
+    } finally {
+      setCancelling(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -145,6 +176,7 @@ const InvitationManagement = ({ invitations, profile, loading, onRefresh }: Invi
                 <TableHead>Status</TableHead>
                 <TableHead>Expires</TableHead>
                 <TableHead>Sent</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -163,6 +195,19 @@ const InvitationManagement = ({ invitations, profile, loading, onRefresh }: Invi
                   </TableCell>
                   <TableCell>{new Date(invitation.expires_at).toLocaleDateString()}</TableCell>
                   <TableCell>{new Date(invitation.created_at).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    {!invitation.used_at && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => cancelInvitation(invitation.id)}
+                        disabled={cancelling === invitation.id}
+                      >
+                        <X className="w-4 h-4 mr-1" />
+                        {cancelling === invitation.id ? 'Cancelling...' : 'Cancel'}
+                      </Button>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
