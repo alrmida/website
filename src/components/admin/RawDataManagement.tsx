@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -44,6 +43,7 @@ const RawDataManagement = ({ loading, onRefresh }: RawDataManagementProps) => {
   const [rawData, setRawData] = useState<RawMachineData[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
 
   useEffect(() => {
     fetchRawData();
@@ -51,23 +51,51 @@ const RawDataManagement = ({ loading, onRefresh }: RawDataManagementProps) => {
 
   const fetchRawData = async () => {
     setDataLoading(true);
+    console.log('Fetching raw machine data...');
+    
     try {
-      // Get total count
-      const { count } = await supabase
+      // First, let's check our user profile and role
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user?.id)
+        .single();
+      
+      console.log('Current user profile:', profile);
+      
+      // Get total count with error details
+      const { count, error: countError } = await supabase
         .from('raw_machine_data')
         .select('*', { count: 'exact', head: true });
 
-      setTotalCount(count || 0);
+      console.log('Count query result:', { count, countError });
+      
+      if (countError) {
+        console.error('Count error:', countError);
+        setDebugInfo({ countError, profile });
+      } else {
+        setTotalCount(count || 0);
+      }
 
-      // Get latest 100 records
+      // Get latest 100 records with error details
       const { data, error } = await supabase
         .from('raw_machine_data')
         .select('*')
         .order('timestamp_utc', { ascending: false })
         .limit(100);
 
-      if (error) throw error;
+      console.log('Data query result:', { data, error, dataLength: data?.length });
+
+      if (error) {
+        console.error('Data fetch error:', error);
+        setDebugInfo({ error, profile, count });
+        throw error;
+      }
+      
       setRawData(data || []);
+      setDebugInfo({ success: true, profile, count, dataLength: data?.length });
+      
     } catch (error: any) {
       console.error('Error fetching raw data:', error);
       toast({
@@ -130,6 +158,14 @@ const RawDataManagement = ({ loading, onRefresh }: RawDataManagementProps) => {
           <p className="text-sm text-muted-foreground">
             Total records: {totalCount} (showing latest 100)
           </p>
+          {debugInfo && (
+            <details className="mt-2">
+              <summary className="text-xs text-muted-foreground cursor-pointer">Debug Info</summary>
+              <pre className="text-xs bg-gray-100 p-2 rounded mt-1 overflow-auto">
+                {JSON.stringify(debugInfo, null, 2)}
+              </pre>
+            </details>
+          )}
         </div>
         <div className="flex gap-2">
           <Button
