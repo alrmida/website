@@ -44,18 +44,18 @@ export const useBatchWaterProductionCalculator = () => {
 
   // Load existing metrics from database on component mount
   useEffect(() => {
-    console.log('Initializing batch water production calculator...');
+    console.log('🔄 Initializing batch water production calculator...');
     loadExistingMetrics();
     
     // Set up batch processing interval
     const interval = setInterval(() => {
-      console.log('Triggering batch processing from interval...');
+      console.log('⏰ Triggering batch processing from interval...');
       processBatchData();
     }, BATCH_INTERVAL);
 
     // Run initial batch processing after a short delay
     const initialTimeout = setTimeout(() => {
-      console.log('Running initial batch processing...');
+      console.log('🚀 Running initial batch processing...');
       processBatchData();
     }, 5000); // 5 seconds delay
 
@@ -67,7 +67,7 @@ export const useBatchWaterProductionCalculator = () => {
 
   const loadExistingMetrics = async () => {
     try {
-      console.log('Loading existing water production metrics...');
+      console.log('📊 Loading existing water production metrics...');
       
       const { data: metrics, error } = await supabase
         .from('water_production_metrics')
@@ -78,12 +78,12 @@ export const useBatchWaterProductionCalculator = () => {
         .maybeSingle();
 
       if (error) {
-        console.error('Error loading existing metrics:', error);
+        console.error('❌ Error loading existing metrics:', error);
         return;
       }
 
       if (metrics) {
-        console.log('Loaded existing metrics:', metrics);
+        console.log('✅ Loaded existing metrics:', metrics);
         setProductionData({
           currentProductionRate: Number(metrics.production_rate_lh) || 0,
           totalProduced: Number(metrics.total_water_produced) || 0,
@@ -93,21 +93,21 @@ export const useBatchWaterProductionCalculator = () => {
           lastCalculationTime: new Date(metrics.calculation_period_end),
         });
       } else {
-        console.log('No existing metrics found, starting fresh');
+        console.log('⚠️ No existing metrics found, starting fresh');
       }
     } catch (error) {
-      console.error('Exception loading existing metrics:', error);
+      console.error('💥 Exception loading existing metrics:', error);
     }
   };
 
   const processBatchData = async () => {
     if (isProcessing) {
-      console.log('Batch processing already in progress, skipping...');
+      console.log('⏳ Batch processing already in progress, skipping...');
       return;
     }
 
     setIsProcessing(true);
-    console.log('Starting batch water production calculation...');
+    console.log('🔍 Starting batch water production calculation...');
 
     try {
       // Determine the time window for this batch
@@ -127,7 +127,7 @@ export const useBatchWaterProductionCalculator = () => {
         ? new Date(lastMetrics.calculation_period_end)
         : new Date(endTime.getTime() - 24 * 60 * 60 * 1000); // Default to 24 hours ago
 
-      console.log('Processing batch from', actualStartTime.toISOString(), 'to', endTime.toISOString());
+      console.log('📅 Processing batch from', actualStartTime.toISOString(), 'to', endTime.toISOString());
 
       // Query raw data for the time period
       const { data: rawData, error } = await supabase
@@ -139,31 +139,57 @@ export const useBatchWaterProductionCalculator = () => {
         .order('timestamp_utc', { ascending: true });
 
       if (error) {
-        console.error('Error querying raw data:', error);
+        console.error('❌ Error querying raw data:', error);
         return;
       }
 
       if (!rawData || rawData.length === 0) {
-        console.log('No raw data found for the time period');
+        console.log('⚠️ No raw data found for the time period');
+        console.log('🔍 Checking if there is ANY data in raw_machine_data table...');
+        
+        // Check if there's any data at all
+        const { data: anyData, error: anyError } = await supabase
+          .from('raw_machine_data')
+          .select('id, timestamp_utc, collector_ls1')
+          .eq('machine_id', MACHINE_ID)
+          .order('timestamp_utc', { ascending: false })
+          .limit(5);
+        
+        if (anyError) {
+          console.error('❌ Error checking for any data:', anyError);
+        } else if (anyData && anyData.length > 0) {
+          console.log('✅ Found some data in table, latest 5 records:', anyData);
+        } else {
+          console.log('❌ No data found in raw_machine_data table at all');
+        }
         return;
       }
 
-      console.log(`Processing ${rawData.length} raw data points...`);
-      console.log('Sample data points:', rawData.slice(0, 3));
+      console.log(`📊 Processing ${rawData.length} raw data points...`);
+      console.log('🔬 Sample data points:', rawData.slice(0, 3));
+
+      // Check for collector_ls1 values
+      const collectorValues = rawData.map(d => d.collector_ls1).filter(v => v !== null);
+      console.log('🎯 Collector LS1 values found:', collectorValues.length, 'out of', rawData.length);
+      console.log('📈 Collector LS1 value distribution:', {
+        zeros: collectorValues.filter(v => v === 0).length,
+        ones: collectorValues.filter(v => v === 1).length,
+        nulls: rawData.filter(d => d.collector_ls1 === null).length
+      });
 
       // Process pump events from raw data
       const pumpEvents = findPumpEvents(rawData);
-      console.log(`Found ${pumpEvents.length} pump events in batch`);
+      console.log(`🔧 Found ${pumpEvents.length} pump events in batch`);
 
       if (pumpEvents.length === 0) {
-        console.log('No pump events found in this batch');
+        console.log('⚠️ No pump events found in this batch');
         return;
       }
 
       // Calculate production for pump events
       const calculatedEvents = calculateProduction(pumpEvents);
       const newProduction = calculatedEvents.reduce((sum, event) => sum + (event.production || 0), 0);
-      console.log('New production calculated:', newProduction, 'liters');
+      console.log('💧 New production calculated:', newProduction, 'liters');
 
       // Load current totals and update
       const currentTotals = await getCurrentTotals();
@@ -179,8 +205,8 @@ export const useBatchWaterProductionCalculator = () => {
 
       const productionRate = calculateProductionRate(calculatedEvents);
 
-      console.log('Updated totals:', updatedTotals);
-      console.log('Production rate:', productionRate, 'L/h');
+      console.log('📊 Updated totals:', updatedTotals);
+      console.log('⚡ Production rate:', productionRate, 'L/h');
 
       // Store the new metrics
       await storeMetrics({
@@ -204,10 +230,10 @@ export const useBatchWaterProductionCalculator = () => {
         lastCalculationTime: endTime,
       });
 
-      console.log('Batch processing completed successfully');
+      console.log('✅ Batch processing completed successfully');
       
     } catch (error) {
-      console.error('Error in batch processing:', error);
+      console.error('💥 Error in batch processing:', error);
     } finally {
       setIsProcessing(false);
     }
@@ -216,8 +242,12 @@ export const useBatchWaterProductionCalculator = () => {
   const findPumpEvents = (rawData: RawDataPoint[]): PumpEvent[] => {
     const events: PumpEvent[] = [];
     
-    console.log('Analyzing pump events...');
-    console.log('First few collector_ls1 values:', rawData.slice(0, 10).map(d => ({ time: d.timestamp_utc, collector_ls1: d.collector_ls1, water_level: d.water_level_l })));
+    console.log('🔍 Analyzing pump events...');
+    console.log('📊 First few collector_ls1 values:', rawData.slice(0, 10).map(d => ({ 
+      time: d.timestamp_utc, 
+      collector_ls1: d.collector_ls1, 
+      water_level: d.water_level_l 
+    })));
     
     for (let i = 1; i < rawData.length; i++) {
       const previous = rawData[i - 1];
@@ -227,7 +257,7 @@ export const useBatchWaterProductionCalculator = () => {
       const pumpStartDetected = previous.collector_ls1 === 1 && current.collector_ls1 === 0;
       
       if (pumpStartDetected) {
-        console.log('Pump event detected at:', previous.timestamp_utc, 'water level before:', previous.water_level_l);
+        console.log('🔧 Pump event detected at:', previous.timestamp_utc, 'water level before:', previous.water_level_l);
         events.push({
           timestamp: new Date(previous.timestamp_utc),
           waterLevelBefore: previous.water_level_l || 0,
@@ -235,7 +265,7 @@ export const useBatchWaterProductionCalculator = () => {
       }
     }
     
-    console.log('Total pump events found:', events.length);
+    console.log('📈 Total pump events found:', events.length);
     return events;
   };
 
@@ -250,7 +280,7 @@ export const useBatchWaterProductionCalculator = () => {
       currentEvent.waterLevelAfter = nextEvent.waterLevelBefore;
       currentEvent.production = Math.max(0, currentEvent.waterLevelAfter - currentEvent.waterLevelBefore);
       
-      console.log(`Pump cycle ${i + 1}: ${currentEvent.waterLevelBefore}L → ${currentEvent.waterLevelAfter}L = ${currentEvent.production}L`);
+      console.log(`💧 Pump cycle ${i + 1}: ${currentEvent.waterLevelBefore}L → ${currentEvent.waterLevelAfter}L = ${currentEvent.production}L`);
     }
     
     return calculatedEvents.filter(event => event.production !== undefined);
@@ -289,11 +319,11 @@ export const useBatchWaterProductionCalculator = () => {
       .insert([metrics]);
       
     if (error) {
-      console.error('Error storing metrics:', error);
+      console.error('❌ Error storing metrics:', error);
       throw error;
     }
     
-    console.log('Successfully stored metrics:', metrics);
+    console.log('✅ Successfully stored metrics:', metrics);
   };
 
   return {
