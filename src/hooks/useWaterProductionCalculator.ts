@@ -12,6 +12,7 @@ interface WaterProductionData {
 interface PumpEvent {
   timestamp: Date;
   waterLevelBefore: number;
+  waterLevelAfter?: number; // will be set when next pump event occurs
   production?: number; // calculated when we have the next pump event
 }
 
@@ -46,71 +47,63 @@ export const useWaterProductionCalculator = (liveData: any) => {
     console.log('Checking for pump events:', {
       currentWaterLevel: current.waterLevel,
       previousWaterLevel: previous.waterLevel,
-      currentCompressor: current.compressorOn,
-      previousCompressor: previous.compressorOn,
+      currentCollectorLS1: current.collector_ls1,
+      previousCollectorLS1: previous.collector_ls1,
       currentTime: current.lastUpdated
     });
 
-    // Detect pump start: significant water level increase OR compressor state change
-    const pumpStartDetected = detectPumpStart(previous, current);
+    // Detect pump start: collector_ls1 transitions from 1 to 0
+    const pumpStartDetected = previous.collector_ls1 === 1 && current.collector_ls1 === 0;
 
     if (pumpStartDetected) {
-      console.log('Pump start detected!');
+      console.log('Pump start detected! collector_ls1: 1 -> 0');
       handlePumpStart(previous, current);
     }
 
     previousReading.current = current;
   }, [liveData]);
 
-  const detectPumpStart = (previous: any, current: any): boolean => {
-    // Method 1: Detect significant water level increase (indicating production)
-    const waterLevelIncrease = current.waterLevel - previous.waterLevel;
-    const significantIncrease = waterLevelIncrease > 0.1; // More than 0.1L increase
-    
-    // Method 2: Compressor state change from off to on
-    const compressorStarted = previous.compressorOn === 0 && current.compressorOn === 1;
-    
-    // Method 3: If we see a water level decrease followed by increase (tank being used then refilled)
-    const waterLevelDecrease = waterLevelIncrease < -0.05; // Water level dropped by more than 0.05L
-    
-    console.log('Pump detection analysis:', {
-      waterLevelIncrease,
-      significantIncrease,
-      compressorStarted,
-      waterLevelDecrease
-    });
-
-    // For now, let's use water level changes as the primary detection method
-    // We'll consider any significant change in water level as a "pump event"
-    return significantIncrease || waterLevelDecrease || compressorStarted;
-  };
-
   const handlePumpStart = (previousReading: any, currentReading: any) => {
     const eventTime = new Date(currentReading.lastUpdated);
     const waterLevelBefore = previousReading.waterLevel || 0;
-    const waterLevelAfter = currentReading.waterLevel || 0;
 
-    console.log('Handling pump event:', {
+    console.log('Handling pump start event:', {
       eventTime,
       waterLevelBefore,
-      waterLevelAfter,
-      production: Math.abs(waterLevelAfter - waterLevelBefore)
+      totalEventsBeforeAdding: pumpEvents.current.length
     });
 
-    // Calculate immediate production for this event
-    const production = Math.abs(waterLevelAfter - waterLevelBefore);
+    // If we have a previous pump event, calculate its production now
+    if (pumpEvents.current.length > 0) {
+      const previousEvent = pumpEvents.current[pumpEvents.current.length - 1];
+      
+      // Set the water level after the previous pump event (which is the level before this new pump event)
+      previousEvent.waterLevelAfter = waterLevelBefore;
+      
+      // Calculate production for the previous pump event
+      // Production = water level after pump N+1 - water level before pump N
+      const production = Math.max(0, previousEvent.waterLevelAfter - previousEvent.waterLevelBefore);
+      previousEvent.production = production;
 
-    // Create new pump event with immediate production calculation
+      console.log('Calculated production for previous pump event:', {
+        eventIndex: pumpEvents.current.length - 1,
+        waterLevelBefore: previousEvent.waterLevelBefore,
+        waterLevelAfter: previousEvent.waterLevelAfter,
+        production: production
+      });
+    }
+
+    // Create new pump event (production will be calculated when next pump event occurs)
     const newPumpEvent: PumpEvent = {
       timestamp: eventTime,
       waterLevelBefore: waterLevelBefore,
-      production: production
+      // waterLevelAfter and production will be set when next pump event occurs
     };
 
     // Add the new pump event
     pumpEvents.current.push(newPumpEvent);
 
-    console.log('Added pump event:', newPumpEvent);
+    console.log('Added new pump event:', newPumpEvent);
     console.log('Total pump events:', pumpEvents.current.length);
 
     // Recalculate metrics
@@ -123,7 +116,8 @@ export const useWaterProductionCalculator = (liveData: any) => {
     
     console.log('Updating production metrics:', {
       totalEvents: events.length,
-      eventsWithProduction: eventsWithProduction.length
+      eventsWithProduction: eventsWithProduction.length,
+      productionValues: eventsWithProduction.map(e => e.production)
     });
 
     if (eventsWithProduction.length === 0) {
