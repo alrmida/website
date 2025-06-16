@@ -4,6 +4,7 @@ export interface InfluxDataPoint {
   _measurement: string;
   water_level_L: number;
   compressor_on: number;
+  collector_ls1?: number;
   ambient_temp_C?: number;
   ambient_rh_pct?: number;
   refrigerant_temp_C?: number;
@@ -22,6 +23,7 @@ export interface ProcessedDataPoint {
   timestamp_utc: string;
   water_level_l: number | null;
   compressor_on: number;
+  collector_ls1: number | null;
   ambient_temp_c: number | null;
   ambient_rh_pct: number | null;
   refrigerant_temp_c: number | null;
@@ -40,6 +42,7 @@ export interface ApiResponse {
     _time: string;
     water_level_L: number | null;
     compressor_on: number;
+    collector_ls1: number | null;
   };
   debug: {
     influxHeaders: string[];

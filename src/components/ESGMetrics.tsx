@@ -2,16 +2,16 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Leaf, Droplets, Recycle, TreePine } from 'lucide-react';
-import { useWaterProductionCalculator } from '@/hooks/useWaterProductionCalculator';
+import { useBatchWaterProductionCalculator } from '@/hooks/useBatchWaterProductionCalculator';
 
 interface ESGMetricsProps {
-  liveData: any;
+  liveData: any; // Keep for compatibility but not used in batch processing
 }
 
 const ESGMetrics = ({ liveData }: ESGMetricsProps) => {
-  const { productionData } = useWaterProductionCalculator(liveData);
+  const { productionData } = useBatchWaterProductionCalculator();
   
-  // Use real production data from the calculator
+  // Use real production data from the batch calculator
   const totalWaterProduced = productionData.totalProduced;
   
   // Calculate ESG metrics based on actual water production
@@ -61,6 +61,9 @@ const ESGMetrics = ({ liveData }: ESGMetricsProps) => {
         <CardTitle className="text-gray-900 dark:text-white flex items-center">
           <Leaf className="w-5 h-5 mr-2 text-green-600 dark:text-green-400" />
           ESG Impact Metrics
+          <span className="ml-2 text-xs text-gray-500 font-normal">
+            (Based on {productionData.pumpCycles} pump cycles)
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>

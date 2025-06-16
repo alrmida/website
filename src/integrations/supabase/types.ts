@@ -150,6 +150,7 @@ export type Database = {
         Row: {
           ambient_rh_pct: number | null
           ambient_temp_c: number | null
+          collector_ls1: number | null
           compressor_on: number | null
           created_at: string
           current_a: number | null
@@ -168,6 +169,7 @@ export type Database = {
         Insert: {
           ambient_rh_pct?: number | null
           ambient_temp_c?: number | null
+          collector_ls1?: number | null
           compressor_on?: number | null
           created_at?: string
           current_a?: number | null
@@ -186,6 +188,7 @@ export type Database = {
         Update: {
           ambient_rh_pct?: number | null
           ambient_temp_c?: number | null
+          collector_ls1?: number | null
           compressor_on?: number | null
           created_at?: string
           current_a?: number | null
@@ -200,6 +203,48 @@ export type Database = {
           timestamp_utc?: string
           treating_water?: boolean | null
           water_level_l?: number | null
+        }
+        Relationships: []
+      }
+      water_production_metrics: {
+        Row: {
+          average_production_per_cycle: number
+          calculation_period_end: string
+          calculation_period_start: string
+          created_at: string
+          id: string
+          last_pump_event: string | null
+          machine_id: string
+          production_rate_lh: number
+          pump_cycles_count: number
+          total_water_produced: number
+          updated_at: string
+        }
+        Insert: {
+          average_production_per_cycle?: number
+          calculation_period_end: string
+          calculation_period_start: string
+          created_at?: string
+          id?: string
+          last_pump_event?: string | null
+          machine_id: string
+          production_rate_lh?: number
+          pump_cycles_count?: number
+          total_water_produced?: number
+          updated_at?: string
+        }
+        Update: {
+          average_production_per_cycle?: number
+          calculation_period_end?: string
+          calculation_period_start?: string
+          created_at?: string
+          id?: string
+          last_pump_event?: string | null
+          machine_id?: string
+          production_rate_lh?: number
+          pump_cycles_count?: number
+          total_water_produced?: number
+          updated_at?: string
         }
         Relationships: []
       }

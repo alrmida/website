@@ -30,6 +30,7 @@ interface RawMachineData {
   producing_water: boolean | null;
   full_tank: boolean | null;
   disinfecting: boolean | null;
+  collector_ls1: number | null;
   created_at: string;
 }
 
@@ -204,6 +205,7 @@ const RawDataManagement = ({ loading, onRefresh }: RawDataManagementProps) => {
                   <TableHead className="min-w-[140px]">Timestamp</TableHead>
                   <TableHead className="min-w-[100px]">Water Level (L)</TableHead>
                   <TableHead className="min-w-[90px]">Compressor</TableHead>
+                  <TableHead className="min-w-[100px]">Collector LS1</TableHead>
                   <TableHead className="min-w-[110px]">Ambient Temp (°C)</TableHead>
                   <TableHead className="min-w-[110px]">Ambient RH (%)</TableHead>
                   <TableHead className="min-w-[120px]">Refrigerant Temp (°C)</TableHead>
@@ -220,7 +222,7 @@ const RawDataManagement = ({ loading, onRefresh }: RawDataManagementProps) => {
               <TableBody>
                 {rawData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={15} className="text-center py-8">
+                    <TableCell colSpan={16} className="text-center py-8">
                       No raw data found. The edge function may be having issues storing data.
                     </TableCell>
                   </TableRow>
@@ -233,6 +235,11 @@ const RawDataManagement = ({ loading, onRefresh }: RawDataManagementProps) => {
                       <TableCell>
                         <Badge variant={record.compressor_on ? "default" : "outline"}>
                           {record.compressor_on ? 'ON' : 'OFF'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={record.collector_ls1 === 0 ? "destructive" : "default"}>
+                          {record.collector_ls1 === 0 ? 'PUMP' : 'IDLE'}
                         </Badge>
                       </TableCell>
                       <TableCell>{formatNumber(record.ambient_temp_c)}</TableCell>

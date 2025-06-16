@@ -2,35 +2,42 @@
 import type { InfluxDataPoint, ProcessedDataPoint } from './types.ts';
 import { MACHINE_ID } from './config.ts';
 
-export function processDataPoint(data: InfluxDataPoint): {
-  dataPoint: ProcessedDataPoint;
-  waterLevel: number | null;
-} {
-  // Convert timestamp to proper format
-  const timestamp = new Date(data._time);
+export function processDataPoint(data: InfluxDataPoint): { dataPoint: ProcessedDataPoint; waterLevel: number | null } {
+  console.log('Processing data point:', data);
+
+  // Extract water level with precision handling
+  const waterLevel = data.water_level_L ? Number(data.water_level_L) : null;
   
-  // Prepare data point for storage with proper field mapping - preserve full precision
-  const waterLevel = data.water_level_L || data['water_level_L'] || null;
-  console.log('Water level from InfluxDB (full precision):', waterLevel);
-  
-  const dataPoint: ProcessedDataPoint = {
-    machine_id: MACHINE_ID,
-    timestamp_utc: timestamp.toISOString(),
-    water_level_l: waterLevel, // Store with full precision
-    compressor_on: data.compressor_on || 0,
-    ambient_temp_c: data.ambient_temp_C || data['ambient_temp_C'] || null,
-    ambient_rh_pct: data.ambient_rh_pct || data['ambient_rh_pct'] || null,
-    refrigerant_temp_c: data.refrigerant_temp_C || data['refrigerant_temp_C'] || null,
-    exhaust_temp_c: data.exhaust_temp_C || data['exhaust_temp_C'] || null,
-    current_a: data.current_A || data['current_A'] || null,
-    treating_water: data.treating_water === 1 || data.treating_water === true,
-    serving_water: data.serving_water === 1 || data.serving_water === true,
-    producing_water: data.producing_water === 1 || data.producing_water === true,
-    full_tank: data.full_tank === 1 || data.full_tank === true,
-    disinfecting: data.disinfecting === 1 || data.disinfecting === true
+  // Convert numeric boolean fields to actual booleans
+  const convertToBoolean = (value: number | boolean | undefined): boolean => {
+    if (typeof value === 'boolean') return value;
+    return value === 1;
   };
 
-  console.log('Processed data point for storage (with full precision):', dataPoint);
-  
+  const dataPoint: ProcessedDataPoint = {
+    machine_id: MACHINE_ID,
+    timestamp_utc: data._time,
+    water_level_l: waterLevel,
+    compressor_on: data.compressor_on || 0,
+    ambient_temp_c: data.ambient_temp_C ? Number(data.ambient_temp_C) : null,
+    ambient_rh_pct: data.ambient_rh_pct ? Number(data.ambient_rh_pct) : null,
+    refrigerant_temp_c: data.refrigerant_temp_C ? Number(data.refrigerant_temp_C) : null,
+    exhaust_temp_c: data.exhaust_temp_C ? Number(data.exhaust_temp_C) : null,
+    current_a: data.current_A ? Number(data.current_A) : null,
+    treating_water: convertToBoolean(data.treating_water),
+    serving_water: convertToBoolean(data.serving_water),
+    producing_water: convertToBoolean(data.producing_water),
+    full_tank: convertToBoolean(data.full_tank),
+    disinfecting: convertToBoolean(data.disinfecting),
+    collector_ls1: data.collector_ls1 ? Number(data.collector_ls1) : null,
+  };
+
+  console.log('Processed data point:', dataPoint);
+  console.log('Water level precision check:', {
+    original: data.water_level_L,
+    processed: waterLevel,
+    stored: dataPoint.water_level_l
+  });
+
   return { dataPoint, waterLevel };
 }
