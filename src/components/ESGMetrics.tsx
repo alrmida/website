@@ -2,13 +2,19 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Leaf, Droplets, Recycle, TreePine } from 'lucide-react';
+import { useWaterProductionCalculator } from '@/hooks/useWaterProductionCalculator';
 
 interface ESGMetricsProps {
-  totalWaterProduced: number;
+  liveData: any;
 }
 
-const ESGMetrics = ({ totalWaterProduced }: ESGMetricsProps) => {
-  // Calculate ESG metrics based on water production
+const ESGMetrics = ({ liveData }: ESGMetricsProps) => {
+  const { productionData } = useWaterProductionCalculator(liveData);
+  
+  // Use real production data from the calculator
+  const totalWaterProduced = productionData.totalProduced;
+  
+  // Calculate ESG metrics based on actual water production
   const co2Saved = Math.round(totalWaterProduced * 0.234); // kg CO2 saved per liter
   const plasticBottlesSaved = Math.round(totalWaterProduced / 0.5); // 500ml bottles
   const energyUsed = Math.round(totalWaterProduced * 4.2); // kWh per liter
@@ -33,7 +39,7 @@ const ESGMetrics = ({ totalWaterProduced }: ESGMetricsProps) => {
     },
     {
       title: 'Water from Air',
-      value: `${waterFromAir.toFixed(1)}L`,
+      value: `${waterFromAir.toFixed(2)}L`,
       description: 'renewable source',
       icon: Droplets,
       color: 'text-cyan-600 dark:text-cyan-400',
