@@ -44,17 +44,25 @@ export const useBatchWaterProductionCalculator = () => {
 
   // Load existing metrics from database on component mount
   useEffect(() => {
+    console.log('Initializing batch water production calculator...');
     loadExistingMetrics();
     
     // Set up batch processing interval
     const interval = setInterval(() => {
+      console.log('Triggering batch processing from interval...');
       processBatchData();
     }, BATCH_INTERVAL);
 
-    // Run initial batch processing
-    processBatchData();
+    // Run initial batch processing after a short delay
+    const initialTimeout = setTimeout(() => {
+      console.log('Running initial batch processing...');
+      processBatchData();
+    }, 5000); // 5 seconds delay
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(initialTimeout);
+    };
   }, []);
 
   const loadExistingMetrics = async () => {
@@ -141,6 +149,7 @@ export const useBatchWaterProductionCalculator = () => {
       }
 
       console.log(`Processing ${rawData.length} raw data points...`);
+      console.log('Sample data points:', rawData.slice(0, 3));
 
       // Process pump events from raw data
       const pumpEvents = findPumpEvents(rawData);
@@ -154,6 +163,7 @@ export const useBatchWaterProductionCalculator = () => {
       // Calculate production for pump events
       const calculatedEvents = calculateProduction(pumpEvents);
       const newProduction = calculatedEvents.reduce((sum, event) => sum + (event.production || 0), 0);
+      console.log('New production calculated:', newProduction, 'liters');
 
       // Load current totals and update
       const currentTotals = await getCurrentTotals();
@@ -168,6 +178,9 @@ export const useBatchWaterProductionCalculator = () => {
         : 0;
 
       const productionRate = calculateProductionRate(calculatedEvents);
+
+      console.log('Updated totals:', updatedTotals);
+      console.log('Production rate:', productionRate, 'L/h');
 
       // Store the new metrics
       await storeMetrics({
@@ -203,6 +216,9 @@ export const useBatchWaterProductionCalculator = () => {
   const findPumpEvents = (rawData: RawDataPoint[]): PumpEvent[] => {
     const events: PumpEvent[] = [];
     
+    console.log('Analyzing pump events...');
+    console.log('First few collector_ls1 values:', rawData.slice(0, 10).map(d => ({ time: d.timestamp_utc, collector_ls1: d.collector_ls1, water_level: d.water_level_l })));
+    
     for (let i = 1; i < rawData.length; i++) {
       const previous = rawData[i - 1];
       const current = rawData[i];
@@ -211,6 +227,7 @@ export const useBatchWaterProductionCalculator = () => {
       const pumpStartDetected = previous.collector_ls1 === 1 && current.collector_ls1 === 0;
       
       if (pumpStartDetected) {
+        console.log('Pump event detected at:', previous.timestamp_utc, 'water level before:', previous.water_level_l);
         events.push({
           timestamp: new Date(previous.timestamp_utc),
           waterLevelBefore: previous.water_level_l || 0,
@@ -218,6 +235,7 @@ export const useBatchWaterProductionCalculator = () => {
       }
     }
     
+    console.log('Total pump events found:', events.length);
     return events;
   };
 
@@ -231,6 +249,8 @@ export const useBatchWaterProductionCalculator = () => {
       
       currentEvent.waterLevelAfter = nextEvent.waterLevelBefore;
       currentEvent.production = Math.max(0, currentEvent.waterLevelAfter - currentEvent.waterLevelBefore);
+      
+      console.log(`Pump cycle ${i + 1}: ${currentEvent.waterLevelBefore}L → ${currentEvent.waterLevelAfter}L = ${currentEvent.production}L`);
     }
     
     return calculatedEvents.filter(event => event.production !== undefined);

@@ -38,6 +38,10 @@ export function processDataPoint(data: InfluxDataPoint): { dataPoint: ProcessedD
     processed: waterLevel,
     stored: dataPoint.water_level_l
   });
+  console.log('Collector LS1 value:', {
+    original: data.collector_ls1,
+    processed: dataPoint.collector_ls1
+  });
 
   return { dataPoint, waterLevel };
 }
