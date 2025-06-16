@@ -12,6 +12,7 @@ const RealTimeDataTable = () => {
   const {
     collectedData,
     isProcessing,
+    isCollecting,
     lastProcessedAt,
     startCollection,
     stopCollection,
@@ -40,7 +41,7 @@ const RealTimeDataTable = () => {
   };
 
   return (
-    <Card className="bg-white dark:bg-gray-800">
+    <Card className="bg-white dark:bg-gray-800 mb-6">
       <CardHeader>
         <div className="flex justify-between items-center">
           <div>
@@ -48,11 +49,19 @@ const RealTimeDataTable = () => {
             <p className="text-sm text-gray-500 mt-1">
               Collecting data points every 10 seconds. Auto-processes at {maxLines} lines (30 minutes).
             </p>
+            <div className="flex items-center gap-2 mt-2">
+              <Badge variant={isCollecting ? "default" : "outline"}>
+                {isCollecting ? 'Collecting' : 'Stopped'}
+              </Badge>
+              {isProcessing && (
+                <Badge variant="secondary">Processing...</Badge>
+              )}
+            </div>
           </div>
           <div className="flex gap-2">
             <Button
               onClick={startCollection}
-              disabled={isProcessing}
+              disabled={isProcessing || isCollecting}
               variant="outline"
               size="sm"
             >
@@ -61,7 +70,7 @@ const RealTimeDataTable = () => {
             </Button>
             <Button
               onClick={stopCollection}
-              disabled={isProcessing}
+              disabled={isProcessing || !isCollecting}
               variant="outline"
               size="sm"
             >
@@ -105,7 +114,7 @@ const RealTimeDataTable = () => {
         {dataCount === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <RotateCcw className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p>No data collected yet. Collection will start automatically.</p>
+            <p>No data collected yet. {isCollecting ? 'Collection is running...' : 'Start collection to begin.'}</p>
           </div>
         ) : (
           <div className="border rounded-md">

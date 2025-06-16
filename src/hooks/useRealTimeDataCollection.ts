@@ -28,14 +28,17 @@ const MAX_LINES = 180; // 30 minutes worth of data (assuming 10-second intervals
 export const useRealTimeDataCollection = () => {
   const [collectedData, setCollectedData] = useState<RawDataPoint[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isCollecting, setIsCollecting] = useState(false);
   const [lastProcessedAt, setLastProcessedAt] = useState<Date | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastFetchedId = useRef<string | null>(null);
 
   // Start collecting data
   const startCollection = () => {
     if (intervalRef.current) return; // Already collecting
 
     console.log('🚀 Starting real-time data collection...');
+    setIsCollecting(true);
     
     // Fetch data every 10 seconds
     intervalRef.current = setInterval(async () => {
@@ -51,6 +54,7 @@ export const useRealTimeDataCollection = () => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
+      setIsCollecting(false);
       console.log('⏹️ Stopped real-time data collection');
     }
   };
@@ -72,15 +76,21 @@ export const useRealTimeDataCollection = () => {
       }
 
       if (data) {
+        // Check if this is a new data point
+        if (lastFetchedId.current === data.id) {
+          console.log('📝 Same data point as before, skipping');
+          return;
+        }
+
         setCollectedData(prev => {
           // Check if this data point is already in our collection
           const exists = prev.some(item => item.id === data.id);
           if (exists) {
-            console.log('📝 Data point already exists, skipping');
+            console.log('📝 Data point already exists in collection, skipping');
             return prev;
           }
 
-          const newData = [...prev, data];
+          const newData = [data, ...prev]; // Add to beginning for chronological order
           console.log(`📊 Added new data point. Total: ${newData.length}/${MAX_LINES}`);
           
           // Auto-process when we reach max lines
@@ -91,6 +101,8 @@ export const useRealTimeDataCollection = () => {
           
           return newData;
         });
+
+        lastFetchedId.current = data.id;
       }
     } catch (error) {
       console.error('💥 Exception fetching latest data:', error);
@@ -110,8 +122,13 @@ export const useRealTimeDataCollection = () => {
     console.log(`🔍 Processing batch of ${batchData.length} data points...`);
 
     try {
+      // Sort data by timestamp (oldest first for processing)
+      const sortedData = [...batchData].sort((a, b) => 
+        new Date(a.timestamp_utc).getTime() - new Date(b.timestamp_utc).getTime()
+      );
+
       // Find pump events (collector_ls1 transitions from 1 to 0)
-      const pumpEvents = findPumpEvents(batchData);
+      const pumpEvents = findPumpEvents(sortedData);
       console.log(`🔧 Found ${pumpEvents.length} pump events`);
 
       let totalProduction = 0;
@@ -136,6 +153,7 @@ export const useRealTimeDataCollection = () => {
       // Reset collection
       setCollectedData([]);
       setLastProcessedAt(new Date());
+      lastFetchedId.current = null;
       
       console.log('✅ Batch processing completed successfully');
       
@@ -244,6 +262,7 @@ export const useRealTimeDataCollection = () => {
   return {
     collectedData,
     isProcessing,
+    isCollecting,
     lastProcessedAt,
     startCollection,
     stopCollection,

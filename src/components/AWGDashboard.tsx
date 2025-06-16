@@ -51,6 +51,7 @@ const AWGDashboard = () => {
   }, []);
 
   const fetchLiveData = async (machineId: string) => {
+    console.log('🔄 Fetching live data for machine:', machineId);
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -59,11 +60,13 @@ const AWGDashboard = () => {
         .eq('machine_id', machineId)
         .order('timestamp_utc', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error fetching live data:', error);
-        throw error;
+        // Don't throw here, just log and continue
+        setLiveData(null);
+        return;
       }
 
       if (data) {
@@ -75,7 +78,7 @@ const AWGDashboard = () => {
         const collector_ls1 = data.collector_ls1 !== null ? Number(data.collector_ls1) : null;
         const compressor_on = data.compressor_on !== null ? Number(data.compressor_on) : null;
 
-        setLiveData({
+        const processedLiveData = {
           lastUpdated: lastUpdated.toISOString(),
           waterLevel,
           collector_ls1,
@@ -90,13 +93,17 @@ const AWGDashboard = () => {
           producing_water: data.producing_water,
           full_tank: data.full_tank,
           disinfecting: data.disinfecting,
-        });
+        };
+
+        console.log('✅ Successfully fetched live data:', processedLiveData);
+        setLiveData(processedLiveData);
       } else {
         console.log('No live data found for machine ID:', machineId);
         setLiveData(null);
       }
     } catch (error) {
       console.error('Error fetching live data:', error);
+      setLiveData(null);
     } finally {
       setLoading(false);
     }
@@ -108,9 +115,10 @@ const AWGDashboard = () => {
     await fetchLiveData(machine.machine_id);
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
+    console.log('🔄 Manual refresh triggered');
     if (selectedMachine) {
-      fetchLiveData(selectedMachine.machine_id);
+      await fetchLiveData(selectedMachine.machine_id);
     }
   };
 
