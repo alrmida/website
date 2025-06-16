@@ -29,7 +29,13 @@ export const useWaterProductionCalculator = (liveData: any) => {
   const pumpEvents = useRef<PumpEvent[]>([]);
 
   useEffect(() => {
-    if (!liveData || !previousReading.current) {
+    if (!liveData || !liveData.waterLevel) {
+      console.log('No live data available for water production calculation');
+      return;
+    }
+
+    if (!previousReading.current) {
+      console.log('Setting initial reading:', liveData);
       previousReading.current = liveData;
       return;
     }
@@ -37,63 +43,75 @@ export const useWaterProductionCalculator = (liveData: any) => {
     const current = liveData;
     const previous = previousReading.current;
 
-    // Detect pump start: LS1 goes from 1 to 0 (collector sensor)
-    // In the live data, we need to check if collector_ls1 exists, otherwise use a proxy
+    console.log('Checking for pump events:', {
+      currentWaterLevel: current.waterLevel,
+      previousWaterLevel: previous.waterLevel,
+      currentCompressor: current.compressorOn,
+      previousCompressor: previous.compressorOn,
+      currentTime: current.lastUpdated
+    });
+
+    // Detect pump start: significant water level increase OR compressor state change
     const pumpStartDetected = detectPumpStart(previous, current);
 
     if (pumpStartDetected) {
-      handlePumpStart(previous, current); // pass previous to get water level before pump start
+      console.log('Pump start detected!');
+      handlePumpStart(previous, current);
     }
 
     previousReading.current = current;
   }, [liveData]);
 
   const detectPumpStart = (previous: any, current: any): boolean => {
-    // Check for LS1 transition from 1 to 0
-    // Adapt based on available data structure - using collector_ls1 if available
-    if (previous.collector_ls1 === 1 && current.collector_ls1 === 0) {
-      return true;
-    }
+    // Method 1: Detect significant water level increase (indicating production)
+    const waterLevelIncrease = current.waterLevel - previous.waterLevel;
+    const significantIncrease = waterLevelIncrease > 0.1; // More than 0.1L increase
     
-    // Fallback: if collector_ls1 not available, use compressor as approximation
-    // but this is less precise than the LS1 sensor method
-    if (!previous.compressor_on && current.compressor_on === 1) {
-      return true;
-    }
+    // Method 2: Compressor state change from off to on
+    const compressorStarted = previous.compressorOn === 0 && current.compressorOn === 1;
     
-    return false;
+    // Method 3: If we see a water level decrease followed by increase (tank being used then refilled)
+    const waterLevelDecrease = waterLevelIncrease < -0.05; // Water level dropped by more than 0.05L
+    
+    console.log('Pump detection analysis:', {
+      waterLevelIncrease,
+      significantIncrease,
+      compressorStarted,
+      waterLevelDecrease
+    });
+
+    // For now, let's use water level changes as the primary detection method
+    // We'll consider any significant change in water level as a "pump event"
+    return significantIncrease || waterLevelDecrease || compressorStarted;
   };
 
   const handlePumpStart = (previousReading: any, currentReading: any) => {
-    const pumpStartTime = new Date(currentReading._time);
-    const waterLevelBefore = previousReading.water_level_L || 0;
+    const eventTime = new Date(currentReading.lastUpdated);
+    const waterLevelBefore = previousReading.waterLevel || 0;
+    const waterLevelAfter = currentReading.waterLevel || 0;
 
-    console.log('Pump start detected at:', pumpStartTime, 'Water level before:', waterLevelBefore);
+    console.log('Handling pump event:', {
+      eventTime,
+      waterLevelBefore,
+      waterLevelAfter,
+      production: Math.abs(waterLevelAfter - waterLevelBefore)
+    });
 
-    // Create new pump event
+    // Calculate immediate production for this event
+    const production = Math.abs(waterLevelAfter - waterLevelBefore);
+
+    // Create new pump event with immediate production calculation
     const newPumpEvent: PumpEvent = {
-      timestamp: pumpStartTime,
+      timestamp: eventTime,
       waterLevelBefore: waterLevelBefore,
+      production: production
     };
-
-    // If we have a previous pump event, calculate production for it
-    if (pumpEvents.current.length > 0) {
-      const lastEvent = pumpEvents.current[pumpEvents.current.length - 1];
-      const production = Math.max(0, waterLevelBefore - lastEvent.waterLevelBefore);
-      
-      // Update the last event with production data
-      lastEvent.production = production;
-      
-      console.log('Production calculated for previous pump cycle:', {
-        from: lastEvent.waterLevelBefore,
-        to: waterLevelBefore,
-        production: production,
-        timePeriod: pumpStartTime.getTime() - lastEvent.timestamp.getTime()
-      });
-    }
 
     // Add the new pump event
     pumpEvents.current.push(newPumpEvent);
+
+    console.log('Added pump event:', newPumpEvent);
+    console.log('Total pump events:', pumpEvents.current.length);
 
     // Recalculate metrics
     updateProductionMetrics();
@@ -101,9 +119,15 @@ export const useWaterProductionCalculator = (liveData: any) => {
 
   const updateProductionMetrics = () => {
     const events = pumpEvents.current;
-    const eventsWithProduction = events.filter(e => e.production !== undefined);
+    const eventsWithProduction = events.filter(e => e.production !== undefined && e.production > 0);
     
+    console.log('Updating production metrics:', {
+      totalEvents: events.length,
+      eventsWithProduction: eventsWithProduction.length
+    });
+
     if (eventsWithProduction.length === 0) {
+      console.log('No events with production data yet');
       return;
     }
 
@@ -118,20 +142,24 @@ export const useWaterProductionCalculator = (liveData: any) => {
     // Get last pump event time
     const lastPumpEvent = events.length > 0 ? events[events.length - 1].timestamp : null;
 
-    setProductionData({
+    const newProductionData = {
       currentProductionRate: productionRate,
       totalProduced,
       lastPumpEvent,
       pumpCycles,
       averageProductionPerCycle,
-    });
+    };
+
+    console.log('Updated production data:', newProductionData);
+
+    setProductionData(newProductionData);
   };
 
   const calculateCurrentProductionRate = (events: PumpEvent[]): number => {
     if (events.length < 2) return 0;
 
     // Use last few events to calculate current rate
-    const recentEvents = events.slice(-5); // Last 5 pump cycles
+    const recentEvents = events.slice(-3); // Last 3 pump cycles
     const firstEvent = recentEvents[0];
     const lastEvent = recentEvents[recentEvents.length - 1];
     
