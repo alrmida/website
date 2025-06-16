@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardHeader from './DashboardHeader';
@@ -7,9 +8,10 @@ import WaterProductionMetrics from './WaterProductionMetrics';
 import DashboardFooter from './DashboardFooter';
 import RawDataManagement from './admin/RawDataManagement';
 import RealTimeDataTable from './RealTimeDataTable';
+import { MachineWithClient } from '@/types/machine';
 
 const AWGDashboard = () => {
-  const [selectedMachineId, setSelectedMachineId] = useState<string | null>(null);
+  const [selectedMachine, setSelectedMachine] = useState<MachineWithClient | null>(null);
   const [liveData, setLiveData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -17,26 +19,26 @@ const AWGDashboard = () => {
     const fetchInitialData = async () => {
       setLoading(true);
       try {
-        // Fetch the latest machine ID from the machine_profiles table
-        const { data: profiles, error: profilesError } = await supabase
-          .from('machine_profiles')
-          .select('machine_id')
+        // Fetch the latest machine from the machines table
+        const { data: machines, error: machinesError } = await supabase
+          .from('machines')
+          .select('*')
           .limit(1);
 
-        if (profilesError) {
-          console.error('Error fetching machine profiles:', profilesError);
-          throw profilesError;
+        if (machinesError) {
+          console.error('Error fetching machines:', machinesError);
+          throw machinesError;
         }
 
-        if (profiles && profiles.length > 0) {
-          const initialMachineId = profiles[0].machine_id;
-          setSelectedMachineId(initialMachineId);
-          console.log('Setting initial machine ID:', initialMachineId);
+        if (machines && machines.length > 0) {
+          const initialMachine = machines[0];
+          setSelectedMachine(initialMachine as MachineWithClient);
+          console.log('Setting initial machine:', initialMachine);
 
-          // Fetch live data for the initial machine ID
-          await fetchLiveData(initialMachineId);
+          // Fetch live data for the initial machine
+          await fetchLiveData(initialMachine.machine_id);
         } else {
-          console.warn('No machine profiles found.');
+          console.warn('No machines found.');
         }
       } catch (error) {
         console.error('Error fetching initial data:', error);
@@ -47,12 +49,6 @@ const AWGDashboard = () => {
 
     fetchInitialData();
   }, []);
-
-  useEffect(() => {
-    if (selectedMachineId) {
-      fetchLiveData(selectedMachineId);
-    }
-  }, [selectedMachineId]);
 
   const fetchLiveData = async (machineId: string) => {
     setLoading(true);
@@ -106,15 +102,15 @@ const AWGDashboard = () => {
     }
   };
 
-  const handleMachineSelect = async (machineId: string) => {
-    console.log('Selected machine ID:', machineId);
-    setSelectedMachineId(machineId);
-    await fetchLiveData(machineId);
+  const handleMachineSelect = async (machine: MachineWithClient) => {
+    console.log('Selected machine:', machine);
+    setSelectedMachine(machine);
+    await fetchLiveData(machine.machine_id);
   };
 
   const handleRefresh = () => {
-    if (selectedMachineId) {
-      fetchLiveData(selectedMachineId);
+    if (selectedMachine) {
+      fetchLiveData(selectedMachine.machine_id);
     }
   };
 
@@ -124,10 +120,13 @@ const AWGDashboard = () => {
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Machine Selection and Live Data Display */}
-        <MachineSelector onSelect={handleMachineSelect} />
-        {selectedMachineId && (
+        <MachineSelector 
+          onMachineSelect={handleMachineSelect} 
+          selectedMachine={selectedMachine}
+        />
+        {selectedMachine && (
           <MachineInfo
-            machineId={selectedMachineId}
+            machineId={selectedMachine.machine_id}
             liveData={liveData}
             loading={loading}
             onRefresh={handleRefresh}
@@ -144,7 +143,11 @@ const AWGDashboard = () => {
         <RawDataManagement loading={loading} onRefresh={handleRefresh} />
       </main>
       
-      <DashboardFooter />
+      <DashboardFooter 
+        profile={null}
+        selectedMachine={selectedMachine}
+        liveData={liveData}
+      />
     </div>
   );
 };
