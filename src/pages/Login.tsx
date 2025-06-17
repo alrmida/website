@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -7,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -15,7 +15,6 @@ const Login = () => {
   const [username, setUsername] = useState('');
   const [invitationToken, setInvitationToken] = useState('');
   const [loading, setLoading] = useState(false);
-  const [settingUpDemo, setSettingUpDemo] = useState(false);
   const [validatingInvitation, setValidatingInvitation] = useState(false);
   const [invitationValid, setInvitationValid] = useState<boolean | null>(null);
   const [showSignupForm, setShowSignupForm] = useState(false);
@@ -44,39 +43,6 @@ const Login = () => {
       setEmail(emailFromUrl);
     }
   }, [searchParams]);
-
-  const handleSetupDemoAccounts = async () => {
-    setSettingUpDemo(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('setup-demo-accounts');
-      
-      if (error) {
-        console.error('Demo setup error:', error);
-        toast({
-          title: "Error setting up demo accounts",
-          description: error.message || "Failed to create demo accounts",
-          variant: "destructive"
-        });
-      } else {
-        console.log('Demo setup successful:', data);
-        toast({
-          title: "Demo accounts created successfully",
-          description: "You can now sign in with kumulus@kumuluswater.com using password 000000",
-        });
-        // Pre-fill the login form
-        setEmail('kumulus@kumuluswater.com');
-        setPassword('000000');
-      }
-    } catch (err) {
-      console.error('Demo setup error:', err);
-      toast({
-        title: "Error setting up demo accounts",
-        description: "Failed to create demo accounts",
-        variant: "destructive"
-      });
-    }
-    setSettingUpDemo(false);
-  };
 
   const handleValidateInvitation = async () => {
     if (!email || !invitationToken) {
@@ -204,24 +170,6 @@ const Login = () => {
         </CardHeader>
 
         <CardContent>
-          {/* Demo Setup Section */}
-          <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <p className="text-sm text-blue-800 dark:text-blue-200 mb-3">
-              Demo Mode: Click below to create demo accounts for testing
-            </p>
-            <Button 
-              onClick={handleSetupDemoAccounts}
-              disabled={settingUpDemo}
-              className="w-full mb-2"
-              variant="outline"
-            >
-              {settingUpDemo ? 'Setting up demo accounts...' : 'Setup Demo Accounts'}
-            </Button>
-            <p className="text-xs text-blue-600 dark:text-blue-400">
-              This will create kumulus@kumuluswater.com with password 000000
-            </p>
-          </div>
-
           {!showSignupForm ? (
             <form onSubmit={handleSignIn} className="space-y-4">
               <div className="space-y-2">
