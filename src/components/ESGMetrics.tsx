@@ -1,97 +1,77 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Leaf, Droplets, Recycle, TreePine } from 'lucide-react';
-import { useBatchWaterProductionCalculator } from '@/hooks/useBatchWaterProductionCalculator';
+import { Leaf, Recycle, TrendingUp } from 'lucide-react';
 
 interface ESGMetricsProps {
-  liveData: any; // Keep for compatibility but not used in batch processing
+  totalWaterProduced: number;
 }
 
-const ESGMetrics = ({ liveData }: ESGMetricsProps) => {
-  const { productionData } = useBatchWaterProductionCalculator();
-  
-  // Use real production data from the batch calculator
-  const totalWaterProduced = productionData.totalProduced;
-  
-  // Calculate ESG metrics based on actual water production
+const ESGMetrics = ({ totalWaterProduced }: ESGMetricsProps) => {
+  // Calculate ESG metrics based on water production
   const co2Saved = Math.round(totalWaterProduced * 0.234); // kg CO2 saved per liter
   const plasticBottlesSaved = Math.round(totalWaterProduced / 0.5); // 500ml bottles
-  const energyUsed = Math.round(totalWaterProduced * 4.2); // kWh per liter
-  const waterFromAir = totalWaterProduced;
-
-  const metrics = [
-    {
-      title: 'CO₂ Emissions Saved',
-      value: `${co2Saved} kg`,
-      description: 'vs bottled water',
-      icon: Leaf,
-      color: 'text-green-600 dark:text-green-400',
-      bgColor: 'bg-green-50 dark:bg-green-900/20'
-    },
-    {
-      title: 'Plastic Bottles Avoided',
-      value: `${plasticBottlesSaved}`,
-      description: '500ml bottles',
-      icon: Recycle,
-      color: 'text-blue-600 dark:text-blue-400',
-      bgColor: 'bg-blue-50 dark:bg-blue-900/20'
-    },
-    {
-      title: 'Water from Air',
-      value: `${waterFromAir.toFixed(2)}L`,
-      description: 'renewable source',
-      icon: Droplets,
-      color: 'text-cyan-600 dark:text-cyan-400',
-      bgColor: 'bg-cyan-50 dark:bg-cyan-900/20'
-    },
-    {
-      title: 'Energy Efficient',
-      value: `${energyUsed} kWh`,
-      description: 'solar powered',
-      icon: TreePine,
-      color: 'text-emerald-600 dark:text-emerald-400',
-      bgColor: 'bg-emerald-50 dark:bg-emerald-900/20'
-    }
-  ];
+  const moneySaved = Math.round(totalWaterProduced * 0.5); // €0.50 per liter saved
 
   return (
-    <Card className="bg-white dark:bg-gray-800 mb-6">
-      <CardHeader>
-        <CardTitle className="text-gray-900 dark:text-white flex items-center">
-          <Leaf className="w-5 h-5 mr-2 text-green-600 dark:text-green-400" />
-          ESG Impact Metrics
-          <span className="ml-2 text-xs text-gray-500 font-normal">
-            (Based on {productionData.pumpCycles} pump cycles)
-          </span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {metrics.map((metric, index) => {
-            const Icon = metric.icon;
-            return (
-              <div key={index} className={`${metric.bgColor} p-4 rounded-lg border`}>
-                <div className="flex items-center justify-between mb-2">
-                  <Icon className={`w-5 h-5 ${metric.color}`} />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {metric.value}
-                  </p>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {metric.title}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {metric.description}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
+    <div className="mb-8">
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+        Environmental & Social Impact
+      </h2>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-green-700 dark:text-green-300">
+              CO₂ Emissions Saved
+            </CardTitle>
+            <Leaf className="h-4 w-4 text-green-600 dark:text-green-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+              {co2Saved} kg
+            </div>
+            <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+              vs bottled water production
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-300">
+              Plastic Bottles Saved
+            </CardTitle>
+            <Recycle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+              {plasticBottlesSaved}
+            </div>
+            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+              500ml bottles avoided
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-700">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-purple-700 dark:text-purple-300">
+              Cost Savings
+            </CardTitle>
+            <TrendingUp className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+              €{moneySaved}
+            </div>
+            <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+              vs purchasing bottled water
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 };
 

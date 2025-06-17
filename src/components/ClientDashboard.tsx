@@ -123,6 +123,16 @@ const ClientDashboard = () => {
     }
   };
 
+  // Prepare data for MetricsCards component
+  const waterTank = {
+    currentLevel: liveData?.waterLevel || 0,
+    maxCapacity: 10.0,
+    percentage: Math.round(((liveData?.waterLevel || 0) / 10.0) * 100)
+  };
+
+  const machineStatus = liveData?.compressor_on === 1 ? 'Producing' : 'Idle';
+  const totalWaterProduced = 1245.7; // Static value for demo
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <DashboardHeader />
@@ -146,16 +156,16 @@ const ClientDashboard = () => {
 
         {/* Metrics Cards Grid */}
         <MetricsCards 
-          selectedMachine={selectedMachine}
-          liveData={liveData}
-          loading={loading}
+          waterTank={waterTank}
+          machineStatus={machineStatus}
+          totalWaterProduced={totalWaterProduced}
         />
 
         {/* Water Production Metrics */}
         <WaterProductionMetrics liveData={liveData} />
 
         {/* ESG Metrics */}
-        <ESGMetrics />
+        <ESGMetrics totalWaterProduced={totalWaterProduced} />
       </main>
       
       <DashboardFooter 
