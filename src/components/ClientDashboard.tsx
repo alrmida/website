@@ -7,15 +7,27 @@ import MachineInfo from './MachineInfo';
 import WaterProductionMetrics from './WaterProductionMetrics';
 import MetricsCards from './MetricsCards';
 import ESGMetrics from './ESGMetrics';
+import ProductionAnalytics from './ProductionAnalytics';
 import DashboardFooter from './DashboardFooter';
 import { MachineWithClient } from '@/types/machine';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDashboardData } from '@/hooks/useDashboardData';
 
 const ClientDashboard = () => {
   const { profile } = useAuth();
   const [selectedMachine, setSelectedMachine] = useState<MachineWithClient | null>(null);
   const [liveData, setLiveData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedPeriod, setSelectedPeriod] = useState('daily');
+
+  // Get dashboard data including charts data
+  const {
+    dailyProductionData,
+    monthlyProductionData,
+    statusData,
+    monthlyStatusData,
+    totalWaterProduced
+  } = useDashboardData(selectedMachine);
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -131,7 +143,6 @@ const ClientDashboard = () => {
   };
 
   const machineStatus = liveData?.compressor_on === 1 ? 'Producing' : 'Idle';
-  const totalWaterProduced = 1245.7; // Static value for demo
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -159,6 +170,16 @@ const ClientDashboard = () => {
           waterTank={waterTank}
           machineStatus={machineStatus}
           totalWaterProduced={totalWaterProduced}
+        />
+
+        {/* Production Analytics - Charts and Visualizations */}
+        <ProductionAnalytics
+          selectedPeriod={selectedPeriod}
+          onPeriodChange={setSelectedPeriod}
+          dailyProductionData={dailyProductionData}
+          monthlyProductionData={monthlyProductionData}
+          statusData={statusData}
+          monthlyStatusData={monthlyStatusData}
         />
 
         {/* Water Production Metrics - Only show for admin users */}
