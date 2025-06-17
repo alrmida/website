@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardHeader from './DashboardHeader';
@@ -160,11 +161,15 @@ const ClientDashboard = () => {
           totalWaterProduced={totalWaterProduced}
         />
 
-        {/* Water Production Metrics */}
-        <WaterProductionMetrics liveData={liveData} />
+        {/* Water Production Metrics - Only show for admin users */}
+        {profile?.role === 'admin' && (
+          <WaterProductionMetrics liveData={liveData} />
+        )}
 
-        {/* ESG Metrics */}
-        <ESGMetrics totalWaterProduced={totalWaterProduced} />
+        {/* ESG Metrics - Only show for admin users */}
+        {profile?.role === 'admin' && (
+          <ESGMetrics totalWaterProduced={totalWaterProduced} />
+        )}
       </main>
       
       <DashboardFooter 
