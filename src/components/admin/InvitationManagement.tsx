@@ -34,10 +34,10 @@ const InvitationManagement = ({ invitations, profile, loading, onRefresh }: Invi
     try {
       const dbRole = mapFrontendRoleToDatabase(inviteRole);
       
-      // Create invitation in database
+      // Create invitation in database - cast to the expected type
       const { data, error } = await supabase.rpc('create_invitation', {
         p_email: inviteEmail,
-        p_role: dbRole,
+        p_role: dbRole as 'client' | 'kumulus_personnel',
         p_created_by: profile.id
       });
 
