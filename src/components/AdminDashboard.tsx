@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import DashboardHeader from './DashboardHeader';
 import AdminPanel from './AdminPanel';
@@ -8,6 +7,11 @@ import { useAuth } from '@/contexts/AuthContext';
 const AdminDashboard = () => {
   const { profile } = useAuth();
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
+
+  // Only true admins should see this dashboard
+  if (profile?.role !== 'admin') {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">

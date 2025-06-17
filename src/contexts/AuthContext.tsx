@@ -30,9 +30,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const mapDatabaseRoleToFrontend = (dbRole: string): 'client' | 'commercial' | 'admin' => {
   switch (dbRole) {
     case 'kumulus_personnel':
-      return 'commercial';
+      return 'commercial'; // Sales/personnel role - no admin access
     case 'kumulus_admin':
-      return 'admin';
+      return 'admin'; // True admin role
     case 'client':
       return 'client';
     default:

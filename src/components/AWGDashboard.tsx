@@ -15,12 +15,12 @@ const AWGDashboard = () => {
     );
   }
 
-  // Route to appropriate dashboard based on user role
+  // Only true admin role gets admin dashboard
   if (profile?.role === 'admin') {
     return <AdminDashboard />;
   }
 
-  // Default to client dashboard for commercial users and clients
+  // Commercial users and clients both get client dashboard
   return <ClientDashboard />;
 };
 

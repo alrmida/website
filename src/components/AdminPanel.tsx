@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -37,7 +36,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
 
   useEffect(() => {
-    if (open && (profile?.role === 'admin' || profile?.role === 'commercial')) {
+    if (open && profile?.role === 'admin') {
       fetchData();
     }
   }, [open, profile]);
@@ -131,7 +130,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
     setLoading(false);
   };
 
-  if (profile?.role !== 'admin' && profile?.role !== 'commercial') {
+  if (profile?.role !== 'admin') {
     return null;
   }
 
