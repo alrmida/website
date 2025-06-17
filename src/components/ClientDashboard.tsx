@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardHeader from './DashboardHeader';
@@ -144,8 +143,8 @@ const ClientDashboard = () => {
           selectedMachine={selectedMachine}
         />
 
-        {/* Machine Info and Water Tank */}
-        {selectedMachine && (
+        {/* Machine Info and Water Tank - Only show for admin users */}
+        {selectedMachine && profile?.role === 'admin' && (
           <MachineInfo
             machineId={selectedMachine.machine_id}
             liveData={liveData}
