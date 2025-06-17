@@ -107,10 +107,28 @@ Deno.serve(async (req) => {
       console.log(`Created Kumulus personnel account`)
     }
 
-    // Step 6: Wait for profiles to be created by the trigger
+    // Step 6: Create the specific sales demo account
+    const { data: salesUser, error: salesSignUpError } = await supabaseAdmin.auth.admin.createUser({
+      email: 'kumulus@kumuluswater.com',
+      password: '000000',
+      user_metadata: {
+        username: 'KumulusSales',
+        role: 'kumulus_personnel'
+      },
+      email_confirm: true
+    })
+
+    if (salesSignUpError) {
+      console.log(`Error creating sales demo account:`, salesSignUpError.message)
+      throw new Error(`Failed to create sales demo account: ${salesSignUpError.message}`)
+    } else {
+      console.log(`Created sales demo account`)
+    }
+
+    // Step 7: Wait for profiles to be created by the trigger
     await new Promise(resolve => setTimeout(resolve, 3000))
 
-    // Step 7: Verify the Kumulus client profile exists and get it
+    // Step 8: Verify the Kumulus client profile exists and get it
     const { data: profiles, error: profilesError } = await supabaseAdmin
       .from('profiles')
       .select('id, username')
@@ -141,7 +159,7 @@ Deno.serve(async (req) => {
     const kumulusClient = profiles[0]
     console.log('Using Kumulus client profile:', kumulusClient)
 
-    // Step 8: Create the real machine
+    // Step 9: Create the real machine
     const { data: machineData, error: machineError } = await supabaseAdmin
       .from('machines')
       .insert({
@@ -165,6 +183,7 @@ Deno.serve(async (req) => {
         created: {
           client: 'Kumulus',
           personnel: 'Kumulus1',
+          sales: 'KumulusSales (kumulus@kumuluswater.com)',
           machine: 'KU001619000079'
         }
       }),

@@ -253,6 +253,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_demo_sales_account: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       create_invitation: {
         Args: {
           p_email: string
