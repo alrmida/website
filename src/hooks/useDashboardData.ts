@@ -3,12 +3,17 @@ import { useMemo } from 'react';
 import { useLiveMachineData } from '@/hooks/useLiveMachineData';
 import { getStaticProductionData, getStaticStatusData } from '@/utils/staticDataGenerator';
 import { MachineWithClient, getDisplayModelName } from '@/types/machine';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const useDashboardData = (selectedMachine: MachineWithClient | null) => {
+  const { user } = useAuth();
   // Fetch live/static machine data based on selected machine
   const { data: liveData, isLoading: dataLoading, error: dataError } = useLiveMachineData(selectedMachine?.machine_id);
 
   const dashboardData = useMemo(() => {
+    // Check if this is the sales account
+    const isSalesAccount = user?.email === 'kumulus@kumuluswater.com';
+    
     // Default machine info for when no machine is selected
     const defaultMachineInfo = {
       machineId: 'Select a machine',
@@ -36,8 +41,10 @@ export const useDashboardData = (selectedMachine: MachineWithClient | null) => {
       percentage: selectedMachine ? Math.round((liveData.waterLevel / 10.0) * 100) : 0
     };
 
-    // Get production data - use static data for all machines
-    const productionData = getStaticProductionData(selectedMachine?.machine_id, 1.0);
+    // Get production data - use dummy data for sales account, static data for others
+    const productionData = isSalesAccount ? 
+      getStaticProductionData(undefined, 1.0) : // Use dummy data for sales account
+      getStaticProductionData(selectedMachine?.machine_id, 1.0);
 
     const dailyProductionData = selectedMachine ? productionData.daily : 
       [{ date: '28 May', production: 0 }, { date: '29 May', production: 0 }, { date: '30 May', production: 0 }, { date: '31 May', production: 0 }];
@@ -45,20 +52,22 @@ export const useDashboardData = (selectedMachine: MachineWithClient | null) => {
     const monthlyProductionData = selectedMachine ? productionData.monthly :
       [{ month: 'Mar 2025', production: 0 }, { month: 'Apr 2025', production: 0 }, { month: 'May 2025', production: 0 }];
 
-    // Status data for last 7 days
-    const statusData = selectedMachine ? getStaticStatusData(selectedMachine.machine_id) : [
-      { date: '25 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-      { date: '26 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-      { date: '27 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-      { date: '28 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-      { date: '29 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-      { date: '30 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-      { date: '31 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 }
-    ];
+    // Status data for last 7 days - use dummy data for sales account
+    const statusData = selectedMachine ? 
+      (isSalesAccount ? getStaticStatusData(undefined) : getStaticStatusData(selectedMachine.machine_id)) : 
+      [
+        { date: '25 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
+        { date: '26 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
+        { date: '27 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
+        { date: '28 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
+        { date: '29 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
+        { date: '30 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
+        { date: '31 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 }
+      ];
 
-    // Monthly status data (last 3 months) - clear for real machine
+    // Monthly status data (last 3 months) - use dummy data for sales account
     const isRealMachine = selectedMachine?.machine_id === 'KU001619000079';
-    const monthlyStatusData = isRealMachine ? [
+    const monthlyStatusData = (isRealMachine && !isSalesAccount) ? [
       { month: '2025-03', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
       { month: '2025-04', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
       { month: '2025-05', producing: 0, idle: 0, fullWater: 0, disconnected: 0 }
@@ -68,8 +77,8 @@ export const useDashboardData = (selectedMachine: MachineWithClient | null) => {
       { month: '2025-05', producing: 72.4, idle: 15.6, fullWater: 6.8, disconnected: 5.2 }
     ];
 
-    // Calculate total water produced - clear for real machine to use live calculations
-    const totalWaterProduced = isRealMachine ? 0 : 1245.7;
+    // Calculate total water produced - use dummy data for sales account
+    const totalWaterProduced = (isRealMachine && !isSalesAccount) ? 0 : 1245.7;
 
     return {
       machineInfo,
@@ -81,7 +90,7 @@ export const useDashboardData = (selectedMachine: MachineWithClient | null) => {
       totalWaterProduced,
       liveData
     };
-  }, [selectedMachine, liveData]);
+  }, [selectedMachine, liveData, user?.email]);
 
   return {
     ...dashboardData,
