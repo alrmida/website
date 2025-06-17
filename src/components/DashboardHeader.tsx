@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -116,7 +115,8 @@ const DashboardHeader = () => {
             {/* Theme Toggle */}
             <ThemeToggle />
             
-            {(profile?.role === 'admin' || profile?.role === 'commercial') && (
+            {/* Only true admins should see the admin panel button */}
+            {profile?.role === 'admin' && (
               <Button
                 variant="outline"
                 size="sm"
