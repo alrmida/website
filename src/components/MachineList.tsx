@@ -38,11 +38,7 @@ const MachineList = ({
         </SelectTrigger>
         <SelectContent position="popper" className="w-[--radix-select-trigger-width] min-w-full">
           {machines.map((machine) => (
-            <SelectItem 
-              key={machine.id} 
-              value={machine.machine_id} 
-              className="w-full focus:bg-accent/50 data-[highlighted]:bg-accent/50 hover:bg-accent/50"
-            >
+            <SelectItem key={machine.id} value={machine.machine_id} className="w-full">
               <div className="flex flex-col w-full min-w-0">
                 <span className="font-medium truncate">
                   {machine.machine_id} - {getDisplayModelName(machine)}
