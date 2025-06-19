@@ -33,13 +33,13 @@ const MachineList = ({
         value={selectedMachine?.machine_id || undefined} 
         onValueChange={onMachineSelect}
       >
-        <SelectTrigger>
+        <SelectTrigger className="w-full">
           <SelectValue placeholder="Choose a machine..." />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="w-full min-w-[var(--radix-select-trigger-width)]">
           {machines.map((machine) => (
-            <SelectItem key={machine.id} value={machine.machine_id}>
-              <div className="flex flex-col">
+            <SelectItem key={machine.id} value={machine.machine_id} className="w-full">
+              <div className="flex flex-col w-full">
                 <span className="font-medium">
                   {machine.machine_id} - {getDisplayModelName(machine)}
                 </span>
