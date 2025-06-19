@@ -36,20 +36,20 @@ const MachineList = ({
         <SelectTrigger className="w-full">
           <SelectValue placeholder="Choose a machine..." />
         </SelectTrigger>
-        <SelectContent position="popper" className="w-full min-w-[var(--radix-select-trigger-width)] max-w-md">
+        <SelectContent position="popper" className="w-full min-w-[500px] max-w-[600px] z-50">
           {machines.map((machine) => (
-            <SelectItem key={machine.id} value={machine.machine_id} className="w-full py-3 px-3">
+            <SelectItem key={machine.id} value={machine.machine_id} className="w-full py-3 px-4">
               <div className="flex flex-col w-full space-y-1">
                 <div className="font-semibold text-sm text-gray-900 dark:text-gray-100">
                   {machine.machine_id}
                 </div>
-                <div className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                <div className="text-xs text-gray-600 dark:text-gray-400 flex flex-wrap items-center gap-1">
                   <span className="font-medium">{getDisplayModelName(machine)}</span>
-                  <span className="mx-1">•</span>
+                  <span>•</span>
                   <span>{machine.name}</span>
-                  <span className="mx-1">•</span>
+                  <span>•</span>
                   <span>{machine.location || 'No location'}</span>
-                  <span className="mx-1">•</span>
+                  <span>•</span>
                   <span>{getOperatingSince(machine)}</span>
                 </div>
                 {(userRole === 'commercial' || userRole === 'admin') && machine.client_profile?.username && (
