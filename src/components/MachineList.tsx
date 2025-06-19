@@ -38,46 +38,46 @@ const MachineList = ({
         </SelectTrigger>
         <SelectContent 
           position="popper" 
-          className="w-full min-w-[500px] max-w-[600px] z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg"
+          className="w-full min-w-[700px] max-w-[900px] z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg"
         >
           {machines.map((machine) => (
             <SelectItem 
               key={machine.id} 
               value={machine.machine_id} 
-              className="w-full py-3 px-4 focus:bg-gray-50 dark:focus:bg-gray-700 cursor-pointer"
+              className="w-full py-4 px-4 focus:bg-gray-50 dark:focus:bg-gray-700 cursor-pointer"
             >
-              <div className="w-full space-y-1.5">
-                {/* Machine ID - prominent */}
+              <div className="w-full space-y-2">
+                {/* Machine ID - always on its own line */}
                 <div className="font-semibold text-sm text-gray-900 dark:text-gray-100">
                   {machine.machine_id}
                 </div>
                 
-                {/* Machine details - compact layout */}
-                <div className="space-y-0.5 text-xs text-gray-600 dark:text-gray-400">
-                  <div className="grid grid-cols-[auto_1fr] gap-2 items-start">
-                    <span className="font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">Model:</span>
-                    <span className="break-words">{getDisplayModelName(machine)}</span>
+                {/* Machine details - structured in rows */}
+                <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-800 dark:text-gray-200">Model:</span>
+                    <span>{getDisplayModelName(machine)}</span>
                   </div>
                   
-                  <div className="grid grid-cols-[auto_1fr] gap-2 items-start">
-                    <span className="font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">Name:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-800 dark:text-gray-200">Name:</span>
                     <span className="break-words">{machine.name}</span>
                   </div>
                   
-                  <div className="grid grid-cols-[auto_1fr] gap-2 items-start">
-                    <span className="font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">Location:</span>
-                    <span className="break-words">{machine.location || 'No location'}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-800 dark:text-gray-200">Location:</span>
+                    <span>{machine.location || 'No location'}</span>
                   </div>
                   
-                  <div className="grid grid-cols-[auto_1fr] gap-2 items-start">
-                    <span className="font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">Since:</span>
-                    <span className="break-words">{getOperatingSince(machine)}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-800 dark:text-gray-200">Operating since:</span>
+                    <span>{getOperatingSince(machine)}</span>
                   </div>
                   
                   {(userRole === 'commercial' || userRole === 'admin') && machine.client_profile?.username && (
-                    <div className="grid grid-cols-[auto_1fr] gap-2 items-start pt-1 border-t border-gray-200 dark:border-gray-600">
-                      <span className="font-medium text-blue-700 dark:text-blue-300 whitespace-nowrap">Client:</span>
-                      <span className="text-blue-600 dark:text-blue-400 font-medium break-words">
+                    <div className="flex items-center gap-2 pt-1 border-t border-gray-200 dark:border-gray-600">
+                      <span className="font-medium text-blue-700 dark:text-blue-300">Client:</span>
+                      <span className="text-blue-600 dark:text-blue-400 font-medium">
                         {machine.client_profile.username}
                       </span>
                     </div>
