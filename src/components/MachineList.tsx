@@ -36,18 +36,18 @@ const MachineList = ({
         <SelectTrigger className="w-full">
           <SelectValue placeholder="Choose a machine..." />
         </SelectTrigger>
-        <SelectContent position="popper" className="w-[--radix-select-trigger-width] min-w-full">
+        <SelectContent position="popper" className="w-full min-w-[var(--radix-select-trigger-width)]">
           {machines.map((machine) => (
             <SelectItem key={machine.id} value={machine.machine_id} className="w-full">
-              <div className="flex flex-col w-full min-w-0">
-                <span className="font-medium truncate">
+              <div className="flex flex-col w-full">
+                <span className="font-medium">
                   {machine.machine_id} - {getDisplayModelName(machine)}
                 </span>
-                <span className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                <span className="text-sm text-gray-500 dark:text-gray-400">
                   {machine.name} • {machine.location || 'No location'} • Operating since {getOperatingSince(machine)}
                 </span>
                 {(userRole === 'commercial' || userRole === 'admin') && machine.client_profile?.username && (
-                  <span className="text-xs text-blue-600 dark:text-blue-400 truncate">
+                  <span className="text-xs text-blue-600 dark:text-blue-400">
                     Client: {machine.client_profile.username}
                   </span>
                 )}
