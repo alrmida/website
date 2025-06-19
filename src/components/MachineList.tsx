@@ -38,23 +38,13 @@ const MachineList = ({
         </SelectTrigger>
         <SelectContent position="popper" className="w-full min-w-[var(--radix-select-trigger-width)]">
           {machines.map((machine) => (
-            <SelectItem key={machine.id} value={machine.machine_id} className="w-full py-3">
+            <SelectItem key={machine.id} value={machine.machine_id} className="w-full py-2">
               <div className="flex flex-col w-full gap-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-sm">
-                    {machine.machine_id}
-                  </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {getDisplayModelName(machine)}
-                  </span>
+                <div className="font-medium text-sm">
+                  {machine.machine_id}
                 </div>
-                <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                  <span className="truncate flex-1 mr-2">
-                    {machine.name} • {machine.location || 'No location'}
-                  </span>
-                  <span className="whitespace-nowrap">
-                    {getOperatingSince(machine)}
-                  </span>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  {getDisplayModelName(machine)} • {machine.name} • {machine.location || 'No location'} • {getOperatingSince(machine)}
                 </div>
                 {(userRole === 'commercial' || userRole === 'admin') && machine.client_profile?.username && (
                   <div className="text-xs text-blue-600 dark:text-blue-400">
