@@ -36,7 +36,7 @@ const MachineList = ({
         <SelectTrigger className="w-full">
           <SelectValue placeholder="Choose a machine..." />
         </SelectTrigger>
-        <SelectContent className="w-full min-w-[var(--radix-select-trigger-width)]">
+        <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)] max-w-none">
           {machines.map((machine) => (
             <SelectItem key={machine.id} value={machine.machine_id} className="w-full">
               <div className="flex flex-col w-full">
