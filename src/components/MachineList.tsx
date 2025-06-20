@@ -38,7 +38,7 @@ const MachineList = ({
         </SelectTrigger>
         <SelectContent 
           position="popper" 
-          className="w-full min-w-[600px] max-w-[800px] z-50 bg-white dark:bg-gray-800"
+          className="w-full min-w-[800px] max-w-[1200px] z-50 bg-white dark:bg-gray-800"
         >
           {machines.map((machine) => (
             <SelectItem key={machine.id} value={machine.machine_id} className="w-full py-3 px-4 min-w-0">
@@ -72,4 +72,3 @@ const MachineList = ({
 };
 
 export default MachineList;
-
