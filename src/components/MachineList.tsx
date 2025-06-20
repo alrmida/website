@@ -43,7 +43,7 @@ const MachineList = ({
           className="w-full min-w-[600px] max-w-[800px] z-50 bg-white dark:bg-gray-800"
         >
           {machines.map((machine) => (
-            <SelectItem key={machine.id} value={machine.machine_id} className="w-full py-3 px-4 min-w-0">
+            <SelectItem key={machine.id} value={machine.machine_id} className="w-full py-3 pl-10 pr-4 min-w-0">
               <div className="flex flex-col w-full min-w-0 space-y-1">
                 <div className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">
                   {machine.machine_id}
