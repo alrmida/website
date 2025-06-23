@@ -12,13 +12,15 @@ import DashboardFooter from './DashboardFooter';
 import { MachineWithClient } from '@/types/machine';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDashboardData } from '@/hooks/useDashboardData';
+import { useLiveMachineData } from '@/hooks/useLiveMachineData';
 
 const ClientDashboard = () => {
   const { profile } = useAuth();
   const [selectedMachine, setSelectedMachine] = useState<MachineWithClient | null>(null);
-  const [liveData, setLiveData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState('daily');
+
+  // Use the live machine data hook for real-time updates
+  const { data: liveData, isLoading: liveDataLoading } = useLiveMachineData(selectedMachine?.machine_id);
 
   // Get dashboard data including charts data
   const {
@@ -31,7 +33,6 @@ const ClientDashboard = () => {
 
   useEffect(() => {
     const fetchInitialData = async () => {
-      setLoading(true);
       try {
         // Fetch the latest machine from the machines table
         const { data: machines, error: machinesError } = await supabase
@@ -48,92 +49,36 @@ const ClientDashboard = () => {
           const initialMachine = machines[0];
           setSelectedMachine(initialMachine as MachineWithClient);
           console.log('Setting initial machine:', initialMachine);
-
-          // Fetch live data for the initial machine
-          await fetchLiveData(initialMachine.machine_id);
         } else {
           console.warn('No machines found.');
         }
       } catch (error) {
         console.error('Error fetching initial data:', error);
-      } finally {
-        setLoading(false);
       }
     };
 
     fetchInitialData();
   }, []);
 
-  const fetchLiveData = async (machineId: string) => {
-    console.log('🔄 Fetching live data for machine:', machineId);
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('raw_machine_data')
-        .select('*')
-        .eq('machine_id', machineId)
-        .order('timestamp_utc', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error fetching live data:', error);
-        setLiveData(null);
-        return;
-      }
-
-      if (data) {
-        // Convert timestamp_utc to Date object
-        const lastUpdated = new Date(data.timestamp_utc);
-
-        // Extract relevant data and convert water_level_l to a number
-        const waterLevel = data.water_level_l !== null ? Number(data.water_level_l) : null;
-        const collector_ls1 = data.collector_ls1 !== null ? Number(data.collector_ls1) : null;
-        const compressor_on = data.compressor_on !== null ? Number(data.compressor_on) : null;
-
-        const processedLiveData = {
-          lastUpdated: lastUpdated.toISOString(),
-          waterLevel,
-          collector_ls1,
-          compressor_on,
-          ambient_temp_c: data.ambient_temp_c,
-          ambient_rh_pct: data.ambient_rh_pct,
-          refrigerant_temp_c: data.refrigerant_temp_c,
-          exhaust_temp_c: data.exhaust_temp_c,
-          current_a: data.current_a,
-          treating_water: data.treating_water,
-          serving_water: data.serving_water,
-          producing_water: data.producing_water,
-          full_tank: data.full_tank,
-          disinfecting: data.disinfecting,
-        };
-
-        console.log('✅ Successfully fetched live data:', processedLiveData);
-        setLiveData(processedLiveData);
-      } else {
-        console.log('No live data found for machine ID:', machineId);
-        setLiveData(null);
-      }
-    } catch (error) {
-      console.error('Error fetching live data:', error);
-      setLiveData(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleMachineSelect = async (machine: MachineWithClient) => {
     console.log('Selected machine:', machine);
     setSelectedMachine(machine);
-    await fetchLiveData(machine.machine_id);
   };
 
-  const handleRefresh = async () => {
-    console.log('🔄 Manual refresh triggered');
-    if (selectedMachine) {
-      await fetchLiveData(selectedMachine.machine_id);
-    }
+  const handleRefresh = () => {
+    console.log('🔄 Manual refresh triggered - live data will auto-refresh');
+    // The useLiveMachineData hook handles refreshing automatically
   };
+
+  // Convert live data structure to match the expected format
+  const processedLiveData = liveData ? {
+    lastUpdated: liveData.lastUpdated,
+    waterLevel: liveData.waterLevel,
+    ambient_temp_c: null, // Not available in live data structure
+    current_a: null, // Not available in live data structure
+    compressor_on: liveData.compressorOn,
+    // Add other properties as needed
+  } : null;
 
   // Prepare data for MetricsCards component
   const waterTank = {
@@ -142,7 +87,7 @@ const ClientDashboard = () => {
     percentage: Math.round(((liveData?.waterLevel || 0) / 10.0) * 100)
   };
 
-  const machineStatus = liveData?.compressor_on === 1 ? 'Producing' : 'Idle';
+  const machineStatus = liveData?.status || 'Loading...';
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -159,8 +104,8 @@ const ClientDashboard = () => {
         {selectedMachine && profile?.role === 'admin' && (
           <MachineInfo
             machineId={selectedMachine.machine_id}
-            liveData={liveData}
-            loading={loading}
+            liveData={processedLiveData}
+            loading={liveDataLoading}
             onRefresh={handleRefresh}
           />
         )}
@@ -184,7 +129,7 @@ const ClientDashboard = () => {
 
         {/* Water Production Metrics - Only show for admin users */}
         {profile?.role === 'admin' && (
-          <WaterProductionMetrics liveData={liveData} />
+          <WaterProductionMetrics liveData={processedLiveData} />
         )}
 
         {/* ESG Metrics - Only show for admin users */}
@@ -196,7 +141,7 @@ const ClientDashboard = () => {
       <DashboardFooter 
         profile={profile}
         selectedMachine={selectedMachine}
-        liveData={liveData}
+        liveData={processedLiveData}
       />
     </div>
   );
