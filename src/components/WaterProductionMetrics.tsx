@@ -1,16 +1,29 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Droplets, TrendingUp, Zap, Clock, RefreshCw } from 'lucide-react';
+import { Droplets, TrendingUp, Zap, Clock, RefreshCw, RotateCcw } from 'lucide-react';
 import { useBatchWaterProductionCalculator } from '@/hooks/useBatchWaterProductionCalculator';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface WaterProductionMetricsProps {
   liveData: any; // Keep for compatibility but not used in batch processing
 }
 
 const WaterProductionMetrics = ({ liveData }: WaterProductionMetricsProps) => {
-  const { productionData, isProcessing, processBatchData } = useBatchWaterProductionCalculator();
+  const { profile } = useAuth();
+  const { productionData, isProcessing, processBatchData, resetMachineMetrics } = useBatchWaterProductionCalculator();
 
   const formatTime = (date: Date | null) => {
     if (!date) return 'Never';
@@ -22,6 +35,8 @@ const WaterProductionMetrics = ({ liveData }: WaterProductionMetricsProps) => {
     return date.toLocaleString();
   };
 
+  const isAdmin = profile?.role === 'admin';
+
   return (
     <div className="mb-6">
       {/* Control Panel */}
@@ -29,17 +44,48 @@ const WaterProductionMetrics = ({ liveData }: WaterProductionMetricsProps) => {
         <CardHeader className="pb-2">
           <div className="flex justify-between items-center">
             <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
-              Water Production Control
+              Water Production Control (1-Hour Window)
             </CardTitle>
-            <Button
-              onClick={processBatchData}
-              disabled={isProcessing}
-              variant="outline"
-              size="sm"
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isProcessing ? 'animate-spin' : ''}`} />
-              {isProcessing ? 'Processing...' : 'Process Batch'}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={processBatchData}
+                disabled={isProcessing}
+                variant="outline"
+                size="sm"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isProcessing ? 'animate-spin' : ''}`} />
+                {isProcessing ? 'Processing...' : 'Process Batch'}
+              </Button>
+              
+              {isAdmin && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Reset Metrics
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Reset Water Production Metrics</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete all water production metrics for this machine. 
+                        This action cannot be undone. Are you sure you want to continue?
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={resetMachineMetrics}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        Reset Metrics
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="pt-0">
@@ -47,7 +93,7 @@ const WaterProductionMetrics = ({ liveData }: WaterProductionMetricsProps) => {
             Last calculation: {formatDate(productionData.lastCalculationTime)}
           </p>
           <p className="text-xs text-gray-500">
-            Batch processing runs automatically every 30 minutes
+            Batch processing runs automatically every hour to detect collector_ls1 state changes
           </p>
         </CardContent>
       </Card>
@@ -66,7 +112,7 @@ const WaterProductionMetrics = ({ liveData }: WaterProductionMetricsProps) => {
               {productionData.currentProductionRate.toFixed(2)} L/h
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Based on recent pump cycles
+              Based on 1-hour collector_ls1 analysis
             </p>
           </CardContent>
         </Card>
@@ -83,7 +129,7 @@ const WaterProductionMetrics = ({ liveData }: WaterProductionMetricsProps) => {
               {productionData.totalProduced.toFixed(2)} L
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Cumulative since tracking started
+              Last hour production
             </p>
           </CardContent>
         </Card>
@@ -100,7 +146,7 @@ const WaterProductionMetrics = ({ liveData }: WaterProductionMetricsProps) => {
               {productionData.pumpCycles}
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Avg: {productionData.averageProductionPerCycle.toFixed(2)} L/cycle
+              Detected transitions (1→0)
             </p>
           </CardContent>
         </Card>
@@ -117,7 +163,7 @@ const WaterProductionMetrics = ({ liveData }: WaterProductionMetricsProps) => {
               {formatTime(productionData.lastPumpEvent)}
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Last production cycle
+              Last detected transition
             </p>
           </CardContent>
         </Card>
