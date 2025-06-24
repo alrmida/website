@@ -39,3 +39,35 @@ export const WATER_LEVEL_OFFSET = 0.5;
 
 // Processing intervals - Updated to 1 hour
 export const PROCESSING_INTERVAL_MS = 60 * 60 * 1000; // 1 hour in milliseconds
+
+// CORS headers for edge function responses
+export const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+// Environment configuration function
+export const getEnvironmentConfig = () => {
+  const influxUrl = Deno.env.get('INFLUXDB_URL');
+  const influxToken = Deno.env.get('INFLUXDB_TOKEN');
+  const influxOrg = Deno.env.get('INFLUXDB_ORG');
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+  if (!influxUrl || !influxToken || !influxOrg) {
+    throw new Error('Missing required InfluxDB environment variables');
+  }
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error('Missing required Supabase environment variables');
+  }
+
+  return {
+    influxUrl,
+    influxToken,
+    influxOrg,
+    influxBucket: INFLUXDB_BUCKET,
+    supabaseUrl,
+    supabaseServiceKey
+  };
+};
