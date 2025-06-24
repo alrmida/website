@@ -31,7 +31,7 @@ export const useRealTimeDataCollection = () => {
   const [isCollecting, setIsCollecting] = useState(false);
   const [lastProcessedAt, setLastProcessedAt] = useState<Date | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lastFetchedId = useRef<string | null>(null);
+  const lastFetchedTimestamp = useRef<string | null>(null);
 
   // Start collecting data
   const startCollection = () => {
@@ -42,11 +42,11 @@ export const useRealTimeDataCollection = () => {
     
     // Fetch data every 10 seconds
     intervalRef.current = setInterval(async () => {
-      await fetchLatestDataPoint();
+      await fetchNewDataPoints();
     }, 10000);
 
     // Also fetch immediately
-    fetchLatestDataPoint();
+    fetchNewDataPoints();
   };
 
   // Stop collecting data
@@ -59,53 +59,79 @@ export const useRealTimeDataCollection = () => {
     }
   };
 
-  // Fetch the latest data point
-  const fetchLatestDataPoint = async () => {
+  // Fetch all new data points since last fetch
+  const fetchNewDataPoints = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('raw_machine_data')
         .select('*')
         .eq('machine_id', MACHINE_ID)
-        .order('timestamp_utc', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .order('timestamp_utc', { ascending: false });
+
+      // If we have a last fetched timestamp, only get newer records
+      if (lastFetchedTimestamp.current) {
+        query = query.gt('timestamp_utc', lastFetchedTimestamp.current);
+      } else {
+        // On first fetch, get only the latest record to establish baseline
+        query = query.limit(1);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
-        console.error('❌ Error fetching latest data:', error);
+        console.error('❌ Error fetching new data:', error);
         return;
       }
 
-      if (data) {
-        // Check if this is a new data point
-        if (lastFetchedId.current === data.id) {
-          console.log('📝 Same data point as before, skipping');
-          return;
+      if (!data || data.length === 0) {
+        console.log('📝 No new data points found');
+        return;
+      }
+
+      console.log(`📊 Found ${data.length} new data point(s)`);
+      
+      // Sort data by timestamp (oldest first) for proper chronological processing
+      const sortedNewData = data.sort((a, b) => 
+        new Date(a.timestamp_utc).getTime() - new Date(b.timestamp_utc).getTime()
+      );
+
+      // Update the last fetched timestamp to the newest record
+      if (sortedNewData.length > 0) {
+        lastFetchedTimestamp.current = sortedNewData[sortedNewData.length - 1].timestamp_utc;
+      }
+
+      setCollectedData(prev => {
+        // Filter out any duplicates that might already exist
+        const existingIds = new Set(prev.map(item => item.id));
+        const trulyNewData = sortedNewData.filter(item => !existingIds.has(item.id));
+        
+        if (trulyNewData.length === 0) {
+          console.log('📝 All fetched data points already exist in collection');
+          return prev;
         }
 
-        setCollectedData(prev => {
-          // Check if this data point is already in our collection
-          const exists = prev.some(item => item.id === data.id);
-          if (exists) {
-            console.log('📝 Data point already exists in collection, skipping');
-            return prev;
-          }
+        // Add new data in chronological order (newest first for display)
+        const updatedData = [...trulyNewData.reverse(), ...prev];
+        console.log(`📊 Added ${trulyNewData.length} new data point(s). Total: ${updatedData.length}/${MAX_LINES}`);
+        
+        // Log timestamp range for debugging
+        if (updatedData.length > 0) {
+          const newest = updatedData[0];
+          const oldest = updatedData[updatedData.length - 1];
+          console.log(`📅 Data range: ${oldest.timestamp_utc} to ${newest.timestamp_utc}`);
+        }
+        
+        // Auto-process when we reach max lines
+        if (updatedData.length >= MAX_LINES) {
+          console.log('🔄 Reached max lines, auto-processing batch...');
+          setTimeout(() => processBatch(updatedData), 100);
+        }
+        
+        return updatedData;
+      });
 
-          const newData = [data, ...prev]; // Add to beginning for chronological order
-          console.log(`📊 Added new data point. Total: ${newData.length}/${MAX_LINES}`);
-          
-          // Auto-process when we reach max lines
-          if (newData.length >= MAX_LINES) {
-            console.log('🔄 Reached max lines, auto-processing batch...');
-            setTimeout(() => processBatch(newData), 100);
-          }
-          
-          return newData;
-        });
-
-        lastFetchedId.current = data.id;
-      }
     } catch (error) {
-      console.error('💥 Exception fetching latest data:', error);
+      console.error('💥 Exception fetching new data:', error);
     }
   };
 
@@ -120,6 +146,7 @@ export const useRealTimeDataCollection = () => {
 
     setIsProcessing(true);
     console.log(`🔍 Processing batch of ${batchData.length} data points...`);
+    console.log(`📅 Batch timespan: ${batchData[batchData.length - 1]?.timestamp_utc} to ${batchData[0]?.timestamp_utc}`);
 
     try {
       // Sort data by timestamp (oldest first for processing)
@@ -153,7 +180,7 @@ export const useRealTimeDataCollection = () => {
       // Reset collection
       setCollectedData([]);
       setLastProcessedAt(new Date());
-      lastFetchedId.current = null;
+      lastFetchedTimestamp.current = null;
       
       console.log('✅ Batch processing completed successfully');
       
