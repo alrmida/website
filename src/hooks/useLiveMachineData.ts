@@ -12,17 +12,13 @@ interface LiveMachineData {
 }
 
 function calculateMachineStatus(waterLevel: number, compressorOn: number, dataAge: number): { status: string, isOnline: boolean } {
-  console.log('🔍 Calculating machine status:', { waterLevel, compressorOn, dataAge });
-  
   // If no data for 60+ seconds, machine is disconnected/offline
   if (dataAge > 60000) { // 60 seconds in milliseconds
-    console.log('❌ Machine marked as disconnected due to data age:', dataAge, 'ms');
     return { status: 'Disconnected', isOnline: false };
   }
   
   // Machine is online if we have recent data
   const isOnline = true;
-  console.log('✅ Machine is online with recent data');
   
   // Calculate status based on water level and compressor state
   if (waterLevel > 9.9) {
@@ -60,11 +56,11 @@ export const useLiveMachineData = (selectedMachineId?: string) => {
 
   const fetchData = async () => {
     try {
-      console.log('🔄 Fetching machine data for:', selectedMachineId);
+      console.log('Fetching machine data for:', selectedMachineId);
       
       // If not the live data machine, return offline status
       if (!isLiveDataMachine) {
-        console.log('ℹ️ Not the live data machine, returning offline status');
+        console.log('Not the live data machine, returning offline status');
         setData({
           waterLevel: 0,
           status: 'Offline',
@@ -79,7 +75,7 @@ export const useLiveMachineData = (selectedMachineId?: string) => {
         return;
       }
 
-      console.log('🚀 Fetching live data for KU001619000079...');
+      console.log('Fetching live data for KU001619000079...');
       
       // Use GET request to the edge function for live data
       const response = await fetch(
@@ -93,16 +89,14 @@ export const useLiveMachineData = (selectedMachineId?: string) => {
         }
       );
 
-      console.log('📡 Edge function response status:', response.status);
+      console.log('Response status:', response.status);
       
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Edge function error:', response.status, errorText);
         throw new Error(`Edge Function returned a non-2xx status code: ${response.status}`);
       }
 
       const result = await response.json();
-      console.log('📊 Received live data from edge function:', result);
+      console.log('Received live data:', result);
 
       // Handle the response format
       if (result.status === 'ok' && result.data) {
@@ -112,11 +106,6 @@ export const useLiveMachineData = (selectedMachineId?: string) => {
         const dataTime = new Date(machineData._time);
         const now = new Date();
         const dataAge = now.getTime() - dataTime.getTime();
-
-        console.log('⏰ Data timestamp:', machineData._time);
-        console.log('⏰ Current time:', now.toISOString());
-        console.log('⏰ Data age (ms):', dataAge);
-        console.log('⏰ Data age (minutes):', Math.round(dataAge / 60000));
 
         // Get machine data
         const waterLevel = machineData.water_level_L || 0;
@@ -135,15 +124,14 @@ export const useLiveMachineData = (selectedMachineId?: string) => {
           lastConnection: isOnline ? machineData._time : data.lastConnection || machineData._time
         };
 
-        console.log('✅ Processed live machine data:', processedData);
+        console.log('Processed live machine data:', processedData);
         setData(processedData);
         setError(null);
       } else {
-        console.error('❌ Invalid response format:', result);
         throw new Error('Invalid response format from edge function');
       }
     } catch (err) {
-      console.error('💥 Error fetching machine data:', err);
+      console.error('Error fetching machine data:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
       // Set fallback data when there's an error, but preserve last connection time
       setData(prev => ({

@@ -273,10 +273,6 @@ export type Database = {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
       }
-      reset_machine_metrics: {
-        Args: { p_machine_id: string; p_admin_user_id: string }
-        Returns: undefined
-      }
     }
     Enums: {
       user_role: "client" | "kumulus_personnel"
