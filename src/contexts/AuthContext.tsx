@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,9 +31,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const mapDatabaseRoleToFrontend = (dbRole: string): 'client' | 'commercial' | 'admin' => {
   switch (dbRole) {
     case 'kumulus_personnel':
-      return 'commercial'; // Sales/personnel role - no admin access
+      return 'admin'; // Map kumulus_personnel to admin for full access
     case 'kumulus_admin':
-      return 'admin'; // True admin role
+      return 'admin'; // True admin role (if it exists)
     case 'client':
       return 'client';
     default:
@@ -44,9 +45,8 @@ const mapDatabaseRoleToFrontend = (dbRole: string): 'client' | 'commercial' | 'a
 const mapFrontendRoleToDatabase = (frontendRole: 'client' | 'commercial' | 'admin'): string => {
   switch (frontendRole) {
     case 'commercial':
-      return 'kumulus_personnel';
     case 'admin':
-      return 'kumulus_admin';
+      return 'kumulus_personnel'; // Both map to kumulus_personnel in database
     case 'client':
       return 'client';
     default:
@@ -200,10 +200,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setIsImpersonating(false);
-    setImpersonatedProfile(null);
-    setOriginalProfile(null);
+    console.log('Starting sign out process...');
+    
+    try {
+      // Clear local state immediately
+      setIsImpersonating(false);
+      setImpersonatedProfile(null);
+      setOriginalProfile(null);
+      
+      // Attempt to sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.warn('Supabase sign out error (proceeding with local cleanup):', error.message);
+        // Don't throw error, just log it and continue with cleanup
+      } else {
+        console.log('Successfully signed out from Supabase');
+      }
+      
+      // Clear all auth state regardless of Supabase response
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      
+    } catch (error: any) {
+      console.error('Error during sign out:', error);
+      // Even if there's an error, clear local state
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+    }
+    
+    console.log('Sign out process completed');
   };
 
   const startImpersonation = (targetProfile: Profile) => {
