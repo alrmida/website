@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -32,6 +31,7 @@ export const useRealTimeDataCollection = () => {
   const [lastProcessedAt, setLastProcessedAt] = useState<Date | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastFetchedTimestamp = useRef<string | null>(null);
+  const knownTimestamps = useRef<Set<string>>(new Set());
 
   // Start collecting data
   const startCollection = () => {
@@ -39,6 +39,10 @@ export const useRealTimeDataCollection = () => {
 
     console.log('🚀 Starting real-time data collection...');
     setIsCollecting(true);
+    
+    // Reset tracking variables when starting fresh
+    lastFetchedTimestamp.current = null;
+    knownTimestamps.current.clear();
     
     // Fetch data every 10 seconds
     intervalRef.current = setInterval(async () => {
@@ -59,7 +63,7 @@ export const useRealTimeDataCollection = () => {
     }
   };
 
-  // Fetch all new data points since last fetch
+  // Fetch all new data points since last fetch with improved strategy
   const fetchNewDataPoints = async () => {
     try {
       let query = supabase
@@ -68,12 +72,13 @@ export const useRealTimeDataCollection = () => {
         .eq('machine_id', MACHINE_ID)
         .order('timestamp_utc', { ascending: false });
 
-      // If we have a last fetched timestamp, only get newer records
+      // If we have a last fetched timestamp, get records newer than that
+      // Use gte (greater than or equal) to ensure we don't miss any edge cases
       if (lastFetchedTimestamp.current) {
-        query = query.gt('timestamp_utc', lastFetchedTimestamp.current);
+        query = query.gte('timestamp_utc', lastFetchedTimestamp.current);
       } else {
-        // On first fetch, get only the latest record to establish baseline
-        query = query.limit(1);
+        // On first fetch, get the last 10 records to establish a baseline
+        query = query.limit(10);
       }
 
       const { data, error } = await query;
@@ -88,31 +93,41 @@ export const useRealTimeDataCollection = () => {
         return;
       }
 
-      console.log(`📊 Found ${data.length} new data point(s)`);
+      console.log(`📊 Fetched ${data.length} potential new data point(s)`);
       
-      // Sort data by timestamp (oldest first) for proper chronological processing
-      const sortedNewData = data.sort((a, b) => 
+      // Filter out duplicates using timestamp-based deduplication
+      const newDataPoints = data.filter(item => {
+        const timestampKey = `${item.machine_id}-${item.timestamp_utc}`;
+        return !knownTimestamps.current.has(timestampKey);
+      });
+
+      if (newDataPoints.length === 0) {
+        console.log('📝 All fetched data points already exist in collection');
+        return;
+      }
+
+      // Add new timestamps to our tracking set
+      newDataPoints.forEach(item => {
+        const timestampKey = `${item.machine_id}-${item.timestamp_utc}`;
+        knownTimestamps.current.add(timestampKey);
+      });
+
+      // Sort new data by timestamp (oldest first) for proper chronological processing
+      const sortedNewData = newDataPoints.sort((a, b) => 
         new Date(a.timestamp_utc).getTime() - new Date(b.timestamp_utc).getTime()
       );
 
-      // Update the last fetched timestamp to the newest record
+      // Update the last fetched timestamp to the newest record we actually processed
       if (sortedNewData.length > 0) {
-        lastFetchedTimestamp.current = sortedNewData[sortedNewData.length - 1].timestamp_utc;
+        const newestTimestamp = sortedNewData[sortedNewData.length - 1].timestamp_utc;
+        lastFetchedTimestamp.current = newestTimestamp;
+        console.log(`🕒 Updated last fetched timestamp to: ${newestTimestamp}`);
       }
 
       setCollectedData(prev => {
-        // Filter out any duplicates that might already exist
-        const existingIds = new Set(prev.map(item => item.id));
-        const trulyNewData = sortedNewData.filter(item => !existingIds.has(item.id));
-        
-        if (trulyNewData.length === 0) {
-          console.log('📝 All fetched data points already exist in collection');
-          return prev;
-        }
-
-        // Add new data in chronological order (newest first for display)
-        const updatedData = [...trulyNewData.reverse(), ...prev];
-        console.log(`📊 Added ${trulyNewData.length} new data point(s). Total: ${updatedData.length}/${MAX_LINES}`);
+        // Add new data in reverse chronological order (newest first for display)
+        const updatedData = [...sortedNewData.reverse(), ...prev];
+        console.log(`📊 Added ${sortedNewData.length} new unique data point(s). Total: ${updatedData.length}/${MAX_LINES}`);
         
         // Log timestamp range for debugging
         if (updatedData.length > 0) {
@@ -177,10 +192,11 @@ export const useRealTimeDataCollection = () => {
         await storeProductionMetrics(0, 0, []);
       }
 
-      // Reset collection
+      // Reset collection state
       setCollectedData([]);
       setLastProcessedAt(new Date());
       lastFetchedTimestamp.current = null;
+      knownTimestamps.current.clear();
       
       console.log('✅ Batch processing completed successfully');
       
