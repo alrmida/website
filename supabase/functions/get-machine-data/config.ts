@@ -2,9 +2,9 @@
 // Machine configuration
 export const MACHINE_ID = 'KU001619000079';
 
-// InfluxDB configuration
-export const INFLUXDB_BUCKET = 'telemetry';
-export const INFLUXDB_MEASUREMENT = 'telemetry';
+// InfluxDB configuration - Updated bucket name
+export const INFLUXDB_BUCKET = 'telegraf'; // Changed from 'telemetry' to 'telegraf'
+export const INFLUXDB_MEASUREMENT = 'awg_data_full'; // Keep measurement name
 
 // Data collection configuration - Updated to 1 hour for better collector_ls1 detection
 export const MAX_LINES = 360; // Increased from 180 to get 1 hour of data (assuming 10-second intervals)
