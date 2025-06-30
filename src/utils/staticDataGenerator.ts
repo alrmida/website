@@ -1,66 +1,32 @@
+
 // Generate varied static production data based on machine ID
 export function getStaticProductionData(machineId: string | undefined, multiplier: number = 1) {
-  // For the real machine, return zero static data - we'll use live calculations instead
-  if (machineId === 'KU001619000079') {
-    return {
-      daily: [
-        { date: '28 May', production: 0 },
-        { date: '29 May', production: 0 },
-        { date: '30 May', production: 0 },
-        { date: '31 May', production: 0 }
-      ],
-      monthly: [
-        { month: 'Mar 2025', production: 0 },
-        { month: 'Apr 2025', production: 0 },
-        { month: 'May 2025', production: 0 }
-      ]
-    };
-  }
-
-  // For other machines, keep dummy data
-  const baseDaily = [
-    { date: '28 May', production: 15.2 },
-    { date: '29 May', production: 31.5 },
-    { date: '30 May', production: 47.8 },
-    { date: '31 May', production: 19.6 }
-  ];
-
-  const baseMonthly = [
-    { month: 'Mar 2025', production: 1850 },
-    { month: 'Apr 2025', production: 2250 },
-    { month: 'May 2025', production: 1950 }
-  ];
-
+  // For all machines, return zero static data - we'll use live calculations instead
   return {
-    daily: baseDaily.map(item => ({ ...item, production: item.production * multiplier })),
-    monthly: baseMonthly.map(item => ({ ...item, production: item.production * multiplier }))
+    daily: [
+      { date: '28 May', production: 0 },
+      { date: '29 May', production: 0 },
+      { date: '30 May', production: 0 },
+      { date: '31 May', production: 0 }
+    ],
+    monthly: [
+      { month: 'Mar 2025', production: 0 },
+      { month: 'Apr 2025', production: 0 },
+      { month: 'May 2025', production: 0 }
+    ]
   };
 }
 
 // Generate varied status data based on machine ID using KUMULUS format
 export function getStaticStatusData(machineId: string | undefined) {
-  // For the real machine, return zero static data - we'll use live calculations instead
-  if (machineId === 'KU001619000079') {
-    return [
-      { date: '25 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-      { date: '26 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-      { date: '27 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-      { date: '28 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-      { date: '29 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-      { date: '30 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-      { date: '31 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 }
-    ];
-  }
-  
-  const baseStatusData = [
-    { date: '25 May', producing: 19, idle: 2, fullWater: 2, disconnected: 1 },
-    { date: '26 May', producing: 18, idle: 2, fullWater: 1, disconnected: 3 },
-    { date: '27 May', producing: 22, idle: 1, fullWater: 1, disconnected: 0 },
-    { date: '28 May', producing: 19, idle: 2, fullWater: 2, disconnected: 1 },
-    { date: '29 May', producing: 21, idle: 1, fullWater: 1, disconnected: 1 },
-    { date: '30 May', producing: 12, idle: 6, fullWater: 3, disconnected: 3 },
-    { date: '31 May', producing: 10, idle: 6, fullWater: 4, disconnected: 4 }
+  // For all machines, return zero static data - we'll use live calculations instead
+  return [
+    { date: '25 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
+    { date: '26 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
+    { date: '27 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
+    { date: '28 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
+    { date: '29 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
+    { date: '30 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
+    { date: '31 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 }
   ];
-
-  return baseStatusData;
 }
