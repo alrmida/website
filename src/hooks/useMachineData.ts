@@ -36,43 +36,19 @@ export const useMachineData = () => {
           setMachines(validMachines);
         }
       } else {
-        // Commercial and admin users see all machines
-        // First try to get machines with client profiles
-        const { data: machinesWithProfiles, error: profilesError } = await supabase
+        // Commercial and admin users see all machines - simplified approach
+        console.log('Fetching all machines for admin/commercial user...');
+        const { data: allMachines, error: allMachinesError } = await supabase
           .from('machines')
-          .select(`
-            *,
-            client_profile:profiles!client_id (
-              username
-            )
-          `);
+          .select('*');
         
-        console.log('Machines with profiles data:', machinesWithProfiles, 'Error:', profilesError);
+        console.log('All machines data for admin:', allMachines, 'Error:', allMachinesError);
         
-        // If that fails or returns empty, try to get all machines without the join
-        if (!machinesWithProfiles || machinesWithProfiles.length === 0) {
-          console.log('No machines with profiles found, trying to get all machines...');
-          const { data: allMachines, error: allMachinesError } = await supabase
-            .from('machines')
-            .select('*');
-          
-          console.log('All machines data:', allMachines, 'Error:', allMachinesError);
-          
-          if (allMachines) {
-            console.log('Before validation - all machines:', allMachines);
-            const validMachines = allMachines.filter(machine => {
-              const isValid = isValidMachineId(machine.machine_id);
-              console.log(`Machine ${machine.machine_id} is valid: ${isValid}`, 'Testing against regex: /^KU\\d{12}$/');
-              return isValid;
-            });
-            console.log('Valid machines after filtering:', validMachines);
-            setMachines(validMachines);
-          }
-        } else {
-          console.log('Before validation - machines with profiles:', machinesWithProfiles);
-          const validMachines = machinesWithProfiles.filter(machine => {
+        if (allMachines) {
+          console.log('Before validation - all machines:', allMachines);
+          const validMachines = allMachines.filter(machine => {
             const isValid = isValidMachineId(machine.machine_id);
-            console.log(`Machine ${machine.machine_id} is valid: ${isValid}`);
+            console.log(`Machine ${machine.machine_id} is valid: ${isValid}`, 'Testing against regex: /^KU\\d{12}$/');
             return isValid;
           });
           console.log('Valid machines after filtering:', validMachines);
