@@ -131,11 +131,12 @@ const ClientDashboard = () => {
           />
         )}
 
-        {/* Metrics Cards Grid - Updated with periodic production data */}
+        {/* Metrics Cards Grid - Updated with periodic production data and last update timestamp */}
         <MetricsCards 
           waterTank={waterTank}
           machineStatus={machineStatus}
           totalWaterProduced={displayTotalWaterProduced}
+          lastUpdate={periodicProduction.lastUpdate}
         />
 
         {/* Production Analytics - Charts and Visualizations */}

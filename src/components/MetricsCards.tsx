@@ -13,9 +13,10 @@ interface MetricsCardsProps {
   };
   machineStatus?: string;
   totalWaterProduced: number;
+  lastUpdate?: Date | null;
 }
 
-const MetricsCards = ({ waterTank, machineStatus = 'Offline', totalWaterProduced }: MetricsCardsProps) => {
+const MetricsCards = ({ waterTank, machineStatus = 'Offline', totalWaterProduced, lastUpdate }: MetricsCardsProps) => {
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'producing':
@@ -35,6 +36,18 @@ const MetricsCards = ({ waterTank, machineStatus = 'Offline', totalWaterProduced
   const getStatusIcon = (status: string) => {
     const isOnline = !['disconnected', 'offline', 'loading...'].includes(status.toLowerCase());
     return isOnline ? 'Online' : 'Offline';
+  };
+
+  const formatLastUpdate = (date: Date | null) => {
+    if (!date) return null;
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min ago`;
+    
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   // Calculate ESG metrics based on water production
@@ -75,6 +88,11 @@ const MetricsCards = ({ waterTank, machineStatus = 'Offline', totalWaterProduced
           </CardHeader>
           <CardContent className="pb-3">
             <div className="text-lg font-bold text-gray-900 dark:text-white">{totalWaterProduced.toFixed(1)} L</div>
+            {lastUpdate && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Updated {formatLastUpdate(lastUpdate)}
+              </p>
+            )}
           </CardContent>
         </Card>
 
