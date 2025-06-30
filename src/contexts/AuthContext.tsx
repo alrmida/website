@@ -28,6 +28,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Helper function to map database roles to frontend roles
 const mapDatabaseRoleToFrontend = (dbRole: string): 'client' | 'commercial' | 'admin' => {
+  console.log('Mapping database role:', dbRole);
   switch (dbRole) {
     case 'kumulus_personnel':
       return 'commercial'; // Sales/personnel - limited access
@@ -36,12 +37,14 @@ const mapDatabaseRoleToFrontend = (dbRole: string): 'client' | 'commercial' | 'a
     case 'client':
       return 'client';
     default:
+      console.warn('Unknown database role:', dbRole, 'defaulting to client');
       return 'client';
   }
 };
 
 // Helper function to map frontend roles to database roles
 const mapFrontendRoleToDatabase = (frontendRole: 'client' | 'commercial' | 'admin'): string => {
+  console.log('Mapping frontend role:', frontendRole);
   switch (frontendRole) {
     case 'commercial':
       return 'kumulus_personnel'; // Sales/personnel role
@@ -50,6 +53,7 @@ const mapFrontendRoleToDatabase = (frontendRole: 'client' | 'commercial' | 'admi
     case 'client':
       return 'client';
     default:
+      console.warn('Unknown frontend role:', frontendRole, 'defaulting to client');
       return 'client';
   }
 };
@@ -77,6 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Fetch user profile
           setTimeout(async () => {
             try {
+              console.log('Fetching profile for user:', session.user.id);
               const { data: profileData, error } = await supabase
                 .from('profiles')
                 .select('*')
@@ -84,14 +89,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 .single();
               
               console.log('Profile data:', profileData, 'Error:', error);
-              if (profileData) {
+              
+              if (error) {
+                console.error('Error fetching profile:', error);
+                // Try to handle missing profile case
+                if (error.code === 'PGRST116') {
+                  console.log('Profile not found, user might need to complete setup');
+                }
+              } else if (profileData) {
                 // Map the database role to frontend role
+                const mappedRole = mapDatabaseRoleToFrontend(profileData.role);
+                console.log('Mapped role from', profileData.role, 'to', mappedRole);
+                
                 const mappedProfile: Profile = {
                   id: profileData.id,
                   username: profileData.username,
-                  role: mapDatabaseRoleToFrontend(profileData.role)
+                  role: mappedRole
                 };
+                
+                console.log('Setting profile:', mappedProfile);
                 setProfile(mappedProfile);
+                
                 // Reset impersonation on auth change
                 setIsImpersonating(false);
                 setImpersonatedProfile(null);
