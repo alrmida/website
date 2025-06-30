@@ -26,7 +26,12 @@ export const useMachineData = () => {
         console.log('Client machines data:', machinesData, 'Error:', error);
         
         if (machinesData) {
-          const validMachines = machinesData.filter(machine => isValidMachineId(machine.machine_id));
+          console.log('Before validation - client machines:', machinesData);
+          const validMachines = machinesData.filter(machine => {
+            const isValid = isValidMachineId(machine.machine_id);
+            console.log(`Machine ${machine.machine_id} is valid: ${isValid}`);
+            return isValid;
+          });
           console.log('Valid machines after filtering:', validMachines);
           setMachines(validMachines);
         }
@@ -54,12 +59,22 @@ export const useMachineData = () => {
           console.log('All machines data:', allMachines, 'Error:', allMachinesError);
           
           if (allMachines) {
-            const validMachines = allMachines.filter(machine => isValidMachineId(machine.machine_id));
+            console.log('Before validation - all machines:', allMachines);
+            const validMachines = allMachines.filter(machine => {
+              const isValid = isValidMachineId(machine.machine_id);
+              console.log(`Machine ${machine.machine_id} is valid: ${isValid}`, 'Testing against regex: /^KU\\d{12}$/');
+              return isValid;
+            });
             console.log('Valid machines after filtering:', validMachines);
             setMachines(validMachines);
           }
         } else {
-          const validMachines = machinesWithProfiles.filter(machine => isValidMachineId(machine.machine_id));
+          console.log('Before validation - machines with profiles:', machinesWithProfiles);
+          const validMachines = machinesWithProfiles.filter(machine => {
+            const isValid = isValidMachineId(machine.machine_id);
+            console.log(`Machine ${machine.machine_id} is valid: ${isValid}`);
+            return isValid;
+          });
           console.log('Valid machines after filtering:', validMachines);
           setMachines(validMachines);
         }
