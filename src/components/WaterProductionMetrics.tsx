@@ -1,26 +1,63 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Droplets, TrendingUp, Zap, Clock, RefreshCw } from 'lucide-react';
-import { useBatchWaterProductionCalculator } from '@/hooks/useBatchWaterProductionCalculator';
-import { Button } from '@/components/ui/button';
+import { Droplets, TrendingUp, Clock, Activity } from 'lucide-react';
+import { usePeriodicWaterProduction } from '@/hooks/usePeriodicWaterProduction';
 
 interface WaterProductionMetricsProps {
-  liveData: any; // Keep for compatibility but not used in batch processing
+  liveData: any;
 }
 
 const WaterProductionMetrics = ({ liveData }: WaterProductionMetricsProps) => {
-  const { productionData, isProcessing, processBatchData } = useBatchWaterProductionCalculator();
+  // Use KU001619000079 as the machine ID for the live data machine
+  const { data: productionData, isLoading } = usePeriodicWaterProduction('KU001619000079');
 
-  const formatTime = (date: Date | null) => {
-    if (!date) return 'Never';
-    return date.toLocaleTimeString();
+  const formatTime = (dateString: string) => {
+    if (!dateString) return 'Never';
+    return new Date(dateString).toLocaleTimeString();
   };
 
   const formatDate = (date: Date | null) => {
     if (!date) return 'Never';
     return date.toLocaleString();
   };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'producing': return 'text-green-600';
+      case 'tank_full': return 'text-blue-600';
+      case 'idle': return 'text-yellow-600';
+      case 'transitioning': return 'text-orange-600';
+      default: return 'text-gray-600';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'producing': return 'Producing';
+      case 'tank_full': return 'Tank Full';
+      case 'idle': return 'Idle';
+      case 'transitioning': return 'Transitioning';
+      default: return 'Unknown';
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="mb-6">
+        <Card className="bg-white dark:bg-gray-800">
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
+              Water Production Metrics
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-500">Loading production data...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="mb-6">
@@ -29,26 +66,25 @@ const WaterProductionMetrics = ({ liveData }: WaterProductionMetricsProps) => {
         <CardHeader className="pb-2">
           <div className="flex justify-between items-center">
             <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
-              Water Production Control
+              30-Minute Periodic Production System
             </CardTitle>
-            <Button
-              onClick={processBatchData}
-              disabled={isProcessing}
-              variant="outline"
-              size="sm"
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isProcessing ? 'animate-spin' : ''}`} />
-              {isProcessing ? 'Processing...' : 'Process Batch'}
-            </Button>
+            <div className="text-xs text-gray-500">
+              Auto-updates every 30 minutes
+            </div>
           </div>
         </CardHeader>
         <CardContent className="pt-0">
           <p className="text-xs text-gray-500">
-            Last calculation: {formatDate(productionData.lastCalculationTime)}
+            Last update: {formatDate(productionData.lastUpdate)}
           </p>
-          <p className="text-xs text-gray-500">
-            Batch processing runs automatically every 30 minutes
-          </p>
+          {productionData.lastPeriod && (
+            <p className="text-xs text-gray-500">
+              Current period status: 
+              <span className={`ml-1 font-medium ${getStatusColor(productionData.lastPeriod.period_status)}`}>
+                {getStatusLabel(productionData.lastPeriod.period_status)}
+              </span>
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -63,10 +99,10 @@ const WaterProductionMetrics = ({ liveData }: WaterProductionMetricsProps) => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {productionData.currentProductionRate.toFixed(2)} L/h
+              {productionData.productionRate.toFixed(2)} L/h
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Based on recent pump cycles
+              Based on 30-minute periods
             </p>
           </CardContent>
         </Card>
@@ -74,7 +110,7 @@ const WaterProductionMetrics = ({ liveData }: WaterProductionMetricsProps) => {
         <Card className="bg-white dark:bg-gray-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
-              Total Produced
+              Daily Total
             </CardTitle>
             <Droplets className="h-4 w-4 text-green-600" />
           </CardHeader>
@@ -83,7 +119,7 @@ const WaterProductionMetrics = ({ liveData }: WaterProductionMetricsProps) => {
               {productionData.totalProduced.toFixed(2)} L
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Cumulative since tracking started
+              Last 24 hours
             </p>
           </CardContent>
         </Card>
@@ -91,16 +127,16 @@ const WaterProductionMetrics = ({ liveData }: WaterProductionMetricsProps) => {
         <Card className="bg-white dark:bg-gray-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
-              Pump Cycles
+              Active Periods
             </CardTitle>
-            <Zap className="h-4 w-4 text-purple-600" />
+            <Activity className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">
-              {productionData.pumpCycles}
+              {productionData.recentPeriods.filter(p => p.period_status === 'producing').length}
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Avg: {productionData.averageProductionPerCycle.toFixed(2)} L/cycle
+              Of {productionData.recentPeriods.length} total periods
             </p>
           </CardContent>
         </Card>
@@ -108,20 +144,58 @@ const WaterProductionMetrics = ({ liveData }: WaterProductionMetricsProps) => {
         <Card className="bg-white dark:bg-gray-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
-              Last Pump Event
+              Last Period
             </CardTitle>
             <Clock className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold text-orange-600">
-              {formatTime(productionData.lastPumpEvent)}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Last production cycle
-            </p>
+            {productionData.lastPeriod ? (
+              <>
+                <div className="text-lg font-bold text-orange-600">
+                  {formatTime(productionData.lastPeriod.period_end)}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {productionData.lastPeriod.production_liters.toFixed(2)}L produced
+                </p>
+              </>
+            ) : (
+              <div className="text-lg font-bold text-gray-400">
+                No data
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Recent Periods Summary */}
+      {productionData.recentPeriods.length > 0 && (
+        <Card className="bg-white dark:bg-gray-800 mt-4">
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
+              Recent Production Periods
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {productionData.recentPeriods.slice(0, 12).map((period) => (
+                <div key={period.id} className="flex justify-between items-center py-1 border-b border-gray-100 dark:border-gray-700 last:border-b-0">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-gray-500">
+                      {formatTime(period.period_end)}
+                    </span>
+                    <span className={`text-xs font-medium ${getStatusColor(period.period_status)}`}>
+                      {getStatusLabel(period.period_status)}
+                    </span>
+                  </div>
+                  <div className="text-xs font-medium">
+                    {period.production_liters.toFixed(2)}L
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

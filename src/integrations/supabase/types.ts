@@ -206,6 +206,36 @@ export type Database = {
         }
         Relationships: []
       }
+      water_level_snapshots: {
+        Row: {
+          created_at: string
+          full_tank: boolean | null
+          id: string
+          machine_id: string
+          machine_status: string | null
+          timestamp_utc: string
+          water_level_l: number | null
+        }
+        Insert: {
+          created_at?: string
+          full_tank?: boolean | null
+          id?: string
+          machine_id: string
+          machine_status?: string | null
+          timestamp_utc: string
+          water_level_l?: number | null
+        }
+        Update: {
+          created_at?: string
+          full_tank?: boolean | null
+          id?: string
+          machine_id?: string
+          machine_status?: string | null
+          timestamp_utc?: string
+          water_level_l?: number | null
+        }
+        Relationships: []
+      }
       water_production_metrics: {
         Row: {
           average_production_per_cycle: number
@@ -245,6 +275,48 @@ export type Database = {
           pump_cycles_count?: number
           total_water_produced?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      water_production_periods: {
+        Row: {
+          created_at: string
+          full_tank_end: boolean | null
+          full_tank_start: boolean | null
+          id: string
+          machine_id: string
+          period_end: string
+          period_start: string
+          period_status: string
+          production_liters: number | null
+          water_level_end: number | null
+          water_level_start: number | null
+        }
+        Insert: {
+          created_at?: string
+          full_tank_end?: boolean | null
+          full_tank_start?: boolean | null
+          id?: string
+          machine_id: string
+          period_end: string
+          period_start: string
+          period_status?: string
+          production_liters?: number | null
+          water_level_end?: number | null
+          water_level_start?: number | null
+        }
+        Update: {
+          created_at?: string
+          full_tank_end?: boolean | null
+          full_tank_start?: boolean | null
+          id?: string
+          machine_id?: string
+          period_end?: string
+          period_start?: string
+          period_status?: string
+          production_liters?: number | null
+          water_level_end?: number | null
+          water_level_start?: number | null
         }
         Relationships: []
       }

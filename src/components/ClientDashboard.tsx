@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardHeader from './DashboardHeader';
@@ -13,6 +12,7 @@ import { MachineWithClient } from '@/types/machine';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useLiveMachineData } from '@/hooks/useLiveMachineData';
+import { usePeriodicWaterProduction } from '@/hooks/usePeriodicWaterProduction';
 
 const ClientDashboard = () => {
   const { profile } = useAuth();
@@ -30,6 +30,9 @@ const ClientDashboard = () => {
     monthlyStatusData,
     totalWaterProduced
   } = useDashboardData(selectedMachine);
+
+  // Get periodic production data for the metrics
+  const { data: periodicProduction } = usePeriodicWaterProduction(selectedMachine?.machine_id);
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -80,7 +83,7 @@ const ClientDashboard = () => {
     // Add other properties as needed
   } : null;
 
-  // Prepare data for MetricsCards component
+  // Prepare data for MetricsCards component - use periodic production data when available
   const waterTank = {
     currentLevel: liveData?.waterLevel || 0,
     maxCapacity: 10.0,
@@ -88,6 +91,11 @@ const ClientDashboard = () => {
   };
 
   const machineStatus = liveData?.status || 'Loading...';
+
+  // Use periodic production total if available, otherwise fall back to dashboard data
+  const displayTotalWaterProduced = periodicProduction.totalProduced > 0 
+    ? periodicProduction.totalProduced 
+    : totalWaterProduced;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -114,7 +122,7 @@ const ClientDashboard = () => {
         <MetricsCards 
           waterTank={waterTank}
           machineStatus={machineStatus}
-          totalWaterProduced={totalWaterProduced}
+          totalWaterProduced={displayTotalWaterProduced}
         />
 
         {/* Production Analytics - Charts and Visualizations */}
@@ -134,7 +142,7 @@ const ClientDashboard = () => {
 
         {/* ESG Metrics - Only show for admin users */}
         {profile?.role === 'admin' && (
-          <ESGMetrics totalWaterProduced={totalWaterProduced} />
+          <ESGMetrics totalWaterProduced={displayTotalWaterProduced} />
         )}
       </main>
       
