@@ -1,10 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardHeader from './DashboardHeader';
 import MachineSelector from './MachineSelector';
 import MachineInfo from './MachineInfo';
-import WaterProductionMetrics from './WaterProductionMetrics';
 import MetricsCards from './MetricsCards';
 import ProductionAnalytics from './ProductionAnalytics';
 import DashboardFooter from './DashboardFooter';
@@ -134,11 +132,6 @@ const ClientDashboard = () => {
           statusData={statusData}
           monthlyStatusData={monthlyStatusData}
         />
-
-        {/* Water Production Metrics - Show for commercial users only */}
-        {profile?.role === 'commercial' && (
-          <WaterProductionMetrics liveData={processedLiveData} />
-        )}
       </main>
       
       <DashboardFooter 
