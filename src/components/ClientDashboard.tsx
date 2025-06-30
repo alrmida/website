@@ -6,7 +6,6 @@ import MachineSelector from './MachineSelector';
 import MachineInfo from './MachineInfo';
 import WaterProductionMetrics from './WaterProductionMetrics';
 import MetricsCards from './MetricsCards';
-import ESGMetrics from './ESGMetrics';
 import ProductionAnalytics from './ProductionAnalytics';
 import DashboardFooter from './DashboardFooter';
 import { MachineWithClient } from '@/types/machine';
@@ -139,11 +138,6 @@ const ClientDashboard = () => {
         {/* Water Production Metrics - Show for commercial users only */}
         {profile?.role === 'commercial' && (
           <WaterProductionMetrics liveData={processedLiveData} />
-        )}
-
-        {/* ESG Metrics - Show for commercial users only */}
-        {profile?.role === 'commercial' && (
-          <ESGMetrics totalWaterProduced={displayTotalWaterProduced} />
         )}
       </main>
       
