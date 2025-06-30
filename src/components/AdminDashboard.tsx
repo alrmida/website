@@ -2,12 +2,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Settings, Database, Activity } from 'lucide-react';
-import UserManagement from './admin/UserManagement';
-import InvitationManagement from './admin/InvitationManagement';
-import MachineManagement from './admin/MachineManagement';
-import RawDataManagement from './admin/RawDataManagement';
-import AdminImpersonationPanel from './admin/AdminImpersonationPanel';
-import WaterProductionDebugPanel from './admin/WaterProductionDebugPanel';
 
 const AdminDashboard = () => {
   return (
@@ -19,15 +13,6 @@ const AdminDashboard = () => {
         <p className="text-gray-600 dark:text-gray-300">
           Manage users, invitations, machines, and system operations
         </p>
-      </div>
-
-      {/* Admin Controls Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        {/* Impersonation Controls */}
-        <AdminImpersonationPanel />
-        
-        {/* Water Production Debug */}
-        <WaterProductionDebugPanel />
       </div>
 
       {/* Stats Cards */}
@@ -75,14 +60,6 @@ const AdminDashboard = () => {
             <p className="text-xs text-muted-foreground">All systems operational</p>
           </CardContent>
         </Card>
-      </div>
-
-      {/* Management Sections */}
-      <div className="space-y-8">
-        <UserManagement />
-        <InvitationManagement />
-        <MachineManagement />
-        <RawDataManagement />
       </div>
     </div>
   );

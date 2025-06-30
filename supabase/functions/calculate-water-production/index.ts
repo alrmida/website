@@ -24,20 +24,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🔄 Starting water production calculation...');
-    console.log('📊 Request method:', req.method);
-    console.log('📊 Request URL:', req.url);
-    
-    // Parse request body to check if this is a manual trigger
-    let isManualTrigger = false;
-    try {
-      const body = await req.json();
-      isManualTrigger = body.manual === true;
-      console.log('📊 Manual trigger:', isManualTrigger);
-    } catch (e) {
-      // Ignore JSON parsing errors for scheduled calls
-      console.log('📊 Scheduled trigger (no JSON body)');
-    }
+    console.log('🔄 Starting water production calculation for kumulus account...');
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -45,13 +32,11 @@ serve(async (req) => {
     console.log('🔧 Environment check:', {
       hasSupabaseUrl: !!supabaseUrl,
       hasServiceKey: !!supabaseServiceKey,
-      hasInfluxUrl: !!Deno.env.get('INFLUXDB_URL'),
-      hasInfluxToken: !!Deno.env.get('INFLUXDB_TOKEN'),
     });
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // First, let's test our database connection
+    // Test database connection
     console.log('🔍 Testing database connection...');
     const { data: testData, error: testError } = await supabase
       .from('water_level_snapshots')
@@ -77,46 +62,29 @@ serve(async (req) => {
     const currentData = await fetchCurrentMachineData();
     
     if (!currentData) {
-      console.log('❌ No current machine data available - trying to use sample data for testing');
+      console.log('⚠️ No current machine data available from InfluxDB');
       
-      // For testing purposes, create sample data if this is a manual trigger
-      if (isManualTrigger) {
-        console.log('🧪 Creating sample data for testing...');
-        const sampleData = {
-          _time: new Date().toISOString(),
-          water_level_L: 5.5 + Math.random() * 2, // Random between 5.5-7.5L
-          compressor_on: Math.random() > 0.5 ? 1 : 0,
-          full_tank: 0,
-          producing_water: 1
-        };
-        console.log('🧪 Sample data:', sampleData);
-        await processDataPoint(supabase, sampleData);
-        
-        return new Response(JSON.stringify({ 
-          status: 'ok', 
-          message: 'Sample data processed successfully',
-          data: sampleData
-        }), { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
-      }
-      
+      // Return status without failing - this is normal if InfluxDB is temporarily unavailable
       return new Response(JSON.stringify({ 
-        status: 'error', 
-        message: 'No machine data available from InfluxDB' 
+        status: 'ok', 
+        message: 'No machine data available from InfluxDB - will retry on next cycle' 
       }), { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
 
-    console.log('📊 Current machine data received:', currentData);
+    console.log('📊 Current machine data received:', {
+      time: currentData._time,
+      waterLevel: currentData.water_level_L,
+      compressorOn: currentData.compressor_on
+    });
     
     // Process the current data point
     const result = await processDataPoint(supabase, currentData);
     
     return new Response(JSON.stringify({ 
       status: 'ok', 
-      message: 'Water production calculation completed',
+      message: 'Water production calculation completed successfully',
       data: result
     }), { 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -124,11 +92,9 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('❌ Error in water production calculation:', error);
-    console.error('❌ Error stack:', error.stack);
     return new Response(JSON.stringify({ 
       status: 'error', 
-      message: error.message,
-      stack: error.stack
+      message: error.message
     }), { 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500
@@ -137,7 +103,7 @@ serve(async (req) => {
 });
 
 async function processDataPoint(supabase: any, currentData: MachineData) {
-  console.log('🔄 Processing data point...');
+  console.log('🔄 Processing data point for kumulus dashboard...');
   
   // Store current snapshot
   const currentSnapshot = {
@@ -148,7 +114,11 @@ async function processDataPoint(supabase: any, currentData: MachineData) {
     machine_status: calculateMachineStatus(currentData)
   };
 
-  console.log('💾 Storing current snapshot:', currentSnapshot);
+  console.log('💾 Storing snapshot:', {
+    waterLevel: currentSnapshot.water_level_l,
+    status: currentSnapshot.machine_status,
+    time: currentSnapshot.timestamp_utc
+  });
 
   const { error: snapshotError } = await supabase
     .from('water_level_snapshots')
@@ -162,7 +132,6 @@ async function processDataPoint(supabase: any, currentData: MachineData) {
   console.log('✅ Snapshot stored successfully');
 
   // Get the previous snapshot for production calculation
-  console.log('🔍 Looking for previous snapshots...');
   const { data: previousSnapshots, error: fetchError } = await supabase
     .from('water_level_snapshots')
     .select('*')
@@ -175,10 +144,10 @@ async function processDataPoint(supabase: any, currentData: MachineData) {
     throw new Error(`Failed to fetch previous snapshots: ${fetchError.message}`);
   }
 
-  console.log('📊 Previous snapshots found:', previousSnapshots?.length || 0);
+  console.log('📊 Found snapshots:', previousSnapshots?.length || 0);
 
   if (!previousSnapshots || previousSnapshots.length < 2) {
-    console.log('ℹ️ Not enough data for production calculation yet');
+    console.log('ℹ️ Not enough data for production calculation yet - need at least 2 snapshots');
     return {
       snapshot: currentSnapshot,
       message: 'Snapshot stored, waiting for more data to calculate production'
@@ -186,14 +155,18 @@ async function processDataPoint(supabase: any, currentData: MachineData) {
   }
 
   const [current, previous] = previousSnapshots;
-  console.log('🔍 Comparing snapshots:', { 
-    current: { time: current.timestamp_utc, level: current.water_level_l },
-    previous: { time: previous.timestamp_utc, level: previous.water_level_l }
+  console.log('🔍 Comparing snapshots for production calculation:', { 
+    currentLevel: current.water_level_l,
+    previousLevel: previous.water_level_l,
+    timeDiff: new Date(current.timestamp_utc).getTime() - new Date(previous.timestamp_utc).getTime()
   });
 
   // Calculate production period
   const productionPeriod = calculateProductionPeriod(previous, current);
-  console.log('⚡ Production period calculated:', productionPeriod);
+  console.log('⚡ Production calculated:', {
+    productionLiters: productionPeriod.production_liters,
+    status: productionPeriod.period_status
+  });
 
   // Store production period
   const { error: periodError } = await supabase
@@ -223,7 +196,6 @@ async function fetchCurrentMachineData(): Promise<MachineData | null> {
       hasToken: !!influxToken,
       hasUrl: !!influxUrl,
       hasOrg: !!influxOrg,
-      url: influxUrl
     });
 
     if (!influxToken || !influxUrl || !influxOrg) {
@@ -240,8 +212,7 @@ async function fetchCurrentMachineData(): Promise<MachineData | null> {
         |> limit(n: 1)
     `;
 
-    console.log('📡 Executing InfluxDB query...');
-    console.log('🔍 Query URL:', `${influxUrl}/api/v2/query?org=${influxOrg}`);
+    console.log('📡 Executing InfluxDB query for latest data...');
 
     const response = await fetch(`${influxUrl}/api/v2/query?org=${influxOrg}`, {
       method: 'POST',
@@ -254,17 +225,14 @@ async function fetchCurrentMachineData(): Promise<MachineData | null> {
     });
 
     console.log('📡 InfluxDB response status:', response.status);
-    console.log('📡 InfluxDB response headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       console.error('❌ InfluxDB query failed:', response.status, response.statusText);
-      const errorText = await response.text();
-      console.error('❌ InfluxDB error details:', errorText);
       return null;
     }
 
     const csvData = await response.text();
-    console.log('📊 InfluxDB raw response (first 500 chars):', csvData.substring(0, 500));
+    console.log('📊 InfluxDB response received (first 200 chars):', csvData.substring(0, 200));
     
     const lines = csvData.trim().split('\n');
     
@@ -276,25 +244,21 @@ async function fetchCurrentMachineData(): Promise<MachineData | null> {
     const headers = lines[0].split(',');
     const values = lines[1].split(',');
     
-    console.log('📊 CSV headers:', headers);
-    console.log('📊 CSV values:', values);
-    
     const data: any = {};
     headers.forEach((header, index) => {
       const value = values[index];
       if (header === '_time') {
         data[header] = value;
-      } else if (header === 'water_level_L' || header === 'compressor_on' || header === 'full_tank' || header === 'producing_water') {
+      } else if (['water_level_L', 'compressor_on', 'full_tank', 'producing_water'].includes(header)) {
         data[header] = parseFloat(value) || 0;
       }
     });
 
     console.log('📊 Parsed InfluxDB data:', data);
-
     return data as MachineData;
+    
   } catch (error) {
     console.error('❌ Error fetching machine data:', error);
-    console.error('❌ Error stack:', error.stack);
     return null;
   }
 }
@@ -318,53 +282,53 @@ function calculateProductionPeriod(previous: any, current: any) {
   const fullTankEnd = current.full_tank || false;
 
   let productionLiters = 0;
-  let periodStatus = 'no_data';
+  let periodStatus = 'idle';
 
-  console.log('🧮 Calculating production:', {
+  console.log('🧮 Production calculation:', {
     waterLevelStart,
     waterLevelEnd,
+    waterDifference: waterLevelEnd - waterLevelStart,
     fullTankStart,
     fullTankEnd,
-    timeDiff: new Date(periodEnd).getTime() - new Date(periodStart).getTime()
+    timeDiffMinutes: (new Date(periodEnd).getTime() - new Date(periodStart).getTime()) / (1000 * 60)
   });
 
   // Enhanced production calculation logic
   if (!fullTankStart && !fullTankEnd) {
-    // Normal production calculation
+    // Normal operation - calculate based on water level change
     const waterIncrease = waterLevelEnd - waterLevelStart;
-    if (waterIncrease > 0) {
+    if (waterIncrease > 0.1) { // Minimum threshold to avoid noise
       productionLiters = waterIncrease;
       periodStatus = 'producing';
-    } else if (waterIncrease < -0.5) {
-      // Significant water decrease - likely consumption
+      console.log('✅ Production detected:', productionLiters, 'liters');
+    } else if (waterIncrease < -0.2) {
+      // Significant water decrease - likely consumption/dispensing
       productionLiters = 0;
       periodStatus = 'consumption';
+      console.log('📉 Water consumption detected');
     } else {
-      // Small decrease or no change - idle
+      // Small changes or no change - machine idle
       productionLiters = 0;
       periodStatus = 'idle';
+      console.log('😴 Machine idle');
     }
   } else if (fullTankStart && fullTankEnd) {
     // Tank was full throughout the period
     periodStatus = 'tank_full';
     productionLiters = 0;
+    console.log('🚰 Tank full throughout period');
+  } else if (!fullTankStart && fullTankEnd) {
+    // Tank became full during this period
+    const maxCapacity = 10.0;
+    productionLiters = Math.max(0, maxCapacity - waterLevelStart);
+    periodStatus = 'producing';
+    console.log('🚰 Tank became full, production:', productionLiters);
   } else {
-    // Tank became full or empty during the period
-    periodStatus = 'transitioning';
-    if (!fullTankStart && fullTankEnd) {
-      // Tank became full - calculate partial production
-      const maxCapacity = 10.0; // Assuming 10L tank capacity
-      productionLiters = Math.max(0, maxCapacity - waterLevelStart);
-    } else {
-      // Tank became empty (water was dispensed)
-      productionLiters = 0;
-    }
+    // Tank was full, now not full (water was dispensed)
+    productionLiters = 0;
+    periodStatus = 'consumption';
+    console.log('📉 Tank was emptied');
   }
-
-  console.log('🧮 Production result:', {
-    productionLiters,
-    periodStatus
-  });
 
   return {
     machine_id: MACHINE_ID,
