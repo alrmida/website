@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import DashboardHeader from './DashboardHeader';
 import AdminPanel from './AdminPanel';
+import AdminImpersonationPanel from './admin/AdminImpersonationPanel';
 import RealTimeDataTable from './RealTimeDataTable';
 import MachineSelector from './MachineSelector';
 import MachineInfo from './MachineInfo';
@@ -15,6 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useLiveMachineData } from '@/hooks/useLiveMachineData';
 import { usePeriodicWaterProduction } from '@/hooks/usePeriodicWaterProduction';
+import { Shield } from 'lucide-react';
 
 const AdminDashboard = () => {
   const { profile } = useAuth();
@@ -84,22 +86,29 @@ const AdminDashboard = () => {
         {/* Admin Header */}
         <div className="mb-8">
           <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                Admin Dashboard
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">
-                Manage machines, users, and monitor real-time data
-              </p>
+            <div className="flex items-center gap-3">
+              <Shield className="h-8 w-8 text-blue-600" />
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                  Admin Dashboard
+                </h1>
+                <p className="text-gray-600 dark:text-gray-400 mt-2">
+                  Full system access - manage machines, users, and monitor real-time data
+                </p>
+              </div>
             </div>
             <button
               onClick={() => setAdminPanelOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
             >
-              Open Admin Panel
+              <Shield className="h-4 w-4" />
+              Admin Panel
             </button>
           </div>
         </div>
+
+        {/* Admin Impersonation Panel - Prominent placement */}
+        <AdminImpersonationPanel />
 
         {/* Machine Selection */}
         <MachineSelector 

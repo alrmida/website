@@ -53,13 +53,16 @@ export const useMachineData = () => {
             return isValid;
           });
           
-          // Filter based on role
-          if (profile.role === 'client') {
+          // Apply role-based filtering - ADMINS SEE ALL MACHINES
+          if (profile.role === 'admin') {
+            console.log('🔑 ADMIN ACCESS: Showing ALL machines without client filtering:', validMachines);
+            setMachines(validMachines);
+          } else if (profile.role === 'client') {
             const clientMachines = validMachines.filter(machine => machine.client_id === profile.id);
-            console.log('Filtered client machines:', clientMachines);
+            console.log('Client machines after filtering:', clientMachines);
             setMachines(clientMachines);
           } else {
-            console.log('Admin/Commercial - showing all machines:', validMachines);
+            console.log('Commercial - showing all machines:', validMachines);
             setMachines(validMachines);
           }
         }
@@ -71,14 +74,17 @@ export const useMachineData = () => {
           return isValid;
         });
 
-        // Apply role-based filtering
-        if (profile.role === 'client') {
+        // Apply role-based filtering - ADMINS SEE ALL MACHINES
+        if (profile.role === 'admin') {
+          console.log('🔑 ADMIN ACCESS: Showing ALL machines without client filtering:', validMachines);
+          setMachines(validMachines);
+        } else if (profile.role === 'client') {
           const clientMachines = validMachines.filter(machine => machine.client_id === profile.id);
           console.log('Client machines after filtering:', clientMachines);
           setMachines(clientMachines);
         } else {
-          // Admin and commercial users see all machines
-          console.log('Admin/Commercial - showing all valid machines:', validMachines);
+          // Commercial users see all machines
+          console.log('Commercial - showing all valid machines:', validMachines);
           setMachines(validMachines);
         }
       }

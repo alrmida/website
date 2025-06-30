@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Shield } from 'lucide-react';
 import { useMachineData } from '@/hooks/useMachineData';
 import { MachineWithClient, isValidMachineId } from '@/types/machine';
 import MachineList from '@/components/MachineList';
@@ -59,9 +59,11 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
+            {profile?.role === 'admin' && <Shield className="h-5 w-5 text-blue-600" />}
             Select Machine
-            <Badge variant={profile?.role === 'commercial' || profile?.role === 'admin' ? 'default' : 'secondary'}>
-              {profile?.role === 'commercial' || profile?.role === 'admin' ? 'KUMULUS Personnel' : 'Client'}
+            <Badge variant={profile?.role === 'admin' ? 'default' : profile?.role === 'commercial' ? 'default' : 'secondary'}>
+              {profile?.role === 'admin' ? 'ADMIN - Full Access' : 
+               profile?.role === 'commercial' ? 'KUMULUS Personnel' : 'Client'}
             </Badge>
           </div>
           <Button
@@ -76,17 +78,26 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {/* Debug information for troubleshooting */}
+        {/* Enhanced debug information for admins */}
         {profile?.role === 'admin' && (
-          <div className="mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded text-sm">
-            <p><strong>Debug Info:</strong></p>
-            <p>Profile Role: {profile.role}</p>
-            <p>Profile ID: {profile.id}</p>
-            <p>Total Machines Found: {machines.length}</p>
-            <p>Valid Machines: {availableMachines.length}</p>
-            {machines.length > 0 && (
-              <p>Machine IDs: {machines.map(m => m.machine_id).join(', ')}</p>
-            )}
+          <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <Shield className="h-4 w-4 text-blue-600" />
+              <strong className="text-blue-800 dark:text-blue-200">Admin Debug Panel</strong>
+            </div>
+            <div className="space-y-1 text-blue-700 dark:text-blue-300">
+              <p><strong>Profile Role:</strong> {profile.role}</p>
+              <p><strong>Profile ID:</strong> {profile.id}</p>
+              <p><strong>Username:</strong> {profile.username}</p>
+              <p><strong>Total Machines Found:</strong> {machines.length}</p>
+              <p><strong>Valid Machines:</strong> {availableMachines.length}</p>
+              {machines.length > 0 && (
+                <p><strong>Machine IDs:</strong> {machines.map(m => m.machine_id).join(', ')}</p>
+              )}
+              <p className="text-xs mt-2 p-2 bg-blue-100 dark:bg-blue-800 rounded">
+                As an admin, you should see ALL machines regardless of client assignment.
+              </p>
+            </div>
           </div>
         )}
 
@@ -106,9 +117,10 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
               No machines available.
             </p>
             {profile?.role === 'admin' && (
-              <p className="text-sm text-yellow-600 dark:text-yellow-400">
-                As an admin, you should see all machines. This might be a database or RBAC configuration issue.
-              </p>
+              <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-800">
+                <strong>Admin Alert:</strong> You should see all machines in the system. 
+                This indicates a database or filtering issue that needs investigation.
+              </div>
             )}
           </div>
         )}

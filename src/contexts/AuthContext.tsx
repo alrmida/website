@@ -110,10 +110,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 console.log('Setting profile:', mappedProfile);
                 setProfile(mappedProfile);
                 
-                // Reset impersonation on auth change
+                // Reset impersonation on auth change but preserve original profile if it was set
+                if (!originalProfile) {
+                  setOriginalProfile(mappedProfile);
+                }
                 setIsImpersonating(false);
                 setImpersonatedProfile(null);
-                setOriginalProfile(null);
               }
             } catch (err) {
               console.error('Error fetching profile:', err);
@@ -253,19 +255,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const startImpersonation = (targetProfile: Profile) => {
-    if (profile?.role === 'admin' && !isImpersonating) {
-      console.log('Starting impersonation of:', targetProfile.username);
-      setOriginalProfile(profile);
+    // Only admins (using original profile, not impersonated) can impersonate
+    const adminProfile = originalProfile || profile;
+    if (adminProfile?.role === 'admin' && !isImpersonating) {
+      console.log('🎭 Admin starting impersonation of:', targetProfile.username);
+      console.log('🔑 Original admin profile preserved:', adminProfile.username);
+      
+      if (!originalProfile) {
+        setOriginalProfile(profile);
+      }
       setImpersonatedProfile(targetProfile);
       setIsImpersonating(true);
+    } else {
+      console.warn('Impersonation denied - user is not admin or already impersonating');
     }
   };
 
   const stopImpersonation = () => {
-    console.log('Stopping impersonation');
-    setIsImpersonating(false);
-    setImpersonatedProfile(null);
-    setOriginalProfile(null);
+    if (isImpersonating && originalProfile) {
+      console.log('🎭 Stopping impersonation, returning to admin profile:', originalProfile.username);
+      setIsImpersonating(false);
+      setImpersonatedProfile(null);
+      // Keep originalProfile for future impersonation sessions
+    }
   };
 
   // Return the impersonated profile if impersonating, otherwise the original profile
