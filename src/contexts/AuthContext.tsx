@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,9 +30,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const mapDatabaseRoleToFrontend = (dbRole: string): 'client' | 'commercial' | 'admin' => {
   switch (dbRole) {
     case 'kumulus_personnel':
-      return 'admin'; // Map kumulus_personnel to admin for full access
+      return 'commercial'; // Sales/personnel - limited access
     case 'kumulus_admin':
-      return 'admin'; // True admin role (if it exists)
+      return 'admin'; // True admin access
     case 'client':
       return 'client';
     default:
@@ -45,8 +44,9 @@ const mapDatabaseRoleToFrontend = (dbRole: string): 'client' | 'commercial' | 'a
 const mapFrontendRoleToDatabase = (frontendRole: 'client' | 'commercial' | 'admin'): string => {
   switch (frontendRole) {
     case 'commercial':
+      return 'kumulus_personnel'; // Sales/personnel role
     case 'admin':
-      return 'kumulus_personnel'; // Both map to kumulus_personnel in database
+      return 'kumulus_admin'; // True admin role
     case 'client':
       return 'client';
     default:
