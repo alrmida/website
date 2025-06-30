@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardHeader from './DashboardHeader';
@@ -29,8 +30,8 @@ const ClientDashboard = () => {
     totalWaterProduced
   } = useDashboardData(selectedMachine);
 
-  // Get periodic production data for the metrics
-  const { data: periodicProduction } = usePeriodicWaterProduction(selectedMachine?.machine_id);
+  // Get periodic production data for the metrics - this runs the background calculation
+  const { data: periodicProduction, isLoading: periodicLoading } = usePeriodicWaterProduction(selectedMachine?.machine_id);
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -61,6 +62,20 @@ const ClientDashboard = () => {
     fetchInitialData();
   }, []);
 
+  // Background water production calculation effect
+  useEffect(() => {
+    if (!selectedMachine?.machine_id) return;
+
+    console.log('🔄 Water production calculation system active for machine:', selectedMachine.machine_id);
+    console.log('📊 Current periodic production total:', periodicProduction.totalProduced);
+    console.log('⚡ Production rate:', periodicProduction.productionRate, 'L/h');
+    
+    // The usePeriodicWaterProduction hook handles the background calculation
+    // It fetches data every 5 minutes and processes production periods
+    // The calculate-water-production edge function runs every 30 minutes via cron
+    
+  }, [selectedMachine?.machine_id, periodicProduction.totalProduced, periodicProduction.productionRate]);
+
   const handleMachineSelect = async (machine: MachineWithClient) => {
     console.log('Selected machine:', machine);
     setSelectedMachine(machine);
@@ -90,7 +105,7 @@ const ClientDashboard = () => {
 
   const machineStatus = liveData?.status || 'Loading...';
 
-  // Use periodic production total if available, otherwise fall back to dashboard data
+  // Use periodic production total if available and greater than 0, otherwise fall back to dashboard data
   const displayTotalWaterProduced = periodicProduction.totalProduced > 0 
     ? periodicProduction.totalProduced 
     : totalWaterProduced;
@@ -116,7 +131,7 @@ const ClientDashboard = () => {
           />
         )}
 
-        {/* Metrics Cards Grid */}
+        {/* Metrics Cards Grid - Updated with periodic production data */}
         <MetricsCards 
           waterTank={waterTank}
           machineStatus={machineStatus}

@@ -44,52 +44,67 @@ export const usePeriodicWaterProduction = (machineId?: string) => {
     try {
       console.log('📊 Fetching periodic production data for:', machineId);
 
-      // Fetch recent production periods (last 24 hours)
+      // Fetch recent production periods (last 7 days for better data coverage)
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      
       const { data: periods, error: periodsError } = await supabase
         .from('water_production_periods')
         .select('*')
         .eq('machine_id', machineId)
-        .gte('period_start', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .gte('period_start', sevenDaysAgo)
         .order('period_start', { ascending: false })
-        .limit(48); // Last 48 periods (24 hours of 30-min intervals)
+        .limit(336); // Last week of 30-min intervals
 
       if (periodsError) {
         throw periodsError;
       }
 
       const recentPeriods = periods || [];
-      console.log('📈 Found periods:', recentPeriods.length);
+      console.log('📈 Found production periods:', recentPeriods.length);
 
-      // Calculate total production (excluding tank_full periods)
-      const totalProduced = recentPeriods
-        .filter(p => p.period_status !== 'tank_full')
-        .reduce((sum, period) => sum + (period.production_liters || 0), 0);
-
-      // Calculate production rate (liters per hour)
+      // Calculate total production from all periods (excluding tank_full periods)
       const productionPeriods = recentPeriods.filter(p => 
         p.period_status === 'producing' && p.production_liters > 0
       );
       
+      const totalProduced = productionPeriods
+        .reduce((sum, period) => sum + (period.production_liters || 0), 0);
+
+      // Calculate production rate (liters per hour) based on recent activity
       let productionRate = 0;
       if (productionPeriods.length > 0) {
-        const avgProductionPer30Min = productionPeriods
-          .reduce((sum, p) => sum + p.production_liters, 0) / productionPeriods.length;
-        productionRate = avgProductionPer30Min * 2; // Convert to per hour
+        // Get last 24 hours of production periods
+        const last24Hours = productionPeriods.filter(p => 
+          new Date(p.period_start).getTime() > Date.now() - 24 * 60 * 60 * 1000
+        );
+        
+        if (last24Hours.length > 0) {
+          const totalLitersLast24h = last24Hours.reduce((sum, p) => sum + p.production_liters, 0);
+          const hoursSpanned = Math.max(1, last24Hours.length * 0.5); // 30-min intervals
+          productionRate = totalLitersLast24h / hoursSpanned;
+        }
       }
 
       // Get the most recent period
       const lastPeriod = recentPeriods.length > 0 ? recentPeriods[0] : null;
 
-      setData({
-        totalProduced,
-        productionRate,
+      const newData = {
+        totalProduced: Math.round(totalProduced * 100) / 100, // Round to 2 decimal places
+        productionRate: Math.round(productionRate * 100) / 100,
         lastPeriod,
         recentPeriods,
         lastUpdate: new Date()
-      });
+      };
 
+      setData(newData);
       setError(null);
-      console.log('✅ Production summary:', { totalProduced, productionRate });
+      
+      console.log('✅ Production summary updated:', { 
+        totalProduced: newData.totalProduced, 
+        productionRate: newData.productionRate,
+        periodsCount: recentPeriods.length,
+        productionPeriodsCount: productionPeriods.length
+      });
 
     } catch (err) {
       console.error('❌ Error fetching production data:', err);
@@ -102,7 +117,7 @@ export const usePeriodicWaterProduction = (machineId?: string) => {
   useEffect(() => {
     fetchProductionData();
 
-    // Refresh every 5 minutes
+    // Refresh every 5 minutes to pick up new production data
     const interval = setInterval(fetchProductionData, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, [machineId]);
