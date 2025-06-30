@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardHeader from './DashboardHeader';
@@ -108,8 +109,8 @@ const ClientDashboard = () => {
           selectedMachine={selectedMachine}
         />
 
-        {/* Machine Info and Water Tank - Only show for admin users */}
-        {selectedMachine && profile?.role === 'admin' && (
+        {/* Machine Info and Water Tank - Show for commercial users only */}
+        {selectedMachine && profile?.role === 'commercial' && (
           <MachineInfo
             machineId={selectedMachine.machine_id}
             liveData={processedLiveData}
@@ -135,13 +136,13 @@ const ClientDashboard = () => {
           monthlyStatusData={monthlyStatusData}
         />
 
-        {/* Water Production Metrics - Only show for admin users */}
-        {profile?.role === 'admin' && (
+        {/* Water Production Metrics - Show for commercial users only */}
+        {profile?.role === 'commercial' && (
           <WaterProductionMetrics liveData={processedLiveData} />
         )}
 
-        {/* ESG Metrics - Only show for admin users */}
-        {profile?.role === 'admin' && (
+        {/* ESG Metrics - Show for commercial users only */}
+        {profile?.role === 'commercial' && (
           <ESGMetrics totalWaterProduced={displayTotalWaterProduced} />
         )}
       </main>
