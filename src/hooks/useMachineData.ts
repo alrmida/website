@@ -32,7 +32,8 @@ export const useMachineData = () => {
         }
       } else {
         // Commercial and admin users see all machines
-        const { data: machinesData, error: machinesError } = await supabase
+        // First try to get machines with client profiles
+        const { data: machinesWithProfiles, error: profilesError } = await supabase
           .from('machines')
           .select(`
             *,
@@ -41,10 +42,24 @@ export const useMachineData = () => {
             )
           `);
         
-        console.log('All machines data:', machinesData, 'Error:', machinesError);
+        console.log('Machines with profiles data:', machinesWithProfiles, 'Error:', profilesError);
         
-        if (machinesData) {
-          const validMachines = machinesData.filter(machine => isValidMachineId(machine.machine_id));
+        // If that fails or returns empty, try to get all machines without the join
+        if (!machinesWithProfiles || machinesWithProfiles.length === 0) {
+          console.log('No machines with profiles found, trying to get all machines...');
+          const { data: allMachines, error: allMachinesError } = await supabase
+            .from('machines')
+            .select('*');
+          
+          console.log('All machines data:', allMachines, 'Error:', allMachinesError);
+          
+          if (allMachines) {
+            const validMachines = allMachines.filter(machine => isValidMachineId(machine.machine_id));
+            console.log('Valid machines after filtering:', validMachines);
+            setMachines(validMachines);
+          }
+        } else {
+          const validMachines = machinesWithProfiles.filter(machine => isValidMachineId(machine.machine_id));
           console.log('Valid machines after filtering:', validMachines);
           setMachines(validMachines);
         }
