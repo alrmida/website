@@ -88,12 +88,16 @@ export const usePeriodicWaterProduction = (machineId?: string) => {
       // Get the most recent period
       const lastPeriod = recentPeriods.length > 0 ? recentPeriods[0] : null;
 
+      // Use the created_at timestamp from the most recent period as lastUpdate
+      // This represents when the calculate-water-production function last ran
+      const lastUpdate = lastPeriod ? new Date(lastPeriod.created_at) : null;
+
       const newData = {
         totalProduced: Math.round(totalProduced * 100) / 100, // Round to 2 decimal places
         productionRate: Math.round(productionRate * 100) / 100,
         lastPeriod,
         recentPeriods,
-        lastUpdate: new Date()
+        lastUpdate
       };
 
       setData(newData);
@@ -103,7 +107,8 @@ export const usePeriodicWaterProduction = (machineId?: string) => {
         totalProduced: newData.totalProduced, 
         productionRate: newData.productionRate,
         periodsCount: recentPeriods.length,
-        productionPeriodsCount: productionPeriods.length
+        productionPeriodsCount: productionPeriods.length,
+        lastCalculationTime: lastUpdate?.toISOString()
       });
 
     } catch (err) {
