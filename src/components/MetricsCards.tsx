@@ -40,6 +40,7 @@ const MetricsCards = ({ waterTank, machineStatus = 'Offline', totalWaterProduced
   // Calculate ESG metrics based on water production
   const co2Saved = Math.round(totalWaterProduced * 0.234); // kg CO2 saved per liter
   const plasticBottlesSaved = Math.round(totalWaterProduced / 0.5); // 500ml bottles
+  const moneySaved = Math.round(totalWaterProduced * 0.5 * 100) / 100; // €0.50 per liter saved, rounded to 2 decimal places
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
@@ -83,7 +84,7 @@ const MetricsCards = ({ waterTank, machineStatus = 'Offline', totalWaterProduced
             <Activity className="h-3 w-3 text-green-600 dark:text-green-400" />
           </CardHeader>
           <CardContent className="pb-3">
-            <div className="text-lg font-bold text-green-600 dark:text-green-400">€622.85</div>
+            <div className="text-lg font-bold text-green-600 dark:text-green-400">€{moneySaved.toFixed(2)}</div>
           </CardContent>
         </Card>
 
