@@ -150,7 +150,7 @@ const SimpleWaterTracking = ({ machineId, currentWaterLevel }: SimpleWaterTracki
           <div className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
             <p>• Takes water level snapshots every 30 minutes</p>
             <p>• Calculates positive differences between snapshots</p>
-            <p>• Only counts increases > 0.1L as production</p>
+            <p>• Only counts increases greater than 0.1L as production</p>
             <p>• Shows cumulative total of all production events</p>
             <p>• Runs reliably in your browser (no server dependencies)</p>
           </div>
