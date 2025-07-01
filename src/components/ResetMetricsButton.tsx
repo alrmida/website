@@ -48,7 +48,8 @@ const ResetMetricsButton = ({ machineId, onResetComplete }: ResetMetricsButtonPr
         .eq('machine_id', machineId);
 
       if (snapshotsError) {
-        console.warn('Warning clearing snapshots:', snapshotsError);
+        console.error('Error clearing snapshots:', snapshotsError);
+        throw new Error(`Failed to clear snapshots: ${snapshotsError.message}`);
       }
 
       const { error: eventsError } = await supabase
@@ -57,17 +58,19 @@ const ResetMetricsButton = ({ machineId, onResetComplete }: ResetMetricsButtonPr
         .eq('machine_id', machineId);
 
       if (eventsError) {
-        console.warn('Warning clearing events:', eventsError);
+        console.error('Error clearing events:', eventsError);
+        throw new Error(`Failed to clear events: ${eventsError.message}`);
       }
 
-      // Clear raw machine data for clean analytics
+      // Clear raw machine data for clean analytics - this is critical for the status analytics graph
       const { error: rawDataError } = await supabase
         .from('raw_machine_data')
         .delete()
         .eq('machine_id', machineId);
 
       if (rawDataError) {
-        console.warn('Warning clearing raw machine data:', rawDataError);
+        console.error('Error clearing raw machine data:', rawDataError);
+        throw new Error(`Failed to clear raw machine data: ${rawDataError.message}`);
       }
 
       // Clear water production periods
@@ -77,7 +80,8 @@ const ResetMetricsButton = ({ machineId, onResetComplete }: ResetMetricsButtonPr
         .eq('machine_id', machineId);
 
       if (periodsError) {
-        console.warn('Warning clearing production periods:', periodsError);
+        console.error('Error clearing production periods:', periodsError);
+        throw new Error(`Failed to clear production periods: ${periodsError.message}`);
       }
 
       // Clear water level snapshots
@@ -87,7 +91,8 @@ const ResetMetricsButton = ({ machineId, onResetComplete }: ResetMetricsButtonPr
         .eq('machine_id', machineId);
 
       if (levelSnapshotsError) {
-        console.warn('Warning clearing level snapshots:', levelSnapshotsError);
+        console.error('Error clearing level snapshots:', levelSnapshotsError);
+        throw new Error(`Failed to clear level snapshots: ${levelSnapshotsError.message}`);
       }
 
       toast({
