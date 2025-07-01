@@ -6,6 +6,7 @@ import MachineInfo from './MachineInfo';
 import MetricsCards from './MetricsCards';
 import ProductionAnalytics from './ProductionAnalytics';
 import DashboardFooter from './DashboardFooter';
+import ResetMetricsButton from './ResetMetricsButton';
 import { MachineWithClient } from '@/types/machine';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDashboardData } from '@/hooks/useDashboardData';
@@ -26,11 +27,13 @@ const ClientDashboard = () => {
     monthlyProductionData,
     statusData,
     monthlyStatusData,
-    totalWaterProduced
+    totalWaterProduced,
+    dataLoading,
+    dataError
   } = useDashboardData(selectedMachine);
 
   // Use the new simplified water production system
-  const { data: simpleProduction, isLoading: simpleProductionLoading } = useSimpleWaterProduction(
+  const { data: simpleProduction, isLoading: simpleProductionLoading, refetch: refetchSimpleProduction } = useSimpleWaterProduction(
     selectedMachine?.machine_id, 
     liveData?.waterLevel
   );
@@ -87,6 +90,12 @@ const ClientDashboard = () => {
     // The useLiveMachineData hook handles refreshing automatically
   };
 
+  const handleResetComplete = () => {
+    console.log('🔄 Metrics reset completed, refreshing data...');
+    refetchSimpleProduction();
+    // The other hooks will automatically refresh on next data fetch
+  };
+
   // Convert live data structure to match the expected format
   const processedLiveData = liveData ? {
     lastUpdated: liveData.lastUpdated,
@@ -121,6 +130,16 @@ const ClientDashboard = () => {
           onMachineSelect={handleMachineSelect} 
           selectedMachine={selectedMachine}
         />
+
+        {/* Reset Metrics Button - Show for commercial users */}
+        {selectedMachine && profile?.role === 'commercial' && (
+          <div className="mb-6 flex justify-end">
+            <ResetMetricsButton 
+              machineId={selectedMachine.machine_id}
+              onResetComplete={handleResetComplete}
+            />
+          </div>
+        )}
 
         {/* Machine Info and Water Tank - Show for commercial users only */}
         {selectedMachine && profile?.role === 'commercial' && (
