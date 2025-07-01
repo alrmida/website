@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Droplets, Camera, Activity, Clock } from 'lucide-react';
+import { Droplets, Camera, Activity, Clock, Server } from 'lucide-react';
 import { useSimpleWaterProduction } from '@/hooks/useSimpleWaterProduction';
 
 interface SimpleWaterTrackingProps {
@@ -22,7 +22,7 @@ const SimpleWaterTracking = ({ machineId, currentWaterLevel }: SimpleWaterTracki
       <Card className="bg-white dark:bg-gray-800 mb-6">
         <CardHeader>
           <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
-            Simple Water Production Tracking
+            Server-Side Water Production Tracking
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -39,7 +39,7 @@ const SimpleWaterTracking = ({ machineId, currentWaterLevel }: SimpleWaterTracki
       <Card className="bg-white dark:bg-gray-800 mb-6">
         <CardHeader>
           <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
-            Simple Water Production Tracking - Error
+            Server-Side Water Production Tracking - Error
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -55,8 +55,8 @@ const SimpleWaterTracking = ({ machineId, currentWaterLevel }: SimpleWaterTracki
       <Card className="bg-white dark:bg-gray-800 mb-4">
         <CardHeader>
           <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center gap-2">
-            <Activity className="h-4 w-4 text-green-500" />
-            Simple Water Production Tracking System
+            <Server className="h-4 w-4 text-green-500" />
+            Server-Side Water Production Tracking System
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -64,7 +64,7 @@ const SimpleWaterTracking = ({ machineId, currentWaterLevel }: SimpleWaterTracki
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-300">Status:</span>
               <span className={`text-sm font-medium ${data.isTracking ? 'text-green-600' : 'text-yellow-600'}`}>
-                {data.isTracking ? 'Active' : 'Initializing'}
+                {data.isTracking ? 'Active (Server)' : 'Initializing'}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -74,7 +74,7 @@ const SimpleWaterTracking = ({ machineId, currentWaterLevel }: SimpleWaterTracki
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600 dark:text-gray-300">Last Snapshot:</span>
+              <span className="text-sm text-gray-600 dark:text-gray-300">Last Server Snapshot:</span>
               <span className="text-sm text-gray-500">
                 {formatDate(data.lastSnapshot)}
               </span>
@@ -97,7 +97,7 @@ const SimpleWaterTracking = ({ machineId, currentWaterLevel }: SimpleWaterTracki
               {data.totalProduced.toFixed(2)} L
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Cumulative positive differences
+              Server-calculated cumulative total
             </p>
           </CardContent>
         </Card>
@@ -105,7 +105,7 @@ const SimpleWaterTracking = ({ machineId, currentWaterLevel }: SimpleWaterTracki
         <Card className="bg-white dark:bg-gray-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
-              Snapshot Interval
+              Server Interval
             </CardTitle>
             <Camera className="h-4 w-4 text-green-600" />
           </CardHeader>
@@ -114,7 +114,7 @@ const SimpleWaterTracking = ({ machineId, currentWaterLevel }: SimpleWaterTracki
               30 min
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Automatic snapshots
+              Automated server snapshots
             </p>
           </CardContent>
         </Card>
@@ -122,7 +122,7 @@ const SimpleWaterTracking = ({ machineId, currentWaterLevel }: SimpleWaterTracki
         <Card className="bg-white dark:bg-gray-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
-              Next Snapshot
+              Next Server Check
             </CardTitle>
             <Clock className="h-4 w-4 text-orange-600" />
           </CardHeader>
@@ -133,26 +133,26 @@ const SimpleWaterTracking = ({ machineId, currentWaterLevel }: SimpleWaterTracki
                 : 30} min
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Until next snapshot
+              Until next server snapshot
             </p>
           </CardContent>
         </Card>
       </div>
 
       {/* Information Card */}
-      <Card className="bg-blue-50 dark:bg-blue-900/20 mt-4">
+      <Card className="bg-green-50 dark:bg-green-900/20 mt-4">
         <CardHeader>
-          <CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-300">
-            How it works
+          <CardTitle className="text-sm font-medium text-green-700 dark:text-green-300">
+            How server-side tracking works
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
-            <p>• Takes water level snapshots every 30 minutes</p>
+          <div className="text-sm text-green-700 dark:text-green-300 space-y-1">
+            <p>• Server automatically takes water level snapshots every 30 minutes</p>
             <p>• Calculates positive differences between snapshots</p>
             <p>• Only counts increases greater than 0.1L as production</p>
             <p>• Shows cumulative total of all production events</p>
-            <p>• Runs reliably in your browser (no server dependencies)</p>
+            <p>• Runs continuously on the server (works even when dashboard is closed)</p>
           </div>
         </CardContent>
       </Card>
