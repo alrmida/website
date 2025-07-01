@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardHeader from './DashboardHeader';
@@ -11,7 +10,7 @@ import { MachineWithClient } from '@/types/machine';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useLiveMachineData } from '@/hooks/useLiveMachineData';
-import { usePeriodicWaterProduction } from '@/hooks/usePeriodicWaterProduction';
+import { useSimpleWaterProduction } from '@/hooks/useSimpleWaterProduction';
 
 const ClientDashboard = () => {
   const { profile } = useAuth();
@@ -30,8 +29,11 @@ const ClientDashboard = () => {
     totalWaterProduced
   } = useDashboardData(selectedMachine);
 
-  // Get periodic production data for the metrics - this runs the background calculation
-  const { data: periodicProduction, isLoading: periodicLoading } = usePeriodicWaterProduction(selectedMachine?.machine_id);
+  // Use the new simplified water production system
+  const { data: simpleProduction, isLoading: simpleProductionLoading } = useSimpleWaterProduction(
+    selectedMachine?.machine_id, 
+    liveData?.waterLevel
+  );
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -62,19 +64,18 @@ const ClientDashboard = () => {
     fetchInitialData();
   }, []);
 
-  // Background water production calculation effect
+  // Background water production tracking effect
   useEffect(() => {
-    if (!selectedMachine?.machine_id) return;
+    if (!selectedMachine?.machine_id || !liveData?.waterLevel) return;
 
-    console.log('🔄 Water production calculation system active for machine:', selectedMachine.machine_id);
-    console.log('📊 Current periodic production total:', periodicProduction.totalProduced);
-    console.log('⚡ Production rate:', periodicProduction.productionRate, 'L/h');
+    console.log('🔄 Simple water production tracking active for machine:', selectedMachine.machine_id);
+    console.log('📊 Current total production:', simpleProduction.totalProduced);
+    console.log('💧 Current water level:', liveData.waterLevel);
+    console.log('📸 Last snapshot:', simpleProduction.lastSnapshot?.toISOString());
     
-    // The usePeriodicWaterProduction hook handles the background calculation
-    // It fetches data every 5 minutes and processes production periods
-    // The calculate-water-production edge function runs every 30 minutes via cron
+    // The useSimpleWaterProduction hook handles the automatic snapshots and calculations
     
-  }, [selectedMachine?.machine_id, periodicProduction.totalProduced, periodicProduction.productionRate]);
+  }, [selectedMachine?.machine_id, liveData?.waterLevel, simpleProduction.totalProduced]);
 
   const handleMachineSelect = async (machine: MachineWithClient) => {
     console.log('Selected machine:', machine);
@@ -96,7 +97,7 @@ const ClientDashboard = () => {
     // Add other properties as needed
   } : null;
 
-  // Prepare data for MetricsCards component - use periodic production data when available
+  // Prepare data for MetricsCards component - use simple production data when available
   const waterTank = {
     currentLevel: liveData?.waterLevel || 0,
     maxCapacity: 10.0,
@@ -105,9 +106,9 @@ const ClientDashboard = () => {
 
   const machineStatus = liveData?.status || 'Loading...';
 
-  // Use periodic production total if available and greater than 0, otherwise fall back to dashboard data
-  const displayTotalWaterProduced = periodicProduction.totalProduced > 0 
-    ? periodicProduction.totalProduced 
+  // Use simple production total if available and greater than 0, otherwise fall back to dashboard data
+  const displayTotalWaterProduced = simpleProduction.totalProduced > 0 
+    ? simpleProduction.totalProduced 
     : totalWaterProduced;
 
   return (
@@ -131,12 +132,12 @@ const ClientDashboard = () => {
           />
         )}
 
-        {/* Metrics Cards Grid - Updated with periodic production data and last update timestamp */}
+        {/* Metrics Cards Grid - Updated with simple production data and last snapshot timestamp */}
         <MetricsCards 
           waterTank={waterTank}
           machineStatus={machineStatus}
           totalWaterProduced={displayTotalWaterProduced}
-          lastUpdate={periodicProduction.lastUpdate}
+          lastUpdate={simpleProduction.lastSnapshot}
         />
 
         {/* Production Analytics - Charts and Visualizations */}

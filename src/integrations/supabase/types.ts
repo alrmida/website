@@ -206,6 +206,30 @@ export type Database = {
         }
         Relationships: []
       }
+      simple_water_snapshots: {
+        Row: {
+          created_at: string
+          id: string
+          machine_id: string
+          timestamp_utc: string
+          water_level_l: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          machine_id: string
+          timestamp_utc?: string
+          water_level_l: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          machine_id?: string
+          timestamp_utc?: string
+          water_level_l?: number
+        }
+        Relationships: []
+      }
       water_level_snapshots: {
         Row: {
           created_at: string
@@ -233,6 +257,36 @@ export type Database = {
           machine_status?: string | null
           timestamp_utc?: string
           water_level_l?: number | null
+        }
+        Relationships: []
+      }
+      water_production_events: {
+        Row: {
+          created_at: string
+          current_level: number
+          id: string
+          machine_id: string
+          previous_level: number
+          production_liters: number
+          timestamp_utc: string
+        }
+        Insert: {
+          created_at?: string
+          current_level: number
+          id?: string
+          machine_id: string
+          previous_level: number
+          production_liters: number
+          timestamp_utc?: string
+        }
+        Update: {
+          created_at?: string
+          current_level?: number
+          id?: string
+          machine_id?: string
+          previous_level?: number
+          production_liters?: number
+          timestamp_utc?: string
         }
         Relationships: []
       }

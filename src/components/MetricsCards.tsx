@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -39,15 +38,16 @@ const MetricsCards = ({ waterTank, machineStatus = 'Offline', totalWaterProduced
   };
 
   const formatLastUpdate = (date: Date | null) => {
-    if (!date) return null;
+    if (!date) return 'No snapshots yet';
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / (1000 * 60));
     
     if (diffMins < 1) return 'Just now';
     if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ${diffMins % 60}m ago`;
     
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   // Calculate ESG metrics based on water production
@@ -88,9 +88,12 @@ const MetricsCards = ({ waterTank, machineStatus = 'Offline', totalWaterProduced
           </CardHeader>
           <CardContent className="pb-3">
             <div className="text-lg font-bold text-gray-900 dark:text-white">{totalWaterProduced.toFixed(1)} L</div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Tracked via snapshots
+            </p>
             {lastUpdate && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Updated {formatLastUpdate(lastUpdate)}
+              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                Last: {formatLastUpdate(lastUpdate)}
               </p>
             )}
           </CardContent>
