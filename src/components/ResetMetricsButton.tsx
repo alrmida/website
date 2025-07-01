@@ -41,7 +41,7 @@ const ResetMetricsButton = ({ machineId, onResetComplete }: ResetMetricsButtonPr
         throw resetError;
       }
 
-      // Also clear the new tracking tables
+      // Clear the new tracking tables
       const { error: snapshotsError } = await supabase
         .from('simple_water_snapshots')
         .delete()
@@ -60,12 +60,42 @@ const ResetMetricsButton = ({ machineId, onResetComplete }: ResetMetricsButtonPr
         console.warn('Warning clearing events:', eventsError);
       }
 
+      // Clear raw machine data for clean analytics
+      const { error: rawDataError } = await supabase
+        .from('raw_machine_data')
+        .delete()
+        .eq('machine_id', machineId);
+
+      if (rawDataError) {
+        console.warn('Warning clearing raw machine data:', rawDataError);
+      }
+
+      // Clear water production periods
+      const { error: periodsError } = await supabase
+        .from('water_production_periods')
+        .delete()
+        .eq('machine_id', machineId);
+
+      if (periodsError) {
+        console.warn('Warning clearing production periods:', periodsError);
+      }
+
+      // Clear water level snapshots
+      const { error: levelSnapshotsError } = await supabase
+        .from('water_level_snapshots')
+        .delete()
+        .eq('machine_id', machineId);
+
+      if (levelSnapshotsError) {
+        console.warn('Warning clearing level snapshots:', levelSnapshotsError);
+      }
+
       toast({
         title: "Success",
-        description: `All metrics reset for machine ${machineId}`,
+        description: `All metrics and historical data reset for machine ${machineId}`,
       });
 
-      console.log('✅ All metrics reset successfully');
+      console.log('✅ All metrics and historical data reset successfully');
       onResetComplete?.();
 
     } catch (error) {
@@ -99,13 +129,15 @@ const ResetMetricsButton = ({ machineId, onResetComplete }: ResetMetricsButtonPr
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Reset All Metrics?</AlertDialogTitle>
+          <AlertDialogTitle>Reset All Metrics and Historical Data?</AlertDialogTitle>
           <AlertDialogDescription>
-            This will permanently delete all water production data for machine {machineId}:
-            <br />• Production events
-            <br />• Water snapshots  
-            <br />• Production metrics
-            <br />• Analytics data
+            This will permanently delete ALL data for machine {machineId}:
+            <br />• Production events and snapshots
+            <br />• Raw machine data (for analytics)
+            <br />• Production periods and metrics
+            <br />• Water level snapshots
+            <br /><br />
+            This will completely clear the status analytics graphs and provide a fresh baseline for precision testing.
             <br /><br />
             This action cannot be undone. Are you sure you want to continue?
           </AlertDialogDescription>
@@ -117,7 +149,7 @@ const ResetMetricsButton = ({ machineId, onResetComplete }: ResetMetricsButtonPr
             className="bg-red-600 hover:bg-red-700"
             disabled={isResetting}
           >
-            {isResetting ? 'Resetting...' : 'Reset All Metrics'}
+            {isResetting ? 'Resetting...' : 'Reset All Data'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
