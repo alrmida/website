@@ -111,7 +111,7 @@ const SimpleWaterTracking = ({ machineId, currentWaterLevel }: SimpleWaterTracki
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              30 min
+              15 min
             </div>
             <p className="text-xs text-gray-500 mt-1">
               Automated server snapshots
@@ -129,8 +129,8 @@ const SimpleWaterTracking = ({ machineId, currentWaterLevel }: SimpleWaterTracki
           <CardContent>
             <div className="text-lg font-bold text-orange-600">
               {data.lastSnapshot ? 
-                Math.max(0, 30 - Math.floor((Date.now() - data.lastSnapshot.getTime()) / (1000 * 60))) 
-                : 30} min
+                Math.max(0, 15 - Math.floor((Date.now() - data.lastSnapshot.getTime()) / (1000 * 60))) 
+                : 15} min
             </div>
             <p className="text-xs text-gray-500 mt-1">
               Until next server snapshot
@@ -148,7 +148,7 @@ const SimpleWaterTracking = ({ machineId, currentWaterLevel }: SimpleWaterTracki
         </CardHeader>
         <CardContent>
           <div className="text-sm text-green-700 dark:text-green-300 space-y-1">
-            <p>• Server automatically takes water level snapshots every 30 minutes</p>
+            <p>• Server automatically takes water level snapshots every 15 minutes</p>
             <p>• Calculates positive differences between snapshots</p>
             <p>• Only counts increases greater than 0.1L as production</p>
             <p>• Shows cumulative total of all production events</p>

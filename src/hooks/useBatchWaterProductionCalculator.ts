@@ -27,7 +27,7 @@ interface PumpEvent {
   production?: number;
 }
 
-const BATCH_INTERVAL = 30 * 60 * 1000; // 30 minutes in milliseconds
+const BATCH_INTERVAL = 15 * 60 * 1000; // 15 minutes in milliseconds
 const MACHINE_ID = 'KU001619000079';
 
 export const useBatchWaterProductionCalculator = () => {

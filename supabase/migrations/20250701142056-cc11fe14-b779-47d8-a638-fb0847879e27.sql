@@ -5,10 +5,10 @@ CREATE EXTENSION IF NOT EXISTS pg_cron;
 -- Enable the pg_net extension for HTTP requests if not already enabled  
 CREATE EXTENSION IF NOT EXISTS pg_net;
 
--- Schedule the water production tracking function to run every 30 minutes
+-- Schedule the water production tracking function to run every 15 minutes
 SELECT cron.schedule(
-  'track-water-production-every-30min',
-  '*/30 * * * *', -- every 30 minutes
+  'track-water-production-every-15min',
+  '*/15 * * * *', -- every 15 minutes
   $$
   SELECT
     net.http_post(

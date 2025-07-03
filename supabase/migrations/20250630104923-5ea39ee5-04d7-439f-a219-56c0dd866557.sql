@@ -1,5 +1,5 @@
 
--- Create table for storing 30-minute water level snapshots
+-- Create table for storing 15-minute water level snapshots
 CREATE TABLE public.water_level_snapshots (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   machine_id TEXT NOT NULL,
@@ -32,10 +32,10 @@ CREATE INDEX idx_water_production_periods_machine_period ON public.water_product
 -- Enable pg_cron extension for scheduling (if not already enabled)
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 
--- Schedule the water production calculation function to run every 30 minutes
+-- Schedule the water production calculation function to run every 15 minutes
 SELECT cron.schedule(
   'water-production-calculation',
-  '*/30 * * * *', -- every 30 minutes
+  '*/15 * * * *', -- every 15 minutes
   $$
   SELECT
     net.http_post(

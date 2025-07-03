@@ -53,7 +53,7 @@ export const usePeriodicWaterProduction = (machineId?: string) => {
         .eq('machine_id', machineId)
         .gte('period_start', sevenDaysAgo)
         .order('period_start', { ascending: false })
-        .limit(336); // Last week of 30-min intervals
+        .limit(672); // Last week of 15-min intervals (4 per hour * 24 hours * 7 days)
 
       if (periodsError) {
         throw periodsError;
@@ -80,7 +80,7 @@ export const usePeriodicWaterProduction = (machineId?: string) => {
         
         if (last24Hours.length > 0) {
           const totalLitersLast24h = last24Hours.reduce((sum, p) => sum + p.production_liters, 0);
-          const hoursSpanned = Math.max(1, last24Hours.length * 0.5); // 30-min intervals
+          const hoursSpanned = Math.max(1, last24Hours.length * 0.25); // 15-min intervals = 0.25 hours each
           productionRate = totalLitersLast24h / hoursSpanned;
         }
       }
