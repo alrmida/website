@@ -38,11 +38,11 @@ const AdminDashboard = () => {
       if (profilesError) {
         console.error('Error fetching profiles:', profilesError);
       } else {
-        // Map database roles to frontend roles
-        const mappedProfiles = profilesData?.map(p => ({
+        // Map database roles to frontend roles with proper typing
+        const mappedProfiles: Profile[] = profilesData?.map(p => ({
           ...p,
-          role: p.role === 'kumulus_personnel' ? 'commercial' : 
-                p.role === 'kumulus_admin' ? 'admin' : 'client'
+          role: (p.role === 'kumulus_personnel' ? 'commercial' : 
+                p.role === 'kumulus_admin' ? 'admin' : 'client') as 'client' | 'commercial' | 'admin'
         })) || [];
         setProfiles(mappedProfiles);
       }
@@ -56,11 +56,11 @@ const AdminDashboard = () => {
       if (invitationsError) {
         console.error('Error fetching invitations:', invitationsError);
       } else {
-        // Map database roles to frontend roles
-        const mappedInvitations = invitationsData?.map(inv => ({
+        // Map database roles to frontend roles with proper typing
+        const mappedInvitations: Invitation[] = invitationsData?.map(inv => ({
           ...inv,
-          role: inv.role === 'kumulus_personnel' ? 'commercial' : 
-                inv.role === 'kumulus_admin' ? 'admin' : 'client'
+          role: (inv.role === 'kumulus_personnel' ? 'commercial' : 
+                inv.role === 'kumulus_admin' ? 'admin' : 'client') as 'client' | 'commercial' | 'admin'
         })) || [];
         setInvitations(mappedInvitations);
       }
