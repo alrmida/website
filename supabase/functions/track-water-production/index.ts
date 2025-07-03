@@ -40,6 +40,7 @@ interface Database {
           previous_level: number;
           current_level: number;
           timestamp_utc: string;
+          event_type: string;
         };
         Insert: {
           machine_id: string;
@@ -68,7 +69,7 @@ const MACHINE_ID = 'KU001619000079';
 
 async function fetchLatestDataFromInflux(): Promise<{ waterLevel: number; timestamp: string } | null> {
   if (!INFLUX_URL || !INFLUX_TOKEN || !INFLUX_ORG) {
-    console.log('❌ InfluxDB configuration missing, falling back to raw_machine_data');
+    console.log('❌ InfluxDB configuration missing');
     return null;
   }
 
@@ -85,7 +86,7 @@ async function fetchLatestDataFromInflux(): Promise<{ waterLevel: number; timest
     const baseUrl = INFLUX_URL.replace(/\/+$/, '');
     const queryUrl = `${baseUrl}/api/v2/query?org=${encodeURIComponent(INFLUX_ORG)}`;
     
-    console.log('🔍 Fetching latest data directly from InfluxDB...');
+    console.log('🔍 Fetching latest data from InfluxDB for independent tracking...');
     
     const response = await fetch(queryUrl, {
       method: 'POST',
@@ -140,42 +141,6 @@ async function fetchLatestDataFromInflux(): Promise<{ waterLevel: number; timest
   }
 }
 
-async function getLatestMachineData(): Promise<{ waterLevel: number; timestamp: string } | null> {
-  // First try to get fresh data from InfluxDB
-  const influxData = await fetchLatestDataFromInflux();
-  if (influxData) {
-    return influxData;
-  }
-
-  // Fallback to raw_machine_data but check if it's recent
-  console.log('⚠️ Falling back to raw_machine_data...');
-  const { data: latestData, error: latestError } = await supabase
-    .from('raw_machine_data')
-    .select('machine_id, water_level_l, timestamp_utc')
-    .order('timestamp_utc', { ascending: false })
-    .limit(1)
-    .single();
-
-  if (latestError || !latestData) {
-    console.log('❌ No machine data found in fallback:', latestError);
-    return null;
-  }
-
-  // Check if data is too old (more than 2 hours)
-  const dataAge = Date.now() - new Date(latestData.timestamp_utc).getTime();
-  const maxAge = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
-
-  if (dataAge > maxAge) {
-    console.log(`⚠️ Data is too old (${Math.round(dataAge / 1000 / 60)} minutes), skipping production calculation`);
-    return null;
-  }
-
-  return {
-    waterLevel: latestData.water_level_l || 0,
-    timestamp: latestData.timestamp_utc
-  };
-}
-
 function detectDrainageEvent(currentLevel: number, previousLevel: number): boolean {
   // Detect if water level dropped by more than 50% or more than 3L
   const decrease = previousLevel - currentLevel;
@@ -209,6 +174,20 @@ function isValidProduction(production: number, timeDiffMinutes: number): boolean
   return isValid;
 }
 
+function isDataFresh(timestamp: string): boolean {
+  const dataAge = Date.now() - new Date(timestamp).getTime();
+  const maxAge = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+  
+  const isFresh = dataAge <= maxAge;
+  console.log('🕒 Data freshness check:', {
+    timestamp,
+    ageMinutes: Math.round(dataAge / 1000 / 60),
+    isFresh
+  });
+  
+  return isFresh;
+}
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -216,16 +195,16 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    console.log('🚀 Starting independent water production tracking...');
+    console.log('🚀 Starting truly independent water production tracking...');
 
-    // Get the latest machine data (from InfluxDB or recent raw_machine_data)
-    const latestData = await getLatestMachineData();
+    // Get fresh data directly from InfluxDB (independent of dashboard activity)
+    const latestData = await fetchLatestDataFromInflux();
     
     if (!latestData) {
-      console.log('❌ No recent machine data available');
+      console.log('❌ No fresh machine data available from InfluxDB');
       return new Response(JSON.stringify({ 
         status: 'warning', 
-        message: 'No recent machine data available' 
+        message: 'No fresh machine data available from InfluxDB' 
       }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -234,7 +213,19 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { waterLevel, timestamp } = latestData;
     
-    if (!waterLevel || waterLevel <= 0) {
+    // Validate data freshness
+    if (!isDataFresh(timestamp)) {
+      console.log('⚠️ Data is too old, skipping production calculation');
+      return new Response(JSON.stringify({ 
+        status: 'warning', 
+        message: 'Data is too old for reliable production calculation' 
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!waterLevel || waterLevel < 0) {
       console.log('⚠️ Invalid water level data:', waterLevel);
       return new Response(JSON.stringify({ 
         status: 'warning', 
@@ -245,7 +236,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    console.log(`📊 Processing data for machine ${MACHINE_ID}: ${waterLevel}L at ${timestamp}`);
+    console.log(`📊 Processing fresh data for machine ${MACHINE_ID}: ${waterLevel}L at ${timestamp}`);
 
     // Store the current snapshot
     const { error: snapshotError } = await supabase
@@ -313,7 +304,7 @@ const handler = async (req: Request): Promise<Response> => {
       timeDiffMinutes: Math.round(timeDiffMinutes)
     });
 
-    // Check for drainage event
+    // Check for drainage event (handles the overnight draining scenario)
     if (detectDrainageEvent(currentSnapshot.water_level_l, previousSnapshot.water_level_l)) {
       console.log(`🚰 Drainage event detected: ${Math.abs(waterLevelDiff).toFixed(2)}L removed`);
       
@@ -346,8 +337,8 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Check for valid production (positive increase > 0.1L and reasonable rate)
-    if (waterLevelDiff > 0.1 && isValidProduction(waterLevelDiff, timeDiffMinutes)) {
+    // Check for valid production (positive increase > 0.05L and reasonable rate)
+    if (waterLevelDiff > 0.05 && isValidProduction(waterLevelDiff, timeDiffMinutes)) {
       console.log(`💧 Water production detected: ${waterLevelDiff.toFixed(2)}L over ${Math.round(timeDiffMinutes)} minutes`);
       
       // Store the production event
@@ -385,7 +376,7 @@ const handler = async (req: Request): Promise<Response> => {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
-    } else if (waterLevelDiff > 0.1) {
+    } else if (waterLevelDiff > 0.05) {
       console.log(`⚠️ Water increase detected (${waterLevelDiff.toFixed(2)}L) but production rate seems unrealistic`);
       return new Response(JSON.stringify({ 
         status: 'warning', 
@@ -399,7 +390,8 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(JSON.stringify({ 
         status: 'ok', 
         message: 'No production detected in this period',
-        water_level_change: waterLevelDiff
+        water_level_change: waterLevelDiff,
+        event_type: 'no_change'
       }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -407,7 +399,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
   } catch (error) {
-    console.error('💥 Unexpected error in track-water-production:', error);
+    console.error('💥 Unexpected error in independent track-water-production:', error);
     return new Response(JSON.stringify({ 
       status: 'error', 
       message: error instanceof Error ? error.message : 'Unknown error' 

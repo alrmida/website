@@ -264,6 +264,7 @@ export type Database = {
         Row: {
           created_at: string
           current_level: number
+          event_type: string | null
           id: string
           machine_id: string
           previous_level: number
@@ -273,6 +274,7 @@ export type Database = {
         Insert: {
           created_at?: string
           current_level: number
+          event_type?: string | null
           id?: string
           machine_id: string
           previous_level: number
@@ -282,6 +284,7 @@ export type Database = {
         Update: {
           created_at?: string
           current_level?: number
+          event_type?: string | null
           id?: string
           machine_id?: string
           previous_level?: number
