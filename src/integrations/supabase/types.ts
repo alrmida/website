@@ -9,6 +9,45 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      data_ingestion_logs: {
+        Row: {
+          created_at: string
+          data_freshness_minutes: number | null
+          data_timestamp: string | null
+          error_details: string | null
+          id: string
+          influx_query: string | null
+          influx_response_size: number | null
+          log_type: string
+          machine_id: string
+          message: string
+        }
+        Insert: {
+          created_at?: string
+          data_freshness_minutes?: number | null
+          data_timestamp?: string | null
+          error_details?: string | null
+          id?: string
+          influx_query?: string | null
+          influx_response_size?: number | null
+          log_type: string
+          machine_id: string
+          message: string
+        }
+        Update: {
+          created_at?: string
+          data_freshness_minutes?: number | null
+          data_timestamp?: string | null
+          error_details?: string | null
+          id?: string
+          influx_query?: string | null
+          influx_response_size?: number | null
+          log_type?: string
+          machine_id?: string
+          message?: string
+        }
+        Relationships: []
+      }
       invitations: {
         Row: {
           created_at: string | null
