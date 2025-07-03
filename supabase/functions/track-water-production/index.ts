@@ -47,6 +47,7 @@ interface Database {
           previous_level: number;
           current_level: number;
           timestamp_utc?: string;
+          event_type?: string;
         };
       };
     };
@@ -58,6 +59,156 @@ const supabase = createClient<Database>(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
 
+// InfluxDB configuration
+const INFLUX_URL = Deno.env.get('INFLUXDB_URL');
+const INFLUX_TOKEN = Deno.env.get('INFLUXDB_TOKEN');
+const INFLUX_ORG = Deno.env.get('INFLUXDB_ORG');
+const INFLUX_BUCKET = Deno.env.get('INFLUXDB_BUCKET') || 'KumulusData';
+const MACHINE_ID = 'KU001619000079';
+
+async function fetchLatestDataFromInflux(): Promise<{ waterLevel: number; timestamp: string } | null> {
+  if (!INFLUX_URL || !INFLUX_TOKEN || !INFLUX_ORG) {
+    console.log('❌ InfluxDB configuration missing, falling back to raw_machine_data');
+    return null;
+  }
+
+  try {
+    const query = `
+      from(bucket: "${INFLUX_BUCKET}")
+        |> range(start: -2h)
+        |> filter(fn: (r) => r._measurement == "awg_data_full")
+        |> filter(fn: (r) => r._field == "water_level_L")
+        |> sort(columns: ["_time"], desc: true)
+        |> limit(n: 1)
+    `;
+
+    const baseUrl = INFLUX_URL.replace(/\/+$/, '');
+    const queryUrl = `${baseUrl}/api/v2/query?org=${encodeURIComponent(INFLUX_ORG)}`;
+    
+    console.log('🔍 Fetching latest data directly from InfluxDB...');
+    
+    const response = await fetch(queryUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Token ${INFLUX_TOKEN}`,
+        'Content-Type': 'application/vnd.flux',
+        'Accept': 'application/csv',
+      },
+      body: query,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ InfluxDB query failed:', response.status, errorText);
+      return null;
+    }
+
+    const responseText = await response.text();
+    const lines = responseText.trim().split('\n');
+    
+    if (lines.length < 2) {
+      console.log('⚠️ No data found in InfluxDB response');
+      return null;
+    }
+
+    // Parse CSV response
+    const headers = lines[0].split(',').map(h => h.trim());
+    const dataRow = lines[1].split(',').map(d => d.trim());
+    
+    const timeIndex = headers.indexOf('_time');
+    const valueIndex = headers.indexOf('_value');
+    
+    if (timeIndex === -1 || valueIndex === -1) {
+      console.error('❌ Invalid CSV format from InfluxDB');
+      return null;
+    }
+
+    const timestamp = dataRow[timeIndex];
+    const waterLevel = parseFloat(dataRow[valueIndex]);
+    
+    if (isNaN(waterLevel)) {
+      console.error('❌ Invalid water level value from InfluxDB:', dataRow[valueIndex]);
+      return null;
+    }
+
+    console.log('✅ Successfully fetched from InfluxDB:', { waterLevel, timestamp });
+    return { waterLevel, timestamp };
+
+  } catch (error) {
+    console.error('❌ Error fetching from InfluxDB:', error);
+    return null;
+  }
+}
+
+async function getLatestMachineData(): Promise<{ waterLevel: number; timestamp: string } | null> {
+  // First try to get fresh data from InfluxDB
+  const influxData = await fetchLatestDataFromInflux();
+  if (influxData) {
+    return influxData;
+  }
+
+  // Fallback to raw_machine_data but check if it's recent
+  console.log('⚠️ Falling back to raw_machine_data...');
+  const { data: latestData, error: latestError } = await supabase
+    .from('raw_machine_data')
+    .select('machine_id, water_level_l, timestamp_utc')
+    .order('timestamp_utc', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (latestError || !latestData) {
+    console.log('❌ No machine data found in fallback:', latestError);
+    return null;
+  }
+
+  // Check if data is too old (more than 2 hours)
+  const dataAge = Date.now() - new Date(latestData.timestamp_utc).getTime();
+  const maxAge = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+
+  if (dataAge > maxAge) {
+    console.log(`⚠️ Data is too old (${Math.round(dataAge / 1000 / 60)} minutes), skipping production calculation`);
+    return null;
+  }
+
+  return {
+    waterLevel: latestData.water_level_l || 0,
+    timestamp: latestData.timestamp_utc
+  };
+}
+
+function detectDrainageEvent(currentLevel: number, previousLevel: number): boolean {
+  // Detect if water level dropped by more than 50% or more than 3L
+  const decrease = previousLevel - currentLevel;
+  const percentageDecrease = (decrease / previousLevel) * 100;
+  
+  console.log('🔍 Drainage detection:', {
+    currentLevel,
+    previousLevel,
+    decrease,
+    percentageDecrease: Math.round(percentageDecrease)
+  });
+
+  return decrease > 3.0 || percentageDecrease > 50;
+}
+
+function isValidProduction(production: number, timeDiffMinutes: number): boolean {
+  // Validate production is reasonable
+  // Max reasonable production rate: ~2L/hour = 0.033L/minute
+  const maxProductionRate = 0.05; // L/minute (slightly higher for safety)
+  const maxExpectedProduction = maxProductionRate * timeDiffMinutes;
+  
+  const isValid = production > 0.05 && production <= maxExpectedProduction;
+  
+  console.log('🔍 Production validation:', {
+    production,
+    timeDiffMinutes,
+    maxExpectedProduction,
+    isValid
+  });
+
+  return isValid;
+}
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -65,31 +216,26 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    console.log('🚀 Starting server-side water production tracking...');
+    console.log('🚀 Starting independent water production tracking...');
 
-    // Get the latest water level data from raw_machine_data
-    const { data: latestData, error: latestError } = await supabase
-      .from('raw_machine_data')
-      .select('machine_id, water_level_l, timestamp_utc')
-      .order('timestamp_utc', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (latestError || !latestData) {
-      console.log('❌ No recent machine data found:', latestError);
+    // Get the latest machine data (from InfluxDB or recent raw_machine_data)
+    const latestData = await getLatestMachineData();
+    
+    if (!latestData) {
+      console.log('❌ No recent machine data available');
       return new Response(JSON.stringify({ 
         status: 'warning', 
-        message: 'No recent machine data found' 
+        message: 'No recent machine data available' 
       }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const { machine_id, water_level_l, timestamp_utc } = latestData;
+    const { waterLevel, timestamp } = latestData;
     
-    if (!water_level_l || water_level_l <= 0) {
-      console.log('⚠️ Invalid water level data:', water_level_l);
+    if (!waterLevel || waterLevel <= 0) {
+      console.log('⚠️ Invalid water level data:', waterLevel);
       return new Response(JSON.stringify({ 
         status: 'warning', 
         message: 'Invalid water level data' 
@@ -99,15 +245,15 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    console.log(`📊 Processing data for machine ${machine_id}: ${water_level_l}L at ${timestamp_utc}`);
+    console.log(`📊 Processing data for machine ${MACHINE_ID}: ${waterLevel}L at ${timestamp}`);
 
     // Store the current snapshot
     const { error: snapshotError } = await supabase
       .from('simple_water_snapshots')
       .insert({
-        machine_id,
-        water_level_l,
-        timestamp_utc
+        machine_id: MACHINE_ID,
+        water_level_l: waterLevel,
+        timestamp_utc: timestamp
       });
 
     if (snapshotError) {
@@ -127,7 +273,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: previousSnapshots, error: previousError } = await supabase
       .from('simple_water_snapshots')
       .select('*')
-      .eq('machine_id', machine_id)
+      .eq('machine_id', MACHINE_ID)
       .order('timestamp_utc', { ascending: false })
       .limit(2);
 
@@ -157,26 +303,63 @@ const handler = async (req: Request): Promise<Response> => {
     const currentSnapshot = previousSnapshots[0];
     const previousSnapshot = previousSnapshots[1];
     const waterLevelDiff = currentSnapshot.water_level_l - previousSnapshot.water_level_l;
+    const timeDiff = new Date(currentSnapshot.timestamp_utc).getTime() - new Date(previousSnapshot.timestamp_utc).getTime();
+    const timeDiffMinutes = timeDiff / (1000 * 60);
 
     console.log(`🔍 Comparing snapshots:`, {
       current: currentSnapshot.water_level_l,
       previous: previousSnapshot.water_level_l,
-      difference: waterLevelDiff
+      difference: waterLevelDiff,
+      timeDiffMinutes: Math.round(timeDiffMinutes)
     });
 
-    // Only consider it production if increase is > 0.1L (to avoid noise)
-    if (waterLevelDiff > 0.1) {
-      console.log(`💧 Water production detected: ${waterLevelDiff}L`);
+    // Check for drainage event
+    if (detectDrainageEvent(currentSnapshot.water_level_l, previousSnapshot.water_level_l)) {
+      console.log(`🚰 Drainage event detected: ${Math.abs(waterLevelDiff).toFixed(2)}L removed`);
+      
+      // Store the drainage event
+      const { error: drainageError } = await supabase
+        .from('water_production_events')
+        .insert({
+          machine_id: MACHINE_ID,
+          production_liters: waterLevelDiff, // Negative value for drainage
+          previous_level: previousSnapshot.water_level_l,
+          current_level: currentSnapshot.water_level_l,
+          timestamp_utc: currentSnapshot.timestamp_utc,
+          event_type: 'drainage'
+        });
+
+      if (drainageError) {
+        console.error('❌ Error storing drainage event:', drainageError);
+      } else {
+        console.log('✅ Drainage event stored successfully');
+      }
+      
+      return new Response(JSON.stringify({ 
+        status: 'ok', 
+        message: `Drainage event detected: ${Math.abs(waterLevelDiff).toFixed(2)}L removed`,
+        event_type: 'drainage',
+        water_removed: Math.abs(waterLevelDiff)
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Check for valid production (positive increase > 0.1L and reasonable rate)
+    if (waterLevelDiff > 0.1 && isValidProduction(waterLevelDiff, timeDiffMinutes)) {
+      console.log(`💧 Water production detected: ${waterLevelDiff.toFixed(2)}L over ${Math.round(timeDiffMinutes)} minutes`);
       
       // Store the production event
       const { error: productionError } = await supabase
         .from('water_production_events')
         .insert({
-          machine_id,
+          machine_id: MACHINE_ID,
           production_liters: waterLevelDiff,
           previous_level: previousSnapshot.water_level_l,
           current_level: currentSnapshot.water_level_l,
-          timestamp_utc: currentSnapshot.timestamp_utc
+          timestamp_utc: currentSnapshot.timestamp_utc,
+          event_type: 'production'
         });
 
       if (productionError) {
@@ -195,7 +378,18 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(JSON.stringify({ 
         status: 'ok', 
         message: `Production tracked: ${waterLevelDiff.toFixed(2)}L`,
-        production: waterLevelDiff
+        production: waterLevelDiff,
+        event_type: 'production',
+        production_rate_lh: (waterLevelDiff / timeDiffMinutes) * 60
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    } else if (waterLevelDiff > 0.1) {
+      console.log(`⚠️ Water increase detected (${waterLevelDiff.toFixed(2)}L) but production rate seems unrealistic`);
+      return new Response(JSON.stringify({ 
+        status: 'warning', 
+        message: `Unrealistic production rate detected: ${waterLevelDiff.toFixed(2)}L in ${Math.round(timeDiffMinutes)} minutes` 
       }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -204,7 +398,8 @@ const handler = async (req: Request): Promise<Response> => {
       console.log('📊 No significant production detected');
       return new Response(JSON.stringify({ 
         status: 'ok', 
-        message: 'No production detected in this period' 
+        message: 'No production detected in this period',
+        water_level_change: waterLevelDiff
       }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
