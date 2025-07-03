@@ -51,6 +51,18 @@ interface Database {
           event_type?: string;
         };
       };
+      data_ingestion_logs: {
+        Insert: {
+          machine_id: string;
+          log_type: string;
+          message: string;
+          data_timestamp?: string;
+          data_freshness_minutes?: number;
+          influx_query?: string;
+          influx_response_size?: number;
+          error_details?: string;
+        };
+      };
     };
   };
 }
@@ -67,26 +79,63 @@ const INFLUX_ORG = Deno.env.get('INFLUXDB_ORG');
 const INFLUX_BUCKET = Deno.env.get('INFLUXDB_BUCKET') || 'KumulusData';
 const MACHINE_ID = 'KU001619000079';
 
+async function logDataIngestion(
+  logType: string, 
+  message: string, 
+  extraData?: {
+    dataTimestamp?: string;
+    freshnessMinutes?: number;
+    influxQuery?: string;
+    influxResponseSize?: number;
+    errorDetails?: string;
+  }
+) {
+  try {
+    await supabase.from('data_ingestion_logs').insert({
+      machine_id: MACHINE_ID,
+      log_type: logType,
+      message,
+      data_timestamp: extraData?.dataTimestamp,
+      data_freshness_minutes: extraData?.freshnessMinutes,
+      influx_query: extraData?.influxQuery,
+      influx_response_size: extraData?.influxResponseSize,
+      error_details: extraData?.errorDetails
+    });
+  } catch (error) {
+    console.error('Failed to log data ingestion event:', error);
+  }
+}
+
 async function fetchLatestDataFromInflux(): Promise<{ waterLevel: number; timestamp: string } | null> {
   if (!INFLUX_URL || !INFLUX_TOKEN || !INFLUX_ORG) {
     console.log('❌ InfluxDB configuration missing');
+    await logDataIngestion('ERROR', 'InfluxDB configuration missing', {
+      errorDetails: 'Missing INFLUX_URL, INFLUX_TOKEN, or INFLUX_ORG environment variables'
+    });
     return null;
   }
 
   try {
+    // Use a longer time range to check for data availability
     const query = `
       from(bucket: "${INFLUX_BUCKET}")
-        |> range(start: -2h)
+        |> range(start: -6h)
         |> filter(fn: (r) => r._measurement == "awg_data_full")
         |> filter(fn: (r) => r._field == "water_level_L")
         |> sort(columns: ["_time"], desc: true)
-        |> limit(n: 1)
+        |> limit(n: 10)
     `;
 
     const baseUrl = INFLUX_URL.replace(/\/+$/, '');
     const queryUrl = `${baseUrl}/api/v2/query?org=${encodeURIComponent(INFLUX_ORG)}`;
     
-    console.log('🔍 Fetching latest data from InfluxDB for independent tracking...');
+    console.log('🔍 Enhanced debugging: Fetching data from InfluxDB...');
+    console.log('🔗 Query URL:', queryUrl);
+    console.log('📝 Query:', query);
+    
+    await logDataIngestion('INFO', 'Starting InfluxDB query', {
+      influxQuery: query
+    });
     
     const response = await fetch(queryUrl, {
       method: 'POST',
@@ -101,48 +150,112 @@ async function fetchLatestDataFromInflux(): Promise<{ waterLevel: number; timest
     if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ InfluxDB query failed:', response.status, errorText);
+      await logDataIngestion('ERROR', 'InfluxDB query failed', {
+        errorDetails: `Status: ${response.status}, Response: ${errorText}`
+      });
       return null;
     }
 
     const responseText = await response.text();
     const lines = responseText.trim().split('\n');
     
+    console.log('📊 InfluxDB Response Analysis:');
+    console.log(`   - Total lines: ${lines.length}`);
+    console.log(`   - Response size: ${responseText.length} characters`);
+    
+    await logDataIngestion('INFO', 'InfluxDB query successful', {
+      influxResponseSize: responseText.length
+    });
+    
     if (lines.length < 2) {
       console.log('⚠️ No data found in InfluxDB response');
+      await logDataIngestion('WARNING', 'No data in InfluxDB response', {
+        influxResponseSize: responseText.length
+      });
       return null;
     }
 
-    // Parse CSV response
+    // Parse CSV response and analyze multiple data points
     const headers = lines[0].split(',').map(h => h.trim());
-    const dataRow = lines[1].split(',').map(d => d.trim());
+    console.log('📋 Headers:', headers);
     
     const timeIndex = headers.indexOf('_time');
     const valueIndex = headers.indexOf('_value');
     
     if (timeIndex === -1 || valueIndex === -1) {
       console.error('❌ Invalid CSV format from InfluxDB');
+      await logDataIngestion('ERROR', 'Invalid CSV format from InfluxDB', {
+        errorDetails: `Headers: ${headers.join(', ')}`
+      });
       return null;
     }
 
-    const timestamp = dataRow[timeIndex];
-    const waterLevel = parseFloat(dataRow[valueIndex]);
+    // Analyze all available data points
+    const dataPoints = [];
+    for (let i = 1; i < Math.min(lines.length, 6); i++) { // Check up to 5 data points
+      const dataRow = lines[i].split(',').map(d => d.trim());
+      const timestamp = dataRow[timeIndex];
+      const waterLevel = parseFloat(dataRow[valueIndex]);
+      
+      if (!isNaN(waterLevel)) {
+        const dataAge = Date.now() - new Date(timestamp).getTime();
+        const ageMinutes = Math.round(dataAge / 1000 / 60);
+        dataPoints.push({ timestamp, waterLevel, ageMinutes });
+        
+        console.log(`📍 Data point ${i}: ${waterLevel}L at ${timestamp} (${ageMinutes} min ago)`);
+      }
+    }
+
+    if (dataPoints.length === 0) {
+      console.error('❌ No valid water level data found');
+      await logDataIngestion('ERROR', 'No valid water level data found');
+      return null;
+    }
+
+    // Use the most recent data point
+    const latestPoint = dataPoints[0];
+    const freshnessMinutes = latestPoint.ageMinutes;
     
-    if (isNaN(waterLevel)) {
-      console.error('❌ Invalid water level value from InfluxDB:', dataRow[valueIndex]);
-      return null;
+    console.log('✅ Using latest data point:', latestPoint);
+    console.log(`🕒 Data freshness: ${freshnessMinutes} minutes old`);
+    
+    // Enhanced freshness analysis
+    if (freshnessMinutes > 120) { // More than 2 hours
+      console.log('🚨 STALE DATA DETECTED - Data is very old!');
+      await logDataIngestion('WARNING', 'Stale data detected', {
+        dataTimestamp: latestPoint.timestamp,
+        freshnessMinutes,
+        errorDetails: `Data is ${freshnessMinutes} minutes old, indicating potential data ingestion issue`
+      });
+    } else if (freshnessMinutes > 30) {
+      console.log('⚠️ Data is getting old');
+      await logDataIngestion('WARNING', 'Data freshness concern', {
+        dataTimestamp: latestPoint.timestamp,
+        freshnessMinutes
+      });
+    } else {
+      console.log('✅ Data is fresh');
+      await logDataIngestion('SUCCESS', 'Fresh data retrieved', {
+        dataTimestamp: latestPoint.timestamp,
+        freshnessMinutes
+      });
     }
 
-    console.log('✅ Successfully fetched from InfluxDB:', { waterLevel, timestamp });
-    return { waterLevel, timestamp };
+    return { 
+      waterLevel: latestPoint.waterLevel, 
+      timestamp: latestPoint.timestamp 
+    };
 
   } catch (error) {
     console.error('❌ Error fetching from InfluxDB:', error);
+    await logDataIngestion('ERROR', 'InfluxDB fetch error', {
+      errorDetails: error instanceof Error ? error.message : 'Unknown error'
+    });
     return null;
   }
 }
 
 function detectDrainageEvent(currentLevel: number, previousLevel: number): boolean {
-  // Detect if water level dropped by more than 50% or more than 3L
   const decrease = previousLevel - currentLevel;
   const percentageDecrease = (decrease / previousLevel) * 100;
   
@@ -157,9 +270,7 @@ function detectDrainageEvent(currentLevel: number, previousLevel: number): boole
 }
 
 function isValidProduction(production: number, timeDiffMinutes: number): boolean {
-  // Validate production is reasonable
-  // Max reasonable production rate: ~2L/hour = 0.033L/minute
-  const maxProductionRate = 0.05; // L/minute (slightly higher for safety)
+  const maxProductionRate = 0.05;
   const maxExpectedProduction = maxProductionRate * timeDiffMinutes;
   
   const isValid = production > 0.05 && production <= maxExpectedProduction;
@@ -176,7 +287,7 @@ function isValidProduction(production: number, timeDiffMinutes: number): boolean
 
 function isDataFresh(timestamp: string): boolean {
   const dataAge = Date.now() - new Date(timestamp).getTime();
-  const maxAge = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+  const maxAge = 2 * 60 * 60 * 1000;
   
   const isFresh = dataAge <= maxAge;
   console.log('🕒 Data freshness check:', {
@@ -189,19 +300,20 @@ function isDataFresh(timestamp: string): boolean {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('🚀 Starting truly independent water production tracking...');
+    console.log('🚀 Enhanced water production tracking with comprehensive debugging...');
+    
+    await logDataIngestion('INFO', 'Track water production function started');
 
-    // Get fresh data directly from InfluxDB (independent of dashboard activity)
     const latestData = await fetchLatestDataFromInflux();
     
     if (!latestData) {
       console.log('❌ No fresh machine data available from InfluxDB');
+      await logDataIngestion('WARNING', 'No data available from InfluxDB');
       return new Response(JSON.stringify({ 
         status: 'warning', 
         message: 'No fresh machine data available from InfluxDB' 
@@ -213,20 +325,19 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { waterLevel, timestamp } = latestData;
     
-    // Validate data freshness
     if (!isDataFresh(timestamp)) {
-      console.log('⚠️ Data is too old, skipping production calculation');
-      return new Response(JSON.stringify({ 
-        status: 'warning', 
-        message: 'Data is too old for reliable production calculation' 
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      console.log('⚠️ Data is too old, but continuing with enhanced monitoring');
+      await logDataIngestion('WARNING', 'Data is old but processing continues', {
+        dataTimestamp: timestamp,
+        freshnessMinutes: Math.round((Date.now() - new Date(timestamp).getTime()) / 1000 / 60)
       });
     }
 
     if (!waterLevel || waterLevel < 0) {
       console.log('⚠️ Invalid water level data:', waterLevel);
+      await logDataIngestion('ERROR', 'Invalid water level data', {
+        errorDetails: `Water level: ${waterLevel}`
+      });
       return new Response(JSON.stringify({ 
         status: 'warning', 
         message: 'Invalid water level data' 
@@ -236,9 +347,8 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    console.log(`📊 Processing fresh data for machine ${MACHINE_ID}: ${waterLevel}L at ${timestamp}`);
+    console.log(`📊 Processing enhanced data for machine ${MACHINE_ID}: ${waterLevel}L at ${timestamp}`);
 
-    // Store the current snapshot
     const { error: snapshotError } = await supabase
       .from('simple_water_snapshots')
       .insert({
@@ -249,6 +359,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (snapshotError) {
       console.error('❌ Error storing snapshot:', snapshotError);
+      await logDataIngestion('ERROR', 'Failed to store snapshot', {
+        errorDetails: snapshotError.message
+      });
       return new Response(JSON.stringify({ 
         status: 'error', 
         message: 'Failed to store snapshot' 
@@ -259,8 +372,10 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log('✅ Snapshot stored successfully');
+    await logDataIngestion('SUCCESS', 'Snapshot stored successfully', {
+      dataTimestamp: timestamp
+    });
 
-    // Get the previous snapshot to compare
     const { data: previousSnapshots, error: previousError } = await supabase
       .from('simple_water_snapshots')
       .select('*')
@@ -270,6 +385,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (previousError) {
       console.error('❌ Error fetching previous snapshots:', previousError);
+      await logDataIngestion('ERROR', 'Failed to fetch previous snapshots', {
+        errorDetails: previousError.message
+      });
       return new Response(JSON.stringify({ 
         status: 'error', 
         message: 'Failed to fetch previous snapshots' 
@@ -281,6 +399,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (!previousSnapshots || previousSnapshots.length < 2) {
       console.log('📝 Not enough snapshots for comparison yet');
+      await logDataIngestion('INFO', 'Initial snapshot stored, waiting for next comparison');
       return new Response(JSON.stringify({ 
         status: 'ok', 
         message: 'Initial snapshot stored, waiting for next comparison' 
@@ -290,30 +409,37 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Compare current with previous snapshot
     const currentSnapshot = previousSnapshots[0];
     const previousSnapshot = previousSnapshots[1];
     const waterLevelDiff = currentSnapshot.water_level_l - previousSnapshot.water_level_l;
     const timeDiff = new Date(currentSnapshot.timestamp_utc).getTime() - new Date(previousSnapshot.timestamp_utc).getTime();
     const timeDiffMinutes = timeDiff / (1000 * 60);
 
-    console.log(`🔍 Comparing snapshots:`, {
+    console.log(`🔍 Enhanced comparison:`, {
       current: currentSnapshot.water_level_l,
       previous: previousSnapshot.water_level_l,
       difference: waterLevelDiff,
-      timeDiffMinutes: Math.round(timeDiffMinutes)
+      timeDiffMinutes: Math.round(timeDiffMinutes),
+      currentTime: currentSnapshot.timestamp_utc,
+      previousTime: previousSnapshot.timestamp_utc
     });
 
-    // Check for drainage event (handles the overnight draining scenario)
+    await logDataIngestion('INFO', 'Snapshot comparison completed', {
+      dataTimestamp: currentSnapshot.timestamp_utc
+    });
+
     if (detectDrainageEvent(currentSnapshot.water_level_l, previousSnapshot.water_level_l)) {
       console.log(`🚰 Drainage event detected: ${Math.abs(waterLevelDiff).toFixed(2)}L removed`);
       
-      // Store the drainage event
+      await logDataIngestion('EVENT', 'Drainage event detected', {
+        dataTimestamp: currentSnapshot.timestamp_utc
+      });
+      
       const { error: drainageError } = await supabase
         .from('water_production_events')
         .insert({
           machine_id: MACHINE_ID,
-          production_liters: waterLevelDiff, // Negative value for drainage
+          production_liters: waterLevelDiff,
           previous_level: previousSnapshot.water_level_l,
           current_level: currentSnapshot.water_level_l,
           timestamp_utc: currentSnapshot.timestamp_utc,
@@ -322,8 +448,12 @@ const handler = async (req: Request): Promise<Response> => {
 
       if (drainageError) {
         console.error('❌ Error storing drainage event:', drainageError);
+        await logDataIngestion('ERROR', 'Failed to store drainage event', {
+          errorDetails: drainageError.message
+        });
       } else {
         console.log('✅ Drainage event stored successfully');
+        await logDataIngestion('SUCCESS', 'Drainage event stored successfully');
       }
       
       return new Response(JSON.stringify({ 
@@ -337,11 +467,13 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Check for valid production (positive increase > 0.05L and reasonable rate)
     if (waterLevelDiff > 0.05 && isValidProduction(waterLevelDiff, timeDiffMinutes)) {
       console.log(`💧 Water production detected: ${waterLevelDiff.toFixed(2)}L over ${Math.round(timeDiffMinutes)} minutes`);
       
-      // Store the production event
+      await logDataIngestion('EVENT', 'Production event detected', {
+        dataTimestamp: currentSnapshot.timestamp_utc
+      });
+      
       const { error: productionError } = await supabase
         .from('water_production_events')
         .insert({
@@ -355,6 +487,9 @@ const handler = async (req: Request): Promise<Response> => {
 
       if (productionError) {
         console.error('❌ Error storing production event:', productionError);
+        await logDataIngestion('ERROR', 'Failed to store production event', {
+          errorDetails: productionError.message
+        });
         return new Response(JSON.stringify({ 
           status: 'error', 
           message: 'Failed to store production event' 
@@ -365,6 +500,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       console.log('✅ Production event stored successfully');
+      await logDataIngestion('SUCCESS', 'Production event stored successfully');
       
       return new Response(JSON.stringify({ 
         status: 'ok', 
@@ -378,6 +514,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
     } else if (waterLevelDiff > 0.05) {
       console.log(`⚠️ Water increase detected (${waterLevelDiff.toFixed(2)}L) but production rate seems unrealistic`);
+      await logDataIngestion('WARNING', 'Unrealistic production rate detected');
       return new Response(JSON.stringify({ 
         status: 'warning', 
         message: `Unrealistic production rate detected: ${waterLevelDiff.toFixed(2)}L in ${Math.round(timeDiffMinutes)} minutes` 
@@ -387,6 +524,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
     } else {
       console.log('📊 No significant production detected');
+      await logDataIngestion('INFO', 'No production detected in this period');
       return new Response(JSON.stringify({ 
         status: 'ok', 
         message: 'No production detected in this period',
@@ -399,7 +537,10 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
   } catch (error) {
-    console.error('💥 Unexpected error in independent track-water-production:', error);
+    console.error('💥 Unexpected error in enhanced track-water-production:', error);
+    await logDataIngestion('ERROR', 'Unexpected error in track-water-production', {
+      errorDetails: error instanceof Error ? error.message : 'Unknown error'
+    });
     return new Response(JSON.stringify({ 
       status: 'error', 
       message: error instanceof Error ? error.message : 'Unknown error' 
