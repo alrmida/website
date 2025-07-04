@@ -88,9 +88,9 @@ export const useProductionAnalytics = (machineId?: string) => {
         }
       });
 
-      // Create daily production array (last 4 days)
+      // Create daily production array (last 7 days) - show all 7 days even with 0 production
       const dailyProductionData: ProductionData[] = [];
-      for (let i = 3; i >= 0; i--) {
+      for (let i = 6; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
         const dayKey = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
@@ -99,6 +99,8 @@ export const useProductionAnalytics = (machineId?: string) => {
           production: Math.round((dailyProduction.get(dayKey) || 0) * 10) / 10
         });
       }
+
+      console.log('📊 Daily production data (7 days):', dailyProductionData);
 
       // Create monthly production array (last 3 months)
       const monthlyProductionData: MonthlyProductionData[] = [];
@@ -162,7 +164,7 @@ export const useProductionAnalytics = (machineId?: string) => {
         monthlyEntry.total++;
       });
 
-      // Create status arrays
+      // Create status arrays (7 days)
       const statusDataArray: StatusData[] = [];
       for (let i = 6; i >= 0; i--) {
         const date = new Date();
