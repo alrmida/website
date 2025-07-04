@@ -33,6 +33,7 @@ interface ProductionAnalyticsData {
   monthlyProductionData: MonthlyProductionData[];
   statusData: StatusData[];
   monthlyStatusData: MonthlyStatusData[];
+  totalAllTimeProduction: number;
 }
 
 export const useProductionAnalytics = (machineId?: string) => {
@@ -40,7 +41,8 @@ export const useProductionAnalytics = (machineId?: string) => {
     dailyProductionData: [],
     monthlyProductionData: [],
     statusData: [],
-    monthlyStatusData: []
+    monthlyStatusData: [],
+    totalAllTimeProduction: 0
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,6 +55,25 @@ export const useProductionAnalytics = (machineId?: string) => {
 
     try {
       console.log('🔍 Fetching production analytics for machine:', machineId);
+
+      // Fetch ALL production events for total calculation (no time limit)
+      const { data: allProductionEvents, error: allProductionError } = await supabase
+        .from('water_production_events')
+        .select('production_liters, timestamp_utc, event_type')
+        .eq('machine_id', machineId)
+        .eq('event_type', 'production'); // Only include actual production events
+
+      if (allProductionError) {
+        throw allProductionError;
+      }
+
+      // Calculate all-time total production
+      const totalAllTimeProduction = allProductionEvents
+        ?.filter(event => event.production_liters > 0)
+        .reduce((sum, event) => sum + event.production_liters, 0) || 0;
+
+      console.log('📊 All-time production events:', allProductionEvents?.length || 0);
+      console.log('📊 All-time total production:', Math.round(totalAllTimeProduction * 10) / 10);
 
       // Fetch daily production data (last 7 days) - ONLY production events, exclude drainage
       const sevenDaysAgo = new Date();
@@ -70,7 +91,7 @@ export const useProductionAnalytics = (machineId?: string) => {
         throw productionError;
       }
 
-      console.log('📊 Filtered production events (production only):', productionEvents?.length || 0);
+      console.log('📊 Filtered production events (last 7 days, production only):', productionEvents?.length || 0);
 
       // Group production by day
       const dailyProduction = new Map<string, number>();
@@ -201,13 +222,15 @@ export const useProductionAnalytics = (machineId?: string) => {
         dailyProductionData,
         monthlyProductionData,
         statusData: statusDataArray,
-        monthlyStatusData
+        monthlyStatusData,
+        totalAllTimeProduction: Math.round(totalAllTimeProduction * 10) / 10
       });
 
-      console.log('✅ Production analytics data loaded (production events only):', {
+      console.log('✅ Production analytics data loaded:', {
         dailyProduction: dailyProductionData.length,
         monthlyProduction: monthlyProductionData.length,
-        statusEntries: statusDataArray.length
+        statusEntries: statusDataArray.length,
+        totalAllTimeProduction: Math.round(totalAllTimeProduction * 10) / 10
       });
 
       setError(null);

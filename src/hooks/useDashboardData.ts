@@ -94,13 +94,14 @@ export const useDashboardData = (selectedMachine: MachineWithClient | null) => {
           };
         });
 
-    // Calculate total water produced from real production data only (no drainage events)
-    // Use the same calculation as the analytics to ensure consistency
-    const totalWaterProduced = selectedMachine && analyticsData.dailyProductionData.length > 0 
-      ? analyticsData.dailyProductionData.reduce((sum, day) => sum + day.production, 0)
+    // Calculate total water produced using ALL-TIME data from analytics
+    // Use the total from all production events, not just the last 7 days
+    const totalWaterProduced = selectedMachine && analyticsData.totalAllTimeProduction !== undefined
+      ? analyticsData.totalAllTimeProduction
       : 0;
 
-    console.log('📊 Dashboard total water produced:', totalWaterProduced);
+    console.log('📊 Dashboard total water produced (all-time):', totalWaterProduced);
+    console.log('📊 Daily production data (7 days):', dailyProductionData.map(d => d.production));
 
     return {
       machineInfo,
