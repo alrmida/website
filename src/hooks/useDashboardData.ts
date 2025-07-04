@@ -41,47 +41,44 @@ export const useDashboardData = (selectedMachine: MachineWithClient | null) => {
       percentage: selectedMachine ? Math.round((liveData.waterLevel / 10.0) * 100) : 0
     };
 
-    // Use real analytics data when available, otherwise fallback to empty data
+    // Use real analytics data when available, otherwise show empty data
     const dailyProductionData = selectedMachine && analyticsData.dailyProductionData.length > 0 
       ? analyticsData.dailyProductionData 
       : [
-          { date: '28 May', production: 0 }, 
-          { date: '29 May', production: 0 }, 
-          { date: '30 May', production: 0 }, 
-          { date: '31 May', production: 0 }
+          { date: '01 Jul', production: 0 }, 
+          { date: '02 Jul', production: 0 }, 
+          { date: '03 Jul', production: 0 }, 
+          { date: '04 Jul', production: 0 }
         ];
 
     const monthlyProductionData = selectedMachine && analyticsData.monthlyProductionData.length > 0 
       ? analyticsData.monthlyProductionData 
       : [
-          { month: 'Mar 2025', production: 0 }, 
-          { month: 'Apr 2025', production: 0 }, 
-          { month: 'May 2025', production: 0 }
+          { month: 'May 2025', production: 0 }, 
+          { month: 'Jun 2025', production: 0 }, 
+          { month: 'Jul 2025', production: 0 }
         ];
 
     // Use real status data when available
     const statusData = selectedMachine && analyticsData.statusData.length > 0 
       ? analyticsData.statusData 
       : [
-          { date: '25 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-          { date: '26 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-          { date: '27 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-          { date: '28 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-          { date: '29 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-          { date: '30 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-          { date: '31 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 }
+          { date: '01 Jul', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
+          { date: '02 Jul', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
+          { date: '03 Jul', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
+          { date: '04 Jul', producing: 0, idle: 0, fullWater: 0, disconnected: 0 }
         ];
 
     // Use real monthly status data when available
     const monthlyStatusData = selectedMachine && analyticsData.monthlyStatusData.length > 0 
       ? analyticsData.monthlyStatusData 
       : [
-          { month: '2025-03', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-          { month: '2025-04', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-          { month: '2025-05', producing: 0, idle: 0, fullWater: 0, disconnected: 0 }
+          { month: '2025-05', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
+          { month: '2025-06', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
+          { month: '2025-07', producing: 0, idle: 0, fullWater: 0, disconnected: 0 }
         ];
 
-    // Calculate total water produced from real data
+    // Calculate total water produced from real production data only (no drainage events)
     const totalWaterProduced = selectedMachine && analyticsData.dailyProductionData.length > 0 
       ? analyticsData.dailyProductionData.reduce((sum, day) => sum + day.production, 0)
       : 0;

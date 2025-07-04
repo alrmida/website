@@ -82,16 +82,9 @@ const ProductionAnalytics = ({
     };
   };
 
-  // Extended daily production data (last 7 days)
-  const extendedDailyData = [
-    { date: '25 May', production: dailyProductionData[0]?.production ? 12.8 : 0 },
-    { date: '26 May', production: dailyProductionData[0]?.production ? 18.4 : 0 },
-    { date: '27 May', production: dailyProductionData[0]?.production ? 22.1 : 0 },
-    ...dailyProductionData
-  ];
-
+  // Use only real data - no fake historical data
   const productionMetrics = selectedPeriod === 'daily' 
-    ? getProductionMetrics(extendedDailyData)
+    ? getProductionMetrics(dailyProductionData)
     : getProductionMetrics(monthlyProductionData);
 
   const statusMetrics = selectedPeriod === 'daily'
@@ -123,7 +116,7 @@ const ProductionAnalytics = ({
           <div className="h-80 mb-6">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart 
-                data={selectedPeriod === 'daily' ? extendedDailyData : monthlyProductionData} 
+                data={selectedPeriod === 'daily' ? dailyProductionData : monthlyProductionData} 
                 margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-600" />

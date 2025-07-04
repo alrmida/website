@@ -54,14 +54,15 @@ export const useProductionAnalytics = (machineId?: string) => {
     try {
       console.log('🔍 Fetching production analytics for machine:', machineId);
 
-      // Fetch daily production data (last 7 days)
+      // Fetch daily production data (last 7 days) - ONLY production events, exclude drainage
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
       const { data: productionEvents, error: productionError } = await supabase
         .from('water_production_events')
-        .select('production_liters, timestamp_utc')
+        .select('production_liters, timestamp_utc, event_type')
         .eq('machine_id', machineId)
+        .eq('event_type', 'production') // Only include actual production events
         .gte('timestamp_utc', sevenDaysAgo.toISOString())
         .order('timestamp_utc', { ascending: true });
 
@@ -69,17 +70,22 @@ export const useProductionAnalytics = (machineId?: string) => {
         throw productionError;
       }
 
+      console.log('📊 Filtered production events (production only):', productionEvents?.length || 0);
+
       // Group production by day
       const dailyProduction = new Map<string, number>();
       const monthlyProduction = new Map<string, number>();
 
       productionEvents?.forEach(event => {
-        const date = new Date(event.timestamp_utc);
-        const dayKey = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-        const monthKey = date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
-        
-        dailyProduction.set(dayKey, (dailyProduction.get(dayKey) || 0) + (event.production_liters || 0));
-        monthlyProduction.set(monthKey, (monthlyProduction.get(monthKey) || 0) + (event.production_liters || 0));
+        // Only process positive production values
+        if (event.production_liters > 0) {
+          const date = new Date(event.timestamp_utc);
+          const dayKey = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+          const monthKey = date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+          
+          dailyProduction.set(dayKey, (dailyProduction.get(dayKey) || 0) + event.production_liters);
+          monthlyProduction.set(monthKey, (monthlyProduction.get(monthKey) || 0) + event.production_liters);
+        }
       });
 
       // Create daily production array (last 4 days)
@@ -196,7 +202,7 @@ export const useProductionAnalytics = (machineId?: string) => {
         monthlyStatusData
       });
 
-      console.log('✅ Production analytics data loaded:', {
+      console.log('✅ Production analytics data loaded (production events only):', {
         dailyProduction: dailyProductionData.length,
         monthlyProduction: monthlyProductionData.length,
         statusEntries: statusDataArray.length
