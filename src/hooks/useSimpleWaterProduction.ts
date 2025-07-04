@@ -17,7 +17,7 @@ export const useSimpleWaterProduction = (machineId?: string, currentWaterLevel?:
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch total water production from all events
+  // Fetch total water production from production events only (exclude drainage)
   const fetchTotalProduction = async () => {
     if (!machineId) {
       setIsLoading(false);
@@ -27,11 +27,12 @@ export const useSimpleWaterProduction = (machineId?: string, currentWaterLevel?:
     try {
       console.log('📊 Fetching server-tracked production for:', machineId);
       
-      // Get sum of all production events
+      // Get sum of ONLY production events (exclude drainage events)
       const { data: events, error: eventsError } = await supabase
         .from('water_production_events')
         .select('production_liters')
-        .eq('machine_id', machineId);
+        .eq('machine_id', machineId)
+        .eq('event_type', 'production'); // Only include actual production events
 
       if (eventsError) {
         throw eventsError;
@@ -57,7 +58,7 @@ export const useSimpleWaterProduction = (machineId?: string, currentWaterLevel?:
       setData(newData);
       setError(null);
       
-      console.log('✅ Server-tracked production data updated:', {
+      console.log('✅ Server-tracked production data updated (production events only):', {
         totalProduced: newData.totalProduced,
         eventsCount: events?.length || 0,
         lastSnapshot: newData.lastSnapshot?.toISOString()
