@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface ProductionData {
   date: string;
@@ -91,6 +91,28 @@ const ProductionAnalytics = ({
     ? getStatusMetrics(statusData)
     : getStatusMetrics(monthlyStatusData);
 
+  // Custom tooltip for status chart
+  const StatusTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-3 shadow-lg">
+          <p className="font-medium text-gray-900 dark:text-white mb-2">{label}</p>
+          {payload.map((entry: any, index: number) => (
+            <div key={index} className="flex items-center gap-2 text-sm">
+              <div 
+                className="w-3 h-3 rounded-sm" 
+                style={{ backgroundColor: entry.color }}
+              />
+              <span className="text-gray-600 dark:text-gray-300">{entry.name}:</span>
+              <span className="font-medium text-gray-900 dark:text-white">{entry.value}%</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="space-y-6">
       {/* Production Analytics */}
@@ -168,7 +190,7 @@ const ProductionAnalytics = ({
         </CardContent>
       </Card>
 
-      {/* Status Analytics */}
+      {/* Status Analytics - Now with Stacked Bar Chart */}
       <Card className="bg-white dark:bg-gray-800">
         <CardHeader>
           <CardTitle className="text-gray-900 dark:text-white">Status Analytics</CardTitle>
@@ -176,7 +198,7 @@ const ProductionAnalytics = ({
         <CardContent>
           <div className="h-80 mb-6">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart 
+              <BarChart 
                 data={selectedPeriod === 'daily' ? statusData : monthlyStatusData} 
                 margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
               >
@@ -191,48 +213,38 @@ const ProductionAnalytics = ({
                   stroke="#6b7280" 
                   className="dark:stroke-gray-400"
                   tick={{ fontSize: 12, fill: '#6b7280' }}
+                  domain={[0, 100]}
                 />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'white', 
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    color: '#1f2937'
-                  }}
-                />
-                <Area 
-                  type="monotone" 
+                <Tooltip content={<StatusTooltip />} />
+                <Bar 
                   dataKey="producing" 
-                  stackId="1" 
-                  stroke="#10b981" 
+                  stackId="status" 
                   fill="#10b981" 
-                  fillOpacity={0.6}
+                  name="Producing"
+                  radius={[0, 0, 0, 0]}
                 />
-                <Area 
-                  type="monotone" 
+                <Bar 
                   dataKey="idle" 
-                  stackId="1" 
-                  stroke="#f59e0b" 
+                  stackId="status" 
                   fill="#f59e0b" 
-                  fillOpacity={0.6}
+                  name="Idle"
+                  radius={[0, 0, 0, 0]}
                 />
-                <Area 
-                  type="monotone" 
+                <Bar 
                   dataKey="fullWater" 
-                  stackId="1" 
-                  stroke="#3b82f6" 
+                  stackId="status" 
                   fill="#3b82f6" 
-                  fillOpacity={0.6}
+                  name="Full Water"
+                  radius={[0, 0, 0, 0]}
                 />
-                <Area 
-                  type="monotone" 
+                <Bar 
                   dataKey="disconnected" 
-                  stackId="1" 
-                  stroke="#ef4444" 
+                  stackId="status" 
                   fill="#ef4444" 
-                  fillOpacity={0.6}
+                  name="Disconnected"
+                  radius={[4, 4, 0, 0]}
                 />
-              </AreaChart>
+              </BarChart>
             </ResponsiveContainer>
           </div>
 

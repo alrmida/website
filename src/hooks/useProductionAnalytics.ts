@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -35,13 +36,14 @@ interface ProductionAnalyticsData {
   totalAllTimeProduction: number;
 }
 
-// Fixed status calculation function with correct logic for real machine patterns
+// Fixed status calculation function with proper logic for real machine patterns
 const calculateStatusPercentagesForDay = (records: any[], dayStart: Date, dayEnd: Date) => {
-  console.log(`📊 Calculating status for day: ${dayStart.toISOString().split('T')[0]}`);
-  console.log(`📊 Records count: ${records.length}`);
+  const dayKey = dayStart.toISOString().split('T')[0];
+  console.log(`📊 === STATUS CALCULATION FOR ${dayKey} ===`);
+  console.log(`📊 Records received: ${records.length}`);
   
   if (records.length === 0) {
-    console.log('📊 No records found - returning 100% disconnected');
+    console.log('📊 No records - returning 100% disconnected');
     return { producing: 0, idle: 0, fullWater: 0, disconnected: 100 };
   }
 
@@ -60,7 +62,7 @@ const calculateStatusPercentagesForDay = (records: any[], dayStart: Date, dayEnd
     (now < dayEnd ? now : dayEnd) : dayEnd;
 
   const totalDayMinutes = (effectiveEndTime.getTime() - dayStart.getTime()) / (1000 * 60);
-  console.log(`📊 Total day minutes to calculate: ${totalDayMinutes}`);
+  console.log(`📊 Total day minutes to calculate: ${totalDayMinutes.toFixed(1)}`);
 
   let producingMinutes = 0;
   let idleMinutes = 0;
@@ -94,16 +96,17 @@ const calculateStatusPercentagesForDay = (records: any[], dayStart: Date, dayEnd
         // Assign 10 seconds (normal interval) to current status, rest as disconnected
         durationMinutes = 10 / 60; // 10 seconds in minutes
         disconnectedMinutes += gapMinutes - (10 / 60);
+        console.log(`📊 Gap detected: ${gapMinutes.toFixed(1)}min, assigned ${durationMinutes.toFixed(1)}min to status, ${(gapMinutes - (10 / 60)).toFixed(1)}min to disconnected`);
       } else {
         durationMinutes = gapMinutes;
       }
     }
 
-    // Fixed status priority logic based on real machine behavior
-    const isFullTank = currentRecord.full_tank;
-    const isProducing = currentRecord.producing_water || currentRecord.compressor_on;
+    // Status priority logic based on real machine behavior
+    const isFullTank = currentRecord.full_tank === true;
+    const isProducing = currentRecord.producing_water === true || currentRecord.compressor_on === 1;
     
-    console.log(`📊 Record ${i}: ${currentRecord.timestamp_utc.slice(11, 19)} - Duration: ${durationMinutes.toFixed(1)}min, Full Tank: ${isFullTank}, Producing: ${isProducing}`);
+    console.log(`📊 Record ${i}: ${currentRecord.timestamp_utc.slice(11, 19)} - Duration: ${durationMinutes.toFixed(1)}min, Full Tank: ${isFullTank}, Producing: ${isProducing}, Compressor: ${currentRecord.compressor_on}`);
     
     // Priority: Full Tank > Producing > Idle
     if (isFullTank) {
@@ -114,8 +117,6 @@ const calculateStatusPercentagesForDay = (records: any[], dayStart: Date, dayEnd
       idleMinutes += durationMinutes;
     }
   }
-
-  // Removed problematic initial gap calculation - trust that if we have data, machine was connected
 
   const totalAccountedMinutes = producingMinutes + idleMinutes + fullWaterMinutes + disconnectedMinutes;
   
@@ -156,6 +157,7 @@ const calculateStatusPercentagesForDay = (records: any[], dayStart: Date, dayEnd
 
   console.log(`📊 Final percentages:`, result);
   console.log(`📊 Total percentage: ${result.producing + result.idle + result.fullWater + result.disconnected}%`);
+  console.log(`📊 === END STATUS CALCULATION ===`);
 
   return result;
 };
@@ -300,7 +302,7 @@ export const useProductionAnalytics = (machineId?: string) => {
           return recordDate >= dayStart && recordDate <= dayEnd;
         }) || [];
 
-        console.log(`📊 Day ${dayKey}: ${dayRecords.length} records`);
+        console.log(`📊 Day ${dayKey}: ${dayRecords.length} records from ${dayStart.toISOString()} to ${dayEnd.toISOString()}`);
         
         // Calculate time-based status percentages with improved logic
         const statusPercentages = calculateStatusPercentagesForDay(dayRecords, dayStart, dayEnd);
@@ -362,7 +364,7 @@ export const useProductionAnalytics = (machineId?: string) => {
         });
       }
 
-      console.log('📊 Status data with corrected calculation:', statusDataArray);
+      console.log('📊 Status data with improved calculation:', statusDataArray);
 
       setData({
         dailyProductionData,
@@ -372,7 +374,7 @@ export const useProductionAnalytics = (machineId?: string) => {
         totalAllTimeProduction: Math.round(totalAllTimeProduction * 10) / 10
       });
 
-      console.log('✅ Production analytics data loaded with corrected status calculation:', {
+      console.log('✅ Production analytics data loaded with improved status calculation:', {
         dailyProduction: dailyProductionData.length,
         monthlyProduction: monthlyProductionData.length,
         statusEntries: statusDataArray.length,
