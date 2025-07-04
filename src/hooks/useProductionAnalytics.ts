@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -36,7 +35,7 @@ interface ProductionAnalyticsData {
   totalAllTimeProduction: number;
 }
 
-// Improved status calculation function with better timezone handling and duration logic
+// Fixed status calculation function with correct logic for real machine patterns
 const calculateStatusPercentagesForDay = (records: any[], dayStart: Date, dayEnd: Date) => {
   console.log(`📊 Calculating status for day: ${dayStart.toISOString().split('T')[0]}`);
   console.log(`📊 Records count: ${records.length}`);
@@ -89,22 +88,24 @@ const calculateStatusPercentagesForDay = (records: any[], dayStart: Date, dayEnd
       const nextTime = new Date(nextRecord.timestamp_utc);
       const gapMinutes = (nextTime.getTime() - currentTime.getTime()) / (1000 * 60);
       
-      // If gap is more than 2 minutes, consider it partially disconnected
-      if (gapMinutes > 2) {
-        // Assign 1 minute to current status, rest as disconnected
-        durationMinutes = 1;
-        disconnectedMinutes += gapMinutes - 1;
+      // Changed from 2 minutes to 30 seconds (0.5 minutes) for gap detection
+      // Data comes every ~10 seconds normally
+      if (gapMinutes > 0.5) {
+        // Assign 10 seconds (normal interval) to current status, rest as disconnected
+        durationMinutes = 10 / 60; // 10 seconds in minutes
+        disconnectedMinutes += gapMinutes - (10 / 60);
       } else {
         durationMinutes = gapMinutes;
       }
     }
 
-    // Determine status for this period
+    // Fixed status priority logic based on real machine behavior
     const isFullTank = currentRecord.full_tank;
     const isProducing = currentRecord.producing_water || currentRecord.compressor_on;
     
     console.log(`📊 Record ${i}: ${currentRecord.timestamp_utc.slice(11, 19)} - Duration: ${durationMinutes.toFixed(1)}min, Full Tank: ${isFullTank}, Producing: ${isProducing}`);
     
+    // Priority: Full Tank > Producing > Idle
     if (isFullTank) {
       fullWaterMinutes += durationMinutes;
     } else if (isProducing) {
@@ -114,15 +115,7 @@ const calculateStatusPercentagesForDay = (records: any[], dayStart: Date, dayEnd
     }
   }
 
-  // Handle gap from day start to first record
-  const firstRecordTime = new Date(sortedRecords[0].timestamp_utc);
-  if (firstRecordTime > dayStart) {
-    const initialGapMinutes = (firstRecordTime.getTime() - dayStart.getTime()) / (1000 * 60);
-    if (initialGapMinutes > 0) {
-      disconnectedMinutes += initialGapMinutes;
-      console.log(`📊 Initial gap: ${initialGapMinutes.toFixed(1)} minutes`);
-    }
-  }
+  // Removed problematic initial gap calculation - trust that if we have data, machine was connected
 
   const totalAccountedMinutes = producingMinutes + idleMinutes + fullWaterMinutes + disconnectedMinutes;
   
@@ -141,13 +134,25 @@ const calculateStatusPercentagesForDay = (records: any[], dayStart: Date, dayEnd
     console.log(`📊 Added ${remainingMinutes.toFixed(1)} minutes to disconnected`);
   }
 
-  // Calculate percentages
+  // Calculate percentages and ensure they add up to 100%
   const result = {
     producing: Math.round((producingMinutes / totalDayMinutes) * 100) || 0,
     idle: Math.round((idleMinutes / totalDayMinutes) * 100) || 0,
     fullWater: Math.round((fullWaterMinutes / totalDayMinutes) * 100) || 0,
     disconnected: Math.round((disconnectedMinutes / totalDayMinutes) * 100) || 0
   };
+
+  // Ensure percentages add up to 100% (fix rounding issues)
+  const totalPercentage = result.producing + result.idle + result.fullWater + result.disconnected;
+  if (totalPercentage !== 100 && totalPercentage > 0) {
+    const diff = 100 - totalPercentage;
+    // Add difference to the largest category
+    const largest = Math.max(result.producing, result.idle, result.fullWater, result.disconnected);
+    if (result.producing === largest) result.producing += diff;
+    else if (result.idle === largest) result.idle += diff;
+    else if (result.fullWater === largest) result.fullWater += diff;
+    else result.disconnected += diff;
+  }
 
   console.log(`📊 Final percentages:`, result);
   console.log(`📊 Total percentage: ${result.producing + result.idle + result.fullWater + result.disconnected}%`);
@@ -194,7 +199,7 @@ export const useProductionAnalytics = (machineId?: string) => {
       console.log('📊 All-time production events:', allProductionEvents?.length || 0);
       console.log('📊 All-time total production:', Math.round(totalAllTimeProduction * 10) / 10);
 
-      // Fetch daily production data (last 7 days) - ONLY production events, exclude drainage
+      // Fetch daily production data (last 7 days)
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -202,7 +207,7 @@ export const useProductionAnalytics = (machineId?: string) => {
         .from('water_production_events')
         .select('production_liters, timestamp_utc, event_type')
         .eq('machine_id', machineId)
-        .eq('event_type', 'production') // Only include actual production events
+        .eq('event_type', 'production')
         .gte('timestamp_utc', sevenDaysAgo.toISOString())
         .order('timestamp_utc', { ascending: true });
 
@@ -217,7 +222,6 @@ export const useProductionAnalytics = (machineId?: string) => {
       const monthlyProduction = new Map<string, number>();
 
       productionEvents?.forEach(event => {
-        // Only process positive production values
         if (event.production_liters > 0) {
           const date = new Date(event.timestamp_utc);
           const dayKey = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
@@ -228,7 +232,7 @@ export const useProductionAnalytics = (machineId?: string) => {
         }
       });
 
-      // Create daily production array (last 7 days) - show all 7 days even with 0 production
+      // Create daily production array (last 7 days)
       const dailyProductionData: ProductionData[] = [];
       for (let i = 6; i >= 0; i--) {
         const date = new Date();
@@ -298,7 +302,7 @@ export const useProductionAnalytics = (machineId?: string) => {
 
         console.log(`📊 Day ${dayKey}: ${dayRecords.length} records`);
         
-        // Calculate time-based status percentages
+        // Calculate time-based status percentages with improved logic
         const statusPercentages = calculateStatusPercentagesForDay(dayRecords, dayStart, dayEnd);
         
         statusDataArray.push({
@@ -325,7 +329,7 @@ export const useProductionAnalytics = (machineId?: string) => {
           return recordDate >= monthStart && recordDate <= monthEnd;
         }) || [];
 
-        // For monthly data, we'll aggregate the daily calculations
+        // For monthly data, aggregate the daily calculations
         const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
         let monthlyProducing = 0;
         let monthlyIdle = 0;
@@ -358,7 +362,7 @@ export const useProductionAnalytics = (machineId?: string) => {
         });
       }
 
-      console.log('📊 Status data with improved calculation:', statusDataArray);
+      console.log('📊 Status data with corrected calculation:', statusDataArray);
 
       setData({
         dailyProductionData,
@@ -368,7 +372,7 @@ export const useProductionAnalytics = (machineId?: string) => {
         totalAllTimeProduction: Math.round(totalAllTimeProduction * 10) / 10
       });
 
-      console.log('✅ Production analytics data loaded with improved status calculation:', {
+      console.log('✅ Production analytics data loaded with corrected status calculation:', {
         dailyProduction: dailyProductionData.length,
         monthlyProduction: monthlyProductionData.length,
         statusEntries: statusDataArray.length,
