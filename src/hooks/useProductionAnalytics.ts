@@ -36,9 +36,13 @@ interface ProductionAnalyticsData {
   totalAllTimeProduction: number;
 }
 
-// Helper function to detect disconnected periods (using same logic as useLiveMachineData)
+// Improved status calculation function with better timezone handling and duration logic
 const calculateStatusPercentagesForDay = (records: any[], dayStart: Date, dayEnd: Date) => {
+  console.log(`📊 Calculating status for day: ${dayStart.toISOString().split('T')[0]}`);
+  console.log(`📊 Records count: ${records.length}`);
+  
   if (records.length === 0) {
+    console.log('📊 No records found - returning 100% disconnected');
     return { producing: 0, idle: 0, fullWater: 0, disconnected: 100 };
   }
 
@@ -47,86 +51,108 @@ const calculateStatusPercentagesForDay = (records: any[], dayStart: Date, dayEnd
     new Date(a.timestamp_utc).getTime() - new Date(b.timestamp_utc).getTime()
   );
 
-  let totalMinutes = 0;
+  console.log(`📊 First record: ${sortedRecords[0].timestamp_utc}`);
+  console.log(`📊 Last record: ${sortedRecords[sortedRecords.length - 1].timestamp_utc}`);
+
+  // For current day (partial day), calculate until now or end of available data
+  const now = new Date();
+  const isCurrentDay = dayStart.toDateString() === now.toDateString();
+  const effectiveEndTime = isCurrentDay ? 
+    (now < dayEnd ? now : dayEnd) : dayEnd;
+
+  const totalDayMinutes = (effectiveEndTime.getTime() - dayStart.getTime()) / (1000 * 60);
+  console.log(`📊 Total day minutes to calculate: ${totalDayMinutes}`);
+
   let producingMinutes = 0;
   let idleMinutes = 0;
   let fullWaterMinutes = 0;
   let disconnectedMinutes = 0;
 
-  const dayDurationMs = dayEnd.getTime() - dayStart.getTime();
-  const totalDayMinutes = dayDurationMs / (1000 * 60); // Total minutes in the day
-
-  // Process each record and calculate time periods
+  // Process each record and calculate duration it represents
   for (let i = 0; i < sortedRecords.length; i++) {
     const currentRecord = sortedRecords[i];
     const currentTime = new Date(currentRecord.timestamp_utc);
     
-    // Determine the duration this record represents
-    let recordDurationMs: number;
+    // Skip records outside our day boundary
+    if (currentTime < dayStart || currentTime > effectiveEndTime) {
+      continue;
+    }
+
+    let durationMinutes = 0;
     
     if (i === sortedRecords.length - 1) {
-      // Last record - duration until end of day or until now if it's today
-      const endTime = dayEnd.getTime() > Date.now() ? new Date() : dayEnd;
-      recordDurationMs = endTime.getTime() - currentTime.getTime();
+      // Last record: duration until end of day or now
+      durationMinutes = (effectiveEndTime.getTime() - currentTime.getTime()) / (1000 * 60);
     } else {
       // Duration until next record
-      const nextTime = new Date(sortedRecords[i + 1].timestamp_utc);
-      recordDurationMs = nextTime.getTime() - currentTime.getTime();
+      const nextRecord = sortedRecords[i + 1];
+      const nextTime = new Date(nextRecord.timestamp_utc);
+      const gapMinutes = (nextTime.getTime() - currentTime.getTime()) / (1000 * 60);
       
-      // If gap is > 60 seconds (60,000ms), consider it disconnected
-      if (recordDurationMs > 60000) {
-        // Split the duration: first minute as current status, rest as disconnected
-        const connectedDuration = Math.min(recordDurationMs, 60000);
-        const disconnectedDuration = Math.max(0, recordDurationMs - 60000);
-        
-        recordDurationMs = connectedDuration;
-        disconnectedMinutes += disconnectedDuration / (1000 * 60);
+      // If gap is more than 2 minutes, consider it partially disconnected
+      if (gapMinutes > 2) {
+        // Assign 1 minute to current status, rest as disconnected
+        durationMinutes = 1;
+        disconnectedMinutes += gapMinutes - 1;
+      } else {
+        durationMinutes = gapMinutes;
       }
     }
 
-    const recordMinutes = Math.max(0, recordDurationMs / (1000 * 60));
-    
     // Determine status for this period
-    const isProducing = currentRecord.producing_water || currentRecord.compressor_on;
     const isFullTank = currentRecord.full_tank;
+    const isProducing = currentRecord.producing_water || currentRecord.compressor_on;
+    
+    console.log(`📊 Record ${i}: ${currentRecord.timestamp_utc.slice(11, 19)} - Duration: ${durationMinutes.toFixed(1)}min, Full Tank: ${isFullTank}, Producing: ${isProducing}`);
     
     if (isFullTank) {
-      fullWaterMinutes += recordMinutes;
+      fullWaterMinutes += durationMinutes;
     } else if (isProducing) {
-      producingMinutes += recordMinutes;
+      producingMinutes += durationMinutes;
     } else {
-      idleMinutes += recordMinutes;
+      idleMinutes += durationMinutes;
     }
-    
-    totalMinutes += recordMinutes;
   }
 
   // Handle gap from day start to first record
-  if (sortedRecords.length > 0) {
-    const firstRecordTime = new Date(sortedRecords[0].timestamp_utc);
-    const gapFromStartMs = firstRecordTime.getTime() - dayStart.getTime();
-    if (gapFromStartMs > 0) {
-      disconnectedMinutes += gapFromStartMs / (1000 * 60);
+  const firstRecordTime = new Date(sortedRecords[0].timestamp_utc);
+  if (firstRecordTime > dayStart) {
+    const initialGapMinutes = (firstRecordTime.getTime() - dayStart.getTime()) / (1000 * 60);
+    if (initialGapMinutes > 0) {
+      disconnectedMinutes += initialGapMinutes;
+      console.log(`📊 Initial gap: ${initialGapMinutes.toFixed(1)} minutes`);
     }
-  } else {
-    // No records for entire day
-    disconnectedMinutes = totalDayMinutes;
   }
 
-  // Calculate percentages based on total day minutes
   const totalAccountedMinutes = producingMinutes + idleMinutes + fullWaterMinutes + disconnectedMinutes;
   
-  // Ensure we account for the full day
+  console.log(`📊 Minutes breakdown:`);
+  console.log(`  - Producing: ${producingMinutes.toFixed(1)}`);
+  console.log(`  - Idle: ${idleMinutes.toFixed(1)}`);
+  console.log(`  - Full Water: ${fullWaterMinutes.toFixed(1)}`);
+  console.log(`  - Disconnected: ${disconnectedMinutes.toFixed(1)}`);
+  console.log(`  - Total accounted: ${totalAccountedMinutes.toFixed(1)}`);
+  console.log(`  - Total day: ${totalDayMinutes.toFixed(1)}`);
+
+  // If we haven't accounted for all time, add to disconnected
   if (totalAccountedMinutes < totalDayMinutes) {
-    disconnectedMinutes += (totalDayMinutes - totalAccountedMinutes);
+    const remainingMinutes = totalDayMinutes - totalAccountedMinutes;
+    disconnectedMinutes += remainingMinutes;
+    console.log(`📊 Added ${remainingMinutes.toFixed(1)} minutes to disconnected`);
   }
 
-  return {
+  // Calculate percentages
+  const result = {
     producing: Math.round((producingMinutes / totalDayMinutes) * 100) || 0,
     idle: Math.round((idleMinutes / totalDayMinutes) * 100) || 0,
     fullWater: Math.round((fullWaterMinutes / totalDayMinutes) * 100) || 0,
     disconnected: Math.round((disconnectedMinutes / totalDayMinutes) * 100) || 0
   };
+
+  console.log(`📊 Final percentages:`, result);
+  console.log(`📊 Total percentage: ${result.producing + result.idle + result.fullWater + result.disconnected}%`);
+
+  return result;
 };
 
 export const useProductionAnalytics = (machineId?: string) => {
@@ -242,17 +268,25 @@ export const useProductionAnalytics = (machineId?: string) => {
 
       console.log('📊 Raw machine data records for status analysis:', statusData?.length || 0);
 
-      // Create status arrays using time-based analysis (7 days)
+      // Create status arrays using improved time-based analysis (7 days)
       const statusDataArray: StatusData[] = [];
       for (let i = 6; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
         
-        // Define day boundaries
-        const dayStart = new Date(date);
-        dayStart.setHours(0, 0, 0, 0);
-        const dayEnd = new Date(date);
-        dayEnd.setHours(23, 59, 59, 999);
+        // Define day boundaries in UTC
+        const dayStart = new Date(Date.UTC(
+          date.getFullYear(), 
+          date.getMonth(), 
+          date.getDate(), 
+          0, 0, 0, 0
+        ));
+        const dayEnd = new Date(Date.UTC(
+          date.getFullYear(), 
+          date.getMonth(), 
+          date.getDate(), 
+          23, 59, 59, 999
+        ));
         
         const dayKey = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
         
@@ -279,9 +313,9 @@ export const useProductionAnalytics = (machineId?: string) => {
         const date = new Date();
         date.setMonth(date.getMonth() - i);
         
-        // Define month boundaries
-        const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
-        const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+        // Define month boundaries in UTC
+        const monthStart = new Date(Date.UTC(date.getFullYear(), date.getMonth(), 1, 0, 0, 0, 0));
+        const monthEnd = new Date(Date.UTC(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999));
         
         const monthKey = date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
         
@@ -292,7 +326,7 @@ export const useProductionAnalytics = (machineId?: string) => {
         }) || [];
 
         // For monthly data, we'll aggregate the daily calculations
-        const daysInMonth = monthEnd.getDate();
+        const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
         let monthlyProducing = 0;
         let monthlyIdle = 0;
         let monthlyFullWater = 0;
@@ -300,18 +334,15 @@ export const useProductionAnalytics = (machineId?: string) => {
 
         // Calculate for each day in the month
         for (let day = 1; day <= daysInMonth; day++) {
-          const dayDate = new Date(date.getFullYear(), date.getMonth(), day);
-          const dayStartBoundary = new Date(dayDate);
-          dayStartBoundary.setHours(0, 0, 0, 0);
-          const dayEndBoundary = new Date(dayDate);
-          dayEndBoundary.setHours(23, 59, 59, 999);
+          const dayDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), day, 0, 0, 0, 0));
+          const dayEndBoundary = new Date(Date.UTC(date.getFullYear(), date.getMonth(), day, 23, 59, 59, 999));
 
           const dayRecordsInMonth = monthRecords.filter(record => {
             const recordDate = new Date(record.timestamp_utc);
-            return recordDate >= dayStartBoundary && recordDate <= dayEndBoundary;
+            return recordDate >= dayDate && recordDate <= dayEndBoundary;
           });
 
-          const dayStatus = calculateStatusPercentagesForDay(dayRecordsInMonth, dayStartBoundary, dayEndBoundary);
+          const dayStatus = calculateStatusPercentagesForDay(dayRecordsInMonth, dayDate, dayEndBoundary);
           monthlyProducing += dayStatus.producing;
           monthlyIdle += dayStatus.idle;
           monthlyFullWater += dayStatus.fullWater;
@@ -327,7 +358,7 @@ export const useProductionAnalytics = (machineId?: string) => {
         });
       }
 
-      console.log('📊 Status data with disconnection detection:', statusDataArray);
+      console.log('📊 Status data with improved calculation:', statusDataArray);
 
       setData({
         dailyProductionData,
@@ -337,7 +368,7 @@ export const useProductionAnalytics = (machineId?: string) => {
         totalAllTimeProduction: Math.round(totalAllTimeProduction * 10) / 10
       });
 
-      console.log('✅ Production analytics data loaded with improved status detection:', {
+      console.log('✅ Production analytics data loaded with improved status calculation:', {
         dailyProduction: dailyProductionData.length,
         monthlyProduction: monthlyProductionData.length,
         statusEntries: statusDataArray.length,
