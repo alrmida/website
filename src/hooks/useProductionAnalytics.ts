@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -213,7 +214,8 @@ export const useProductionAnalytics = (machineId?: string) => {
         .select('timestamp_utc, producing_water, full_tank, compressor_on')
         .eq('machine_id', machineId)
         .gte('timestamp_utc', sevenDaysAgo.toISOString())
-        .order('timestamp_utc', { ascending: true });
+        .order('timestamp_utc', { ascending: true })
+        .limit(10000);
 
       if (statusError) {
         throw statusError;
