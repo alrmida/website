@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -207,7 +208,36 @@ export const useProductionAnalytics = (machineId?: string) => {
         });
       }
 
-      // Fetch machine status data for the last 7 days
+      // ENHANCED DEBUG: First check what raw data exists for the problematic dates
+      console.log('🔍 === DEBUGGING MISSING DATA ===');
+      const jul3Start = '2025-07-03T00:00:00.000Z';
+      const jul3End = '2025-07-03T23:59:59.999Z';
+      const jul4Start = '2025-07-04T00:00:00.000Z';
+      const jul4End = '2025-07-04T23:59:59.999Z';
+
+      // Check if data exists for July 3rd
+      const { data: jul3Test, error: jul3Error } = await supabase
+        .from('raw_machine_data')
+        .select('id, timestamp_utc')
+        .eq('machine_id', machineId)
+        .gte('timestamp_utc', jul3Start)
+        .lte('timestamp_utc', jul3End)
+        .limit(5);
+
+      console.log('🔍 July 3rd test query:', { count: jul3Test?.length || 0, error: jul3Error, sample: jul3Test?.[0] });
+
+      // Check if data exists for July 4th
+      const { data: jul4Test, error: jul4Error } = await supabase
+        .from('raw_machine_data')
+        .select('id, timestamp_utc')
+        .eq('machine_id', machineId)
+        .gte('timestamp_utc', jul4Start)
+        .lte('timestamp_utc', jul4End)
+        .limit(5);
+
+      console.log('🔍 July 4th test query:', { count: jul4Test?.length || 0, error: jul4Error, sample: jul4Test?.[0] });
+
+      // Fetch machine status data for the last 7 days with enhanced debugging
       console.log('🔍 Fetching status data from:', sevenDaysAgo.toISOString());
       const { data: statusData, error: statusError } = await supabase
         .from('raw_machine_data')
@@ -215,13 +245,26 @@ export const useProductionAnalytics = (machineId?: string) => {
         .eq('machine_id', machineId)
         .gte('timestamp_utc', sevenDaysAgo.toISOString())
         .order('timestamp_utc', { ascending: true })
-        .limit(10000);
+        .limit(15000); // Increased limit even further
 
       if (statusError) {
         throw statusError;
       }
 
       console.log('🔍 Raw machine data records for status analysis:', statusData?.length || 0);
+      
+      // Enhanced debug: Show date distribution
+      if (statusData && statusData.length > 0) {
+        const dateDistribution = new Map<string, number>();
+        statusData.forEach(record => {
+          const date = new Date(record.timestamp_utc);
+          const dayKey = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+          dateDistribution.set(dayKey, (dateDistribution.get(dayKey) || 0) + 1);
+        });
+        console.log('🔍 Date distribution in fetched data:', Object.fromEntries(dateDistribution));
+        console.log('🔍 First record timestamp:', statusData[0]?.timestamp_utc);
+        console.log('🔍 Last record timestamp:', statusData[statusData.length - 1]?.timestamp_utc);
+      }
 
       // Create status arrays for each of the last 7 days
       const statusDataArray: StatusData[] = [];
@@ -324,7 +367,7 @@ export const useProductionAnalytics = (machineId?: string) => {
         totalAllTimeProduction: Math.round(totalAllTimeProduction * 10) / 10
       });
 
-      console.log('✅ Production analytics data loaded with simplified status calculation');
+      console.log('✅ Production analytics data loaded with enhanced debugging');
 
       setError(null);
     } catch (err) {
