@@ -1,5 +1,5 @@
 
-// Simplified status calculation
+// Simplified status calculation that matches the proven approach from early July
 export const calculateStatusPercentagesForDay = (records: any[]) => {
   if (records.length === 0) {
     return { producing: 0, idle: 0, fullWater: 0, disconnected: 100 };

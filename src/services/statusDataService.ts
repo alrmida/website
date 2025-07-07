@@ -4,7 +4,7 @@ import { StatusData, MonthlyStatusData } from '@/types/productionAnalytics';
 import { calculateStatusPercentagesForDay } from '@/utils/statusCalculations';
 
 export const fetchStatusData = async (machineId: string) => {
-  // Fetch machine status data for the last 7 days
+  // Fetch machine status data for the last 7 days with proper limit
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -13,11 +13,14 @@ export const fetchStatusData = async (machineId: string) => {
     .select('timestamp_utc, producing_water, full_tank, compressor_on')
     .eq('machine_id', machineId)
     .gte('timestamp_utc', sevenDaysAgo.toISOString())
+    .limit(15000)
     .order('timestamp_utc', { ascending: true });
 
   if (statusError) {
     throw statusError;
   }
+
+  console.log('📊 Status data fetched:', statusData?.length || 0, 'records');
 
   // Group status data by day using simple date string matching
   const groupedStatusData = new Map<string, any[]>();
