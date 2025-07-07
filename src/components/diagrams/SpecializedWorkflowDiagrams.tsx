@@ -139,8 +139,8 @@ const SpecializedWorkflowDiagrams = () => {
               <div className="ml-4 space-y-2">
                 <div>1. Water Level Monitoring (every 15 min)</div>
                 <div className="ml-4">
-                  <div>• Current level > Previous level = PRODUCTION</div>
-                  <div>• Current level < Previous level = DRAINAGE</div>
+                  <div>• Current level {'>'}  Previous level = PRODUCTION</div>
+                  <div>• Current level {'<'} Previous level = DRAINAGE</div>
                   <div>• Level unchanged = NO_CHANGE</div>
                 </div>
                 <div>↓</div>
@@ -327,9 +327,9 @@ const SpecializedWorkflowDiagrams = () => {
               <div className="ml-4 space-y-2">
                 <div>calculateMachineStatus(waterLevel, compressorOn, dataAge):</div>
                 <div>↓</div>
-                <div>if (dataAge > 60000ms) → "Disconnected"</div>
+                <div>if (dataAge {'>'}  60000ms) → "Disconnected"</div>
                 <div>↓</div>
-                <div>if (waterLevel > 9.9L) → "Full Water"</div>
+                <div>if (waterLevel {'>'}  9.9L) → "Full Water"</div>
                 <div>↓</div>
                 <div>if (compressorOn === 1) → "Producing"</div>
                 <div>↓</div>
