@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from 'react';
+import { MachineWithClient, hasLiveDataCapability } from '@/types/machine';
 
 interface LiveMachineData {
   waterLevel: number;
@@ -38,7 +39,7 @@ function calculateMachineStatus(waterLevel: number, compressorOn: number, dataAg
   }
 }
 
-export const useLiveMachineData = (selectedMachineId?: string) => {
+export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
   const [data, setData] = useState<LiveMachineData>({
     waterLevel: 0,
     status: 'Loading...',
@@ -51,16 +52,16 @@ export const useLiveMachineData = (selectedMachineId?: string) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Check if this is the live data machine (KU001619000079 - the actual machine ID in database)
-  const isLiveDataMachine = selectedMachineId === 'KU001619000079';
+  // Check if this machine has live data capability
+  const canFetchLiveData = selectedMachine && hasLiveDataCapability(selectedMachine);
 
   const fetchData = async () => {
     try {
-      console.log('Fetching machine data for:', selectedMachineId);
+      console.log('Fetching machine data for:', selectedMachine?.machine_id);
       
-      // If not the live data machine, return offline status
-      if (!isLiveDataMachine) {
-        console.log('Not the live data machine, returning offline status');
+      // If machine doesn't have live data capability, return offline status
+      if (!canFetchLiveData) {
+        console.log('Machine does not have live data capability');
         setData({
           waterLevel: 0,
           status: 'Offline',
@@ -75,11 +76,11 @@ export const useLiveMachineData = (selectedMachineId?: string) => {
         return;
       }
 
-      console.log('Fetching live data for KU001619000079...');
+      console.log('Fetching live data for machine with UID:', selectedMachine.microcontroller_uid);
       
-      // Use GET request to the edge function for live data
+      // Use GET request to the edge function for live data with UID parameter
       const response = await fetch(
-        'https://dolkcmipdzqrtpaflvaf.supabase.co/functions/v1/get-machine-data',
+        `https://dolkcmipdzqrtpaflvaf.supabase.co/functions/v1/get-machine-data?uid=${selectedMachine.microcontroller_uid}`,
         {
           method: 'GET',
           headers: {
@@ -127,6 +128,14 @@ export const useLiveMachineData = (selectedMachineId?: string) => {
         console.log('Processed live machine data:', processedData);
         setData(processedData);
         setError(null);
+      } else if (result.status === 'no_data') {
+        // Handle no data case
+        setData(prev => ({
+          ...prev,
+          status: 'No Recent Data',
+          isOnline: false
+        }));
+        setError(null);
       } else {
         throw new Error('Invalid response format from edge function');
       }
@@ -148,12 +157,12 @@ export const useLiveMachineData = (selectedMachineId?: string) => {
     // Initial fetch
     fetchData();
 
-    // Only set up polling for live data machine
-    if (isLiveDataMachine) {
+    // Only set up polling for machines with live data capability
+    if (canFetchLiveData) {
       const interval = setInterval(fetchData, 10000);
       return () => clearInterval(interval);
     }
-  }, [selectedMachineId, isLiveDataMachine]);
+  }, [selectedMachine?.id, selectedMachine?.microcontroller_uid, canFetchLiveData]);
 
   return { data, isLoading, error, refetch: fetchData };
 };

@@ -9,6 +9,7 @@ export interface DatabaseMachine {
   purchase_date: string | null;
   client_id: string | null;
   manager_id: string | null;
+  microcontroller_uid: string | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -27,11 +28,17 @@ export interface MachineFormData {
   location: string;
   machine_model: string;
   purchase_date: string;
+  microcontroller_uid: string;
 }
 
 // Validation function for machine IDs
 export const isValidMachineId = (machineId: string): boolean => {
   return /^KU\d{12}$/.test(machineId.trim());
+};
+
+// Validation function for microcontroller UIDs
+export const isValidMicrocontrollerUID = (uid: string): boolean => {
+  return /^[0-9A-Fa-f]{24}$/.test(uid.trim());
 };
 
 // Helper to get display model name (fallback logic)
@@ -68,4 +75,9 @@ export const getOperatingSince = (machine: DatabaseMachine): string => {
   }
   
   return 'Unknown';
+};
+
+// Helper to check if machine has live data capability
+export const hasLiveDataCapability = (machine: DatabaseMachine): boolean => {
+  return machine.microcontroller_uid !== null && machine.microcontroller_uid !== '';
 };

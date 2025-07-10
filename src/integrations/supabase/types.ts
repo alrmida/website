@@ -103,6 +103,7 @@ export type Database = {
           machine_id: string
           machine_model: string | null
           manager_id: string | null
+          microcontroller_uid: string | null
           name: string
           purchase_date: string | null
           updated_at: string | null
@@ -115,6 +116,7 @@ export type Database = {
           machine_id: string
           machine_model?: string | null
           manager_id?: string | null
+          microcontroller_uid?: string | null
           name: string
           purchase_date?: string | null
           updated_at?: string | null
@@ -127,6 +129,7 @@ export type Database = {
           machine_id?: string
           machine_model?: string | null
           manager_id?: string | null
+          microcontroller_uid?: string | null
           name?: string
           purchase_date?: string | null
           updated_at?: string | null

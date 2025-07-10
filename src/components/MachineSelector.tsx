@@ -3,9 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Shield } from 'lucide-react';
+import { RefreshCw, Shield, Wifi, WifiOff } from 'lucide-react';
 import { useMachineData } from '@/hooks/useMachineData';
-import { MachineWithClient, isValidMachineId } from '@/types/machine';
+import { MachineWithClient, isValidMachineId, hasLiveDataCapability } from '@/types/machine';
 import MachineList from '@/components/MachineList';
 
 interface MachineSelectorProps {
@@ -53,6 +53,7 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
   }
 
   const availableMachines = machines.filter(machine => isValidMachineId(machine.machine_id));
+  const liveDataMachines = availableMachines.filter(hasLiveDataCapability);
 
   return (
     <Card className="bg-white dark:bg-gray-800 mb-6">
@@ -91,12 +92,33 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
               <p><strong>Username:</strong> {profile.username}</p>
               <p><strong>Total Machines Found:</strong> {machines.length}</p>
               <p><strong>Valid Machines:</strong> {availableMachines.length}</p>
+              <p><strong>Live Data Capable:</strong> {liveDataMachines.length}</p>
               {machines.length > 0 && (
                 <p><strong>Machine IDs:</strong> {machines.map(m => m.machine_id).join(', ')}</p>
               )}
               <p className="text-xs mt-2 p-2 bg-blue-100 dark:bg-blue-800 rounded">
-                As an admin, you should see ALL machines regardless of client assignment.
+                As an admin, you should see ALL machines regardless of client assignment. 
+                Machines with microcontroller UIDs can provide live data.
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* Live data capability summary */}
+        {availableMachines.length > 0 && (
+          <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 border rounded-lg">
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Wifi className="w-4 h-4 text-green-600" />
+                  <span className="text-green-600">{liveDataMachines.length} Live Data Capable</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <WifiOff className="w-4 h-4 text-gray-400" />
+                  <span className="text-gray-400">{availableMachines.length - liveDataMachines.length} Offline Only</span>
+                </div>
+              </div>
+              <span className="text-gray-500">Total: {availableMachines.length}</span>
             </div>
           </div>
         )}

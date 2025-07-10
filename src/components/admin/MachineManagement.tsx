@@ -7,9 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, Plus, Pencil } from 'lucide-react';
+import { Trash2, Plus, Pencil, Wifi, WifiOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { MachineWithClient, MachineFormData, isValidMachineId, getDisplayModelName, getOperatingSince } from '@/types/machine';
+import { MachineWithClient, MachineFormData, isValidMachineId, isValidMicrocontrollerUID, getDisplayModelName, getOperatingSince, hasLiveDataCapability } from '@/types/machine';
 import { Profile } from './types';
 
 interface MachineManagementProps {
@@ -34,6 +34,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
     name: '',
     location: '',
     purchase_date: '',
+    microcontroller_uid: '',
     client_id: 'unassigned'
   });
 
@@ -43,6 +44,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
     name: '',
     location: '',
     purchase_date: '',
+    microcontroller_uid: '',
     client_id: 'unassigned'
   });
 
@@ -60,6 +62,10 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
     
     if (!data.name.trim()) {
       return 'Owner name is required';
+    }
+
+    if (data.microcontroller_uid.trim() && !isValidMicrocontrollerUID(data.microcontroller_uid)) {
+      return 'Microcontroller UID must be 24 hexadecimal characters (e.g., 353636343034510C003F0046)';
     }
     
     return null;
@@ -85,6 +91,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
         location: newMachine.location.trim() || null,
         machine_model: newMachine.machine_model.trim() || null,
         purchase_date: newMachine.purchase_date || null,
+        microcontroller_uid: newMachine.microcontroller_uid.trim() || null,
         client_id: newMachine.client_id === 'unassigned' ? null : newMachine.client_id,
         manager_id: profile?.id || null,
       };
@@ -114,6 +121,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
         name: '', 
         location: '', 
         purchase_date: '',
+        microcontroller_uid: '',
         client_id: 'unassigned'
       });
       onRefresh();
@@ -134,6 +142,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
       name: machine.name,
       location: machine.location || '',
       purchase_date: machine.purchase_date || '',
+      microcontroller_uid: machine.microcontroller_uid || '',
       client_id: machine.client_id || 'unassigned',
     });
   };
@@ -147,6 +156,15 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
       });
       return;
     }
+
+    if (editMachineData.microcontroller_uid.trim() && !isValidMicrocontrollerUID(editMachineData.microcontroller_uid)) {
+      toast({
+        title: 'Validation Error',
+        description: 'Microcontroller UID must be 24 hexadecimal characters',
+        variant: 'destructive',
+      });
+      return;
+    }
     
     try {
       console.log('Updating machine:', editingMachine.id, editMachineData);
@@ -156,6 +174,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
         location: editMachineData.location.trim() || null,
         machine_model: editMachineData.machine_model.trim() || null,
         purchase_date: editMachineData.purchase_date || null,
+        microcontroller_uid: editMachineData.microcontroller_uid.trim() || null,
         client_id: editMachineData.client_id === 'unassigned' ? null : editMachineData.client_id,
         updated_at: new Date().toISOString(),
       };
@@ -183,6 +202,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
         name: '', 
         location: '', 
         purchase_date: '',
+        microcontroller_uid: '',
         client_id: 'unassigned'
       });
       onRefresh();
@@ -266,6 +286,21 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                 placeholder="Amphore"
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="microcontrollerUid">Microcontroller UID</Label>
+            <Input
+              id="microcontrollerUid"
+              value={newMachine.microcontroller_uid}
+              onChange={(e) => setNewMachine({ ...newMachine, microcontroller_uid: e.target.value })}
+              placeholder="353636343034510C003F0046"
+              className={newMachine.microcontroller_uid && !isValidMicrocontrollerUID(newMachine.microcontroller_uid) ? 'border-red-500' : ''}
+            />
+            {newMachine.microcontroller_uid && !isValidMicrocontrollerUID(newMachine.microcontroller_uid) && (
+              <p className="text-sm text-red-500">Must be 24 hexadecimal characters</p>
+            )}
+            <p className="text-sm text-gray-500">Optional: Required for live data functionality</p>
           </div>
           
           <div className="grid grid-cols-2 gap-4">
@@ -357,6 +392,21 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
               </div>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="editMicrocontrollerUid">Microcontroller UID</Label>
+              <Input
+                id="editMicrocontrollerUid"
+                value={editMachineData.microcontroller_uid}
+                onChange={(e) => setEditMachineData({ ...editMachineData, microcontroller_uid: e.target.value })}
+                placeholder="353636343034510C003F0046"
+                className={editMachineData.microcontroller_uid && !isValidMicrocontrollerUID(editMachineData.microcontroller_uid) ? 'border-red-500' : ''}
+              />
+              {editMachineData.microcontroller_uid && !isValidMicrocontrollerUID(editMachineData.microcontroller_uid) && (
+                <p className="text-sm text-red-500">Must be 24 hexadecimal characters</p>
+              )}
+              <p className="text-sm text-gray-500">Optional: Required for live data functionality</p>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="editClientSelect">Assign to Client</Label>
@@ -431,6 +481,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                   <TableHead>Owner</TableHead>
                   <TableHead>Client</TableHead>
                   <TableHead>Location</TableHead>
+                  <TableHead>Live Data</TableHead>
                   <TableHead>Operating Since</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -443,6 +494,21 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                     <TableCell>{machine.name}</TableCell>
                     <TableCell>{getClientName(machine.client_id)}</TableCell>
                     <TableCell>{machine.location || '-'}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {hasLiveDataCapability(machine) ? (
+                          <>
+                            <Wifi className="w-4 h-4 text-green-600" />
+                            <span className="text-sm text-green-600">Available</span>
+                          </>
+                        ) : (
+                          <>
+                            <WifiOff className="w-4 h-4 text-gray-400" />
+                            <span className="text-sm text-gray-400">No UID</span>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{getOperatingSince(machine)}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">

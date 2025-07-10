@@ -3,6 +3,8 @@
 export type { DatabaseMachine as Machine, MachineWithClient, MachineFormData } from '@/types/machine';
 export { 
   isValidMachineId as isValidMachine, 
+  isValidMicrocontrollerUID,
   getDisplayModelName as getModelName,
-  getOperatingSince 
+  getOperatingSince,
+  hasLiveDataCapability
 } from '@/types/machine';
