@@ -1,17 +1,190 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { corsHeaders } from './config.ts';
-import { createInfluxClient } from './influx-client.ts';
-import { parseCSVResponse } from './csv-parser.ts';
-import { processRawData } from './data-processor.ts';
-import { buildResponse } from './response-builder.ts';
-import { storeDataPoint } from './supabase-client.ts';
-import type { ProcessedDataPoint } from './types.ts';
 
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
+// Environment validation
+function validateEnvironment() {
+  const required = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'INFLUXDB_URL', 'INFLUXDB_TOKEN', 'INFLUXDB_ORG'];
+  const missing = required.filter(key => !Deno.env.get(key));
+  
+  if (missing.length > 0) {
+    throw new Error(`Missing environment variables: ${missing.join(', ')}`);
+  }
+  
+  console.log('✅ Environment variables validated');
+}
+
+// Simplified InfluxDB client creation
+async function createInfluxClient() {
+  try {
+    const INFLUXDB_URL = Deno.env.get('INFLUXDB_URL')!;
+    const INFLUXDB_TOKEN = Deno.env.get('INFLUXDB_TOKEN')!;
+    
+    console.log('🔧 Creating InfluxDB client');
+    
+    const { InfluxDB } = await import('https://esm.sh/@influxdata/influxdb-client@1.33.2');
+    
+    const client = new InfluxDB({
+      url: INFLUXDB_URL,
+      token: INFLUXDB_TOKEN,
+    });
+
+    console.log('✅ InfluxDB client created successfully');
+    return client;
+  } catch (error) {
+    console.error('❌ Failed to create InfluxDB client:', error);
+    throw new Error(`InfluxDB client creation failed: ${error.message}`);
+  }
+}
+
+// Simplified CSV parser
+function parseCSVResponse(responseText: string) {
+  console.log('🔍 Parsing CSV response:', responseText.substring(0, 200));
+  
+  try {
+    const lines = responseText.trim().split('\n');
+    if (lines.length < 2) {
+      console.log('⚠️ No data found in CSV response');
+      return null;
+    }
+
+    const headers = lines[0].split(',').map(h => h.trim().replace(/\r$/, ''));
+    const dataRow = lines[1].split(',').map(d => d.trim().replace(/\r$/, ''));
+    
+    console.log('📊 CSV headers:', headers);
+    console.log('📋 Data row:', dataRow);
+    
+    if (dataRow.length !== headers.length) {
+      console.error('❌ CSV parsing error: header/data length mismatch');
+      return null;
+    }
+
+    const data: any = {};
+    for (let i = 0; i < headers.length; i++) {
+      const header = headers[i].trim();
+      const value = dataRow[i].trim();
+      
+      if (header === '_time') {
+        data[header] = value;
+      } else if (header.includes('water_level') || header === 'water_level_L') {
+        data.water_level_L = !isNaN(Number(value)) && value !== '' ? Number(value) : null;
+      } else if (header.includes('compressor') || header === 'compressor_on') {
+        data.compressor_on = !isNaN(Number(value)) && value !== '' ? Number(value) : 0;
+      } else if (!isNaN(Number(value)) && value !== '') {
+        data[header] = Number(value);
+      } else {
+        data[header] = value;
+      }
+    }
+
+    console.log('✅ Parsed data from InfluxDB:', data);
+    
+    if (!data._time) {
+      console.error('❌ Missing _time field in parsed data');
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('❌ CSV parsing error:', error);
+    return null;
+  }
+}
+
+// Simplified data processor
+function processRawData(data: any, machineId: string) {
+  console.log('🔄 Processing raw data:', data);
+
+  const waterLevel = data.water_level_L ? Number(data.water_level_L) : null;
+  
+  const convertToBoolean = (value: number | boolean | undefined): boolean => {
+    if (typeof value === 'boolean') return value;
+    return value === 1;
+  };
+
+  const dataPoint = {
+    machine_id: machineId,
+    timestamp_utc: data._time,
+    water_level_l: waterLevel,
+    compressor_on: data.compressor_on || 0,
+    ambient_temp_c: data.ambient_temp_C ? Number(data.ambient_temp_C) : null,
+    ambient_rh_pct: data.ambient_rh_pct ? Number(data.ambient_rh_pct) : null,
+    refrigerant_temp_c: data.refrigerant_temp_C ? Number(data.refrigerant_temp_C) : null,
+    exhaust_temp_c: data.exhaust_temp_C ? Number(data.exhaust_temp_C) : null,
+    current_a: data.current_A ? Number(data.current_A) : null,
+    treating_water: convertToBoolean(data.treating_water),
+    serving_water: convertToBoolean(data.serving_water),
+    producing_water: convertToBoolean(data.producing_water),
+    full_tank: convertToBoolean(data.full_tank),
+    disinfecting: convertToBoolean(data.disinfecting),
+    collector_ls1: data.collector_ls1 ? Number(data.collector_ls1) : null,
+  };
+
+  console.log('✅ Processed data point:', dataPoint);
+  return dataPoint;
+}
+
+// Store data in Supabase
+async function storeDataPoint(supabase: any, dataPoint: any, waterLevel: number | null) {
+  try {
+    const MACHINE_ID = 'KU001619000079';
+    
+    const { data: existingData } = await supabase
+      .from('raw_machine_data')
+      .select('id')
+      .eq('machine_id', MACHINE_ID)
+      .eq('timestamp_utc', dataPoint.timestamp_utc)
+      .maybeSingle();
+
+    if (!existingData) {
+      const { error: insertError } = await supabase
+        .from('raw_machine_data')
+        .insert([dataPoint]);
+
+      if (insertError) {
+        console.error('Error storing data in Supabase:', insertError);
+      } else {
+        console.log('Successfully stored new data point with water level:', waterLevel);
+      }
+    } else {
+      console.log('Data point already exists, skipping insert');
+    }
+  } catch (storageError) {
+    console.error('Exception storing data:', storageError);
+  }
+}
+
+// Build response
+function buildResponse(data: any) {
+  console.log('🏗️ Building response from data:', data);
+  
+  const response = {
+    status: 'ok',
+    data: {
+      _time: data._time,
+      water_level_L: data.water_level_L,
+      compressor_on: data.compressor_on || 0,
+      collector_ls1: data.collector_ls1 || null,
+    },
+    debug: {
+      originalData: data,
+      waterLevelPrecision: {
+        original: data.water_level_L,
+        returned: data.water_level_L
+      }
+    }
+  };
+
+  console.log('📤 Built response:', response);
+  return response;
+}
+
+// Main serve function
 serve(async (req) => {
   console.log('🚀 Edge Function get-machine-data invoked:', req.method);
 
@@ -21,6 +194,9 @@ serve(async (req) => {
   }
 
   try {
+    // Validate environment
+    validateEnvironment();
+
     let machineUID: string | null = null;
 
     // Extract UID from query parameters or request body
@@ -32,7 +208,7 @@ serve(async (req) => {
       machineUID = body.uid;
     }
 
-    // If no UID provided, use the default one for backward compatibility
+    // Use default UID if none provided
     if (!machineUID) {
       machineUID = '353636343034510C003F0046';
       console.log('⚠️ No UID provided, using default UID:', machineUID);
@@ -40,239 +216,102 @@ serve(async (req) => {
 
     console.log('🔍 Processing data for machine UID:', machineUID);
 
-    // Create InfluxDB client - now async
+    // Create InfluxDB client
     const influxClient = await createInfluxClient();
     
-    // Create multiple Flux queries to try different approaches
-    const queries = [
-      // Primary query - exact UID match with updated measurement name
-      `
-        from(bucket: "awg_data_full")
-          |> range(start: -1h)
-          |> filter(fn: (r) => r._measurement == "awg_data")
-          |> filter(fn: (r) => r.uid == "${machineUID}")
-          |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
-          |> sort(columns: ["_time"], desc: true)
-          |> limit(n: 1)
-      `,
-      // Fallback query - try awg_data_full measurement
-      `
-        from(bucket: "awg_data_full")
-          |> range(start: -1h)
-          |> filter(fn: (r) => r._measurement == "awg_data_full")
-          |> filter(fn: (r) => r.uid == "${machineUID}")
-          |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
-          |> sort(columns: ["_time"], desc: true)
-          |> limit(n: 1)
-      `,
-      // Debug query - get any recent data to see what's available
-      `
-        from(bucket: "awg_data_full")
-          |> range(start: -30m)
-          |> sort(columns: ["_time"], desc: true)
-          |> limit(n: 5)
-      `
-    ];
+    // Create Flux query
+    const query = `
+      from(bucket: "awg_data_full")
+        |> range(start: -1h)
+        |> filter(fn: (r) => r._measurement == "awg_data")
+        |> filter(fn: (r) => r.uid == "${machineUID}")
+        |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+        |> sort(columns: ["_time"], desc: true)
+        |> limit(n: 1)
+    `;
 
-    // Create Supabase client for logging
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-    
-    console.log('📊 Executing primary Flux query for UID:', machineUID);
+    console.log('📊 Executing Flux query for UID:', machineUID);
 
-    // Execute the primary query first
+    // Execute query using async/await pattern
     const queryApi = influxClient.getQueryApi('kumulus');
     const csvData: string[] = [];
     
-    return new Promise((resolve) => {
-      queryApi.queryRows(queries[0], {
+    // Use Promise to handle the callback-based query API
+    const queryResult = await new Promise<string[]>((resolve, reject) => {
+      queryApi.queryRows(query, {
         next: (row: string[], tableMeta: any) => {
           console.log('📥 Received row from InfluxDB:', row);
           csvData.push(row.join(','));
         },
-        error: async (error: Error) => {
-          console.error('❌ Primary InfluxDB query error:', error);
-          
-          // Log the error with more details
-          try {
-            await supabase.from('data_ingestion_logs').insert([{
-              machine_id: `UID_${machineUID}`,
-              log_type: 'query_error',
-              message: `Primary query failed: ${error.message}`,
-              influx_query: queries[0],
-              data_timestamp: new Date().toISOString(),
-              error_details: error.stack
-            }]);
-          } catch (logError) {
-            console.log('Failed to log error:', logError);
-          }
-
-          // Try fallback query
-          console.log('🔄 Trying fallback query with different measurement name...');
-          
-          const fallbackData: string[] = [];
-          queryApi.queryRows(queries[1], {
-            next: (row: string[], tableMeta: any) => {
-              console.log('📥 Fallback row from InfluxDB:', row);
-              fallbackData.push(row.join(','));
-            },
-            error: async (fallbackError: Error) => {
-              console.error('❌ Fallback query also failed:', fallbackError);
-              
-              // Try debug query to see what data is available
-              console.log('🔍 Executing debug query to see available data...');
-              const debugData: string[] = [];
-              
-              queryApi.queryRows(queries[2], {
-                next: (row: string[], tableMeta: any) => {
-                  console.log('🐛 Debug row from InfluxDB:', row);
-                  debugData.push(row.join(','));
-                },
-                error: (debugError: Error) => {
-                  console.error('❌ Debug query failed:', debugError);
-                  resolve(new Response(
-                    JSON.stringify({ 
-                      status: 'error', 
-                      message: 'All InfluxDB queries failed',
-                      error: fallbackError.message,
-                      uid: machineUID,
-                      debug: 'No data available in InfluxDB'
-                    }),
-                    { 
-                      status: 500, 
-                      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-                    }
-                  ));
-                },
-                complete: async () => {
-                  console.log('🐛 Debug query results:', debugData.length, 'rows found');
-                  if (debugData.length > 0) {
-                    console.log('🐛 Sample data structure:', debugData.slice(0, 3));
-                  }
-                  
-                  resolve(new Response(
-                    JSON.stringify({ 
-                      status: 'no_data', 
-                      message: 'No data found for the specified UID',
-                      uid: machineUID,
-                      debug: `Found ${debugData.length} recent records in InfluxDB, but none matching UID ${machineUID}`,
-                      sampleData: debugData.slice(0, 3)
-                    }),
-                    { 
-                      status: 200, 
-                      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-                    }
-                  ));
-                }
-              });
-            },
-            complete: async () => {
-              console.log('✅ Fallback query completed. Rows received:', fallbackData.length);
-              if (fallbackData.length > 0) {
-                // Process fallback data
-                await processQueryResults(fallbackData, machineUID, supabase, resolve);
-              } else {
-                resolve(new Response(
-                  JSON.stringify({ 
-                    status: 'no_data', 
-                    message: 'No data found with fallback measurement name',
-                    uid: machineUID
-                  }),
-                  { 
-                    status: 200, 
-                    headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-                  }
-                ));
-              }
-            }
-          });
+        error: (error: Error) => {
+          console.error('❌ InfluxDB query error:', error);
+          reject(error);
         },
-        complete: async () => {
-          console.log('✅ Primary InfluxDB query completed. Rows received:', csvData.length);
-          
-          if (csvData.length === 0) {
-            console.log('⚠️ No data returned from primary query for UID:', machineUID);
-            resolve(new Response(
-              JSON.stringify({ 
-                status: 'no_data', 
-                message: 'No recent data found for this machine UID',
-                uid: machineUID
-              }),
-              { 
-                status: 200, 
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-              }
-            ));
-            return;
-          }
-
-          await processQueryResults(csvData, machineUID, supabase, resolve);
+        complete: () => {
+          console.log('✅ InfluxDB query completed. Rows received:', csvData.length);
+          resolve(csvData);
         }
       });
     });
 
-    // Helper function to process query results
-    async function processQueryResults(csvData: string[], machineUID: string, supabase: any, resolve: Function) {
-      try {
-        console.log('🔄 Processing CSV data:', csvData);
-
-        // Parse and process the data - using correct function name
-        const parsedData = parseCSVResponse(csvData.join('\n'));
-        console.log('📋 Parsed data:', parsedData);
-        
-        if (!parsedData) {
-          resolve(new Response(
-            JSON.stringify({ 
-              status: 'no_data', 
-              message: 'No valid data points found after parsing',
-              uid: machineUID
-            }),
-            { 
-              status: 200, 
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-            }
-          ));
-          return;
+    if (queryResult.length === 0) {
+      console.log('⚠️ No data returned from query for UID:', machineUID);
+      return new Response(
+        JSON.stringify({ 
+          status: 'no_data', 
+          message: 'No recent data found for this machine UID',
+          uid: machineUID
+        }),
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
-
-        console.log('🔄 Processing data point:', parsedData._time);
-        console.log('💧 Water level:', parsedData.water_level_L);
-        console.log('⚡ Compressor:', parsedData.compressor_on);
-        
-        // Process the raw data
-        const processedData: ProcessedDataPoint = processRawData(parsedData, `UID_${machineUID}`);
-        console.log('⚙️ Processed data:', processedData);
-
-        // Store in Supabase
-        await storeDataPoint(SUPABASE_URL, SUPABASE_SERVICE_KEY, processedData, parsedData.water_level_L);
-        
-        // Build and return response
-        const response = buildResponse(parsedData);
-        console.log('📤 Returning response for UID:', machineUID, 'with water level:', parsedData.water_level_L);
-        
-        resolve(new Response(
-          JSON.stringify(response),
-          { 
-            status: 200, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        ));
-        
-      } catch (processingError) {
-        console.error('❌ Error processing data:', processingError);
-        resolve(new Response(
-          JSON.stringify({ 
-            status: 'error', 
-            message: 'Error processing data',
-            error: processingError.message,
-            uid: machineUID
-          }),
-          { 
-            status: 500, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        ));
-      }
+      );
     }
+
+    // Parse and process the data
+    const parsedData = parseCSVResponse(queryResult.join('\n'));
+    
+    if (!parsedData) {
+      return new Response(
+        JSON.stringify({ 
+          status: 'no_data', 
+          message: 'No valid data points found after parsing',
+          uid: machineUID
+        }),
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    console.log('🔄 Processing data point:', parsedData._time);
+    console.log('💧 Water level:', parsedData.water_level_L);
+    console.log('⚡ Compressor:', parsedData.compressor_on);
+    
+    // Process the raw data
+    const processedData = processRawData(parsedData, `UID_${machineUID}`);
+    console.log('⚙️ Processed data:', processedData);
+
+    // Create Supabase client and store data
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+    const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+    
+    await storeDataPoint(supabase, processedData, parsedData.water_level_L);
+    
+    // Build and return response
+    const response = buildResponse(parsedData);
+    console.log('📤 Returning response for UID:', machineUID, 'with water level:', parsedData.water_level_L);
+    
+    return new Response(
+      JSON.stringify(response),
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
 
   } catch (error) {
     console.error('❌ Edge Function error:', error);
@@ -280,7 +319,8 @@ serve(async (req) => {
       JSON.stringify({ 
         status: 'error', 
         message: 'Internal server error',
-        error: error.message
+        error: error.message,
+        debug: 'Check function logs for detailed error information'
       }),
       { 
         status: 500, 
