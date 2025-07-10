@@ -19,6 +19,35 @@ function validateEnvironment() {
   console.log('✅ Environment variables validated');
 }
 
+// Lookup machine ID from microcontroller UID
+async function getMachineIdFromUID(supabase: any, microcontrollerUID: string): Promise<string | null> {
+  try {
+    console.log('🔍 Looking up machine ID for UID:', microcontrollerUID);
+    
+    const { data: machine, error } = await supabase
+      .from('machines')
+      .select('machine_id')
+      .eq('microcontroller_uid', microcontrollerUID)
+      .maybeSingle();
+
+    if (error) {
+      console.error('❌ Error looking up machine:', error);
+      return null;
+    }
+
+    if (!machine) {
+      console.log('⚠️ No machine found for UID:', microcontrollerUID);
+      return null;
+    }
+
+    console.log('✅ Found machine ID:', machine.machine_id, 'for UID:', microcontrollerUID);
+    return machine.machine_id;
+  } catch (error) {
+    console.error('❌ Exception during machine lookup:', error);
+    return null;
+  }
+}
+
 // Simplified InfluxDB client creation
 async function createInfluxClient() {
   try {
@@ -96,9 +125,9 @@ function parseCSVResponse(responseText: string) {
   }
 }
 
-// Simplified data processor
+// Simplified data processor - now uses correct machine ID
 function processRawData(data: any, machineId: string) {
-  console.log('🔄 Processing raw data:', data);
+  console.log('🔄 Processing raw data for machine:', machineId);
 
   const waterLevel = data.water_level_L ? Number(data.water_level_L) : null;
   
@@ -108,7 +137,7 @@ function processRawData(data: any, machineId: string) {
   };
 
   const dataPoint = {
-    machine_id: machineId,
+    machine_id: machineId, // Use the actual machine ID, not UID_prefix
     timestamp_utc: data._time,
     water_level_l: waterLevel,
     compressor_on: data.compressor_on || 0,
@@ -129,15 +158,13 @@ function processRawData(data: any, machineId: string) {
   return dataPoint;
 }
 
-// Store data in Supabase
+// Store data in Supabase - now uses dynamic machine ID
 async function storeDataPoint(supabase: any, dataPoint: any, waterLevel: number | null) {
   try {
-    const MACHINE_ID = 'KU001619000079';
-    
     const { data: existingData } = await supabase
       .from('raw_machine_data')
       .select('id')
-      .eq('machine_id', MACHINE_ID)
+      .eq('machine_id', dataPoint.machine_id) // Use the dynamic machine_id from dataPoint
       .eq('timestamp_utc', dataPoint.timestamp_utc)
       .maybeSingle();
 
@@ -149,7 +176,7 @@ async function storeDataPoint(supabase: any, dataPoint: any, waterLevel: number 
       if (insertError) {
         console.error('Error storing data in Supabase:', insertError);
       } else {
-        console.log('Successfully stored new data point with water level:', waterLevel);
+        console.log('Successfully stored new data point for machine:', dataPoint.machine_id, 'with water level:', waterLevel);
       }
     } else {
       console.log('Data point already exists, skipping insert');
@@ -215,6 +242,31 @@ serve(async (req) => {
     }
 
     console.log('🔍 Processing data for machine UID:', machineUID);
+
+    // Create Supabase client for machine lookup
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+    const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+    // Look up the actual machine ID from the UID
+    const machineId = await getMachineIdFromUID(supabase, machineUID);
+    
+    if (!machineId) {
+      console.log('❌ Machine ID not found for UID:', machineUID);
+      return new Response(
+        JSON.stringify({ 
+          status: 'error', 
+          message: 'Machine not found for the provided UID',
+          uid: machineUID
+        }),
+        { 
+          status: 404, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    console.log('✅ Using machine ID:', machineId, 'for UID:', machineUID);
 
     // Create InfluxDB client
     const influxClient = await createInfluxClient();
@@ -290,20 +342,16 @@ serve(async (req) => {
     console.log('💧 Water level:', parsedData.water_level_L);
     console.log('⚡ Compressor:', parsedData.compressor_on);
     
-    // Process the raw data
-    const processedData = processRawData(parsedData, `UID_${machineUID}`);
+    // Process the raw data using the correct machine ID
+    const processedData = processRawData(parsedData, machineId);
     console.log('⚙️ Processed data:', processedData);
 
-    // Create Supabase client and store data
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-    const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-    
+    // Store data in Supabase with correct machine ID
     await storeDataPoint(supabase, processedData, parsedData.water_level_L);
     
     // Build and return response
     const response = buildResponse(parsedData);
-    console.log('📤 Returning response for UID:', machineUID, 'with water level:', parsedData.water_level_L);
+    console.log('📤 Returning response for UID:', machineUID, 'machine ID:', machineId, 'with water level:', parsedData.water_level_L);
     
     return new Response(
       JSON.stringify(response),
