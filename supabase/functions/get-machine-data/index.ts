@@ -71,12 +71,12 @@ async function createInfluxClient() {
   }
 }
 
-// Simplified CSV parser
-function parseCSVResponse(responseText: string) {
-  console.log('🔍 Parsing CSV response:', responseText.substring(0, 200));
+// Fixed CSV parser - now expects proper CSV format
+function parseCSVResponse(csvText: string) {
+  console.log('🔍 Parsing CSV response (first 200 chars):', csvText.substring(0, 200));
   
   try {
-    const lines = responseText.trim().split('\n');
+    const lines = csvText.trim().split('\n');
     if (lines.length < 2) {
       console.log('⚠️ No data found in CSV response');
       return null;
@@ -125,7 +125,7 @@ function parseCSVResponse(responseText: string) {
   }
 }
 
-// Simplified data processor - now uses correct machine ID
+// Fixed data processor - now uses correct machine ID
 function processRawData(data: any, machineId: string) {
   console.log('🔄 Processing raw data for machine:', machineId);
 
@@ -284,29 +284,30 @@ serve(async (req) => {
 
     console.log('📊 Executing Flux query for UID:', machineUID);
 
-    // Execute query using async/await pattern
+    // Execute query with proper CSV handling
     const queryApi = influxClient.getQueryApi('kumulus');
-    const csvData: string[] = [];
     
-    // Use Promise to handle the callback-based query API
-    const queryResult = await new Promise<string[]>((resolve, reject) => {
-      queryApi.queryRows(query, {
-        next: (row: string[], tableMeta: any) => {
-          console.log('📥 Received row from InfluxDB:', row);
-          csvData.push(row.join(','));
+    // Collect CSV lines properly
+    const csvLines: string[] = [];
+    
+    const queryResult = await new Promise<string>((resolve, reject) => {
+      queryApi.queryLines(query, {
+        next: (line: string) => {
+          console.log('📥 Received line from InfluxDB:', line);
+          csvLines.push(line);
         },
         error: (error: Error) => {
           console.error('❌ InfluxDB query error:', error);
           reject(error);
         },
         complete: () => {
-          console.log('✅ InfluxDB query completed. Rows received:', csvData.length);
-          resolve(csvData);
+          console.log('✅ InfluxDB query completed. Lines received:', csvLines.length);
+          resolve(csvLines.join('\n'));
         }
       });
     });
 
-    if (queryResult.length === 0) {
+    if (csvLines.length === 0) {
       console.log('⚠️ No data returned from query for UID:', machineUID);
       return new Response(
         JSON.stringify({ 
@@ -322,7 +323,7 @@ serve(async (req) => {
     }
 
     // Parse and process the data
-    const parsedData = parseCSVResponse(queryResult.join('\n'));
+    const parsedData = parseCSVResponse(queryResult);
     
     if (!parsedData) {
       return new Response(
