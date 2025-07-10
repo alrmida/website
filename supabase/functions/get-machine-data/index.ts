@@ -3,7 +3,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from './config.ts';
 import { createInfluxClient } from './influx-client.ts';
-import { parseCSVData } from './csv-parser.ts';
+import { parseCSVResponse } from './csv-parser.ts';
 import { processRawData } from './data-processor.ts';
 import { buildResponse } from './response-builder.ts';
 import { storeDataPoint } from './supabase-client.ts';
@@ -45,21 +45,23 @@ serve(async (req) => {
     
     // Create multiple Flux queries to try different approaches
     const queries = [
-      // Primary query - exact UID match
+      // Primary query - exact UID match with updated measurement name
       `
         from(bucket: "awg_data_full")
           |> range(start: -1h)
           |> filter(fn: (r) => r._measurement == "awg_data")
           |> filter(fn: (r) => r.uid == "${machineUID}")
+          |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
           |> sort(columns: ["_time"], desc: true)
           |> limit(n: 1)
       `,
-      // Fallback query - check if UID exists with different casing
+      // Fallback query - try awg_data_full measurement
       `
         from(bucket: "awg_data_full")
           |> range(start: -1h)
-          |> filter(fn: (r) => r._measurement == "awg_data")
-          |> filter(fn: (r) => strings.toLower(r.uid) == "${machineUID.toLowerCase()}")
+          |> filter(fn: (r) => r._measurement == "awg_data_full")
+          |> filter(fn: (r) => r.uid == "${machineUID}")
+          |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
           |> sort(columns: ["_time"], desc: true)
           |> limit(n: 1)
       `,
@@ -67,7 +69,6 @@ serve(async (req) => {
       `
         from(bucket: "awg_data_full")
           |> range(start: -30m)
-          |> filter(fn: (r) => r._measurement == "awg_data")
           |> sort(columns: ["_time"], desc: true)
           |> limit(n: 5)
       `
@@ -85,12 +86,13 @@ serve(async (req) => {
     return new Promise((resolve) => {
       queryApi.queryRows(queries[0], {
         next: (row: string[], tableMeta: any) => {
+          console.log('📥 Received row from InfluxDB:', row);
           csvData.push(row.join(','));
         },
         error: async (error: Error) => {
           console.error('❌ Primary InfluxDB query error:', error);
           
-          // Log the error
+          // Log the error with more details
           try {
             await supabase.from('data_ingestion_logs').insert([{
               machine_id: `UID_${machineUID}`,
@@ -105,11 +107,12 @@ serve(async (req) => {
           }
 
           // Try fallback query
-          console.log('🔄 Trying fallback query with case-insensitive UID matching...');
+          console.log('🔄 Trying fallback query with different measurement name...');
           
           const fallbackData: string[] = [];
           queryApi.queryRows(queries[1], {
             next: (row: string[], tableMeta: any) => {
+              console.log('📥 Fallback row from InfluxDB:', row);
               fallbackData.push(row.join(','));
             },
             error: async (fallbackError: Error) => {
@@ -121,6 +124,7 @@ serve(async (req) => {
               
               queryApi.queryRows(queries[2], {
                 next: (row: string[], tableMeta: any) => {
+                  console.log('🐛 Debug row from InfluxDB:', row);
                   debugData.push(row.join(','));
                 },
                 error: (debugError: Error) => {
@@ -142,7 +146,7 @@ serve(async (req) => {
                 complete: async () => {
                   console.log('🐛 Debug query results:', debugData.length, 'rows found');
                   if (debugData.length > 0) {
-                    console.log('🐛 Sample data:', debugData[0]);
+                    console.log('🐛 Sample data structure:', debugData.slice(0, 3));
                   }
                   
                   resolve(new Response(
@@ -150,7 +154,8 @@ serve(async (req) => {
                       status: 'no_data', 
                       message: 'No data found for the specified UID',
                       uid: machineUID,
-                      debug: `Found ${debugData.length} recent records in InfluxDB, but none matching UID ${machineUID}`
+                      debug: `Found ${debugData.length} recent records in InfluxDB, but none matching UID ${machineUID}`,
+                      sampleData: debugData.slice(0, 3)
                     }),
                     { 
                       status: 200, 
@@ -169,7 +174,7 @@ serve(async (req) => {
                 resolve(new Response(
                   JSON.stringify({ 
                     status: 'no_data', 
-                    message: 'No data found with case-insensitive matching',
+                    message: 'No data found with fallback measurement name',
                     uid: machineUID
                   }),
                   { 
@@ -208,23 +213,13 @@ serve(async (req) => {
     // Helper function to process query results
     async function processQueryResults(csvData: string[], machineUID: string, supabase: any, resolve: Function) {
       try {
-        // Update log with response size
-        try {
-          await supabase
-            .from('data_ingestion_logs')
-            .update({ influx_response_size: csvData.length })
-            .eq('machine_id', `UID_${machineUID}`)
-            .eq('log_type', 'data_fetch')
-            .gte('created_at', new Date(Date.now() - 5000).toISOString());
-        } catch (logError) {
-          console.log('Failed to update log:', logError);
-        }
+        console.log('🔄 Processing CSV data:', csvData);
 
-        // Parse and process the data
-        const parsedData = parseCSVData(csvData);
-        console.log('📋 Parsed data points:', parsedData.length);
+        // Parse and process the data - using correct function name
+        const parsedData = parseCSVResponse(csvData.join('\n'));
+        console.log('📋 Parsed data:', parsedData);
         
-        if (parsedData.length === 0) {
+        if (!parsedData) {
           resolve(new Response(
             JSON.stringify({ 
               status: 'no_data', 
@@ -239,22 +234,20 @@ serve(async (req) => {
           return;
         }
 
-        // Get the most recent data point
-        const latestDataPoint = parsedData[0];
-        console.log('🔄 Processing latest data point:', latestDataPoint._time);
-        console.log('💧 Water level:', latestDataPoint.water_level_L);
-        console.log('⚡ Compressor:', latestDataPoint.compressor_on);
+        console.log('🔄 Processing data point:', parsedData._time);
+        console.log('💧 Water level:', parsedData.water_level_L);
+        console.log('⚡ Compressor:', parsedData.compressor_on);
         
         // Process the raw data
-        const processedData: ProcessedDataPoint = processRawData(latestDataPoint, `UID_${machineUID}`);
+        const processedData: ProcessedDataPoint = processRawData(parsedData, `UID_${machineUID}`);
         console.log('⚙️ Processed data:', processedData);
 
         // Store in Supabase
-        await storeDataPoint(SUPABASE_URL, SUPABASE_SERVICE_KEY, processedData, latestDataPoint.water_level_L);
+        await storeDataPoint(SUPABASE_URL, SUPABASE_SERVICE_KEY, processedData, parsedData.water_level_L);
         
         // Build and return response
-        const response = buildResponse(latestDataPoint);
-        console.log('📤 Returning response for UID:', machineUID, 'with water level:', latestDataPoint.water_level_L);
+        const response = buildResponse(parsedData);
+        console.log('📤 Returning response for UID:', machineUID, 'with water level:', parsedData.water_level_L);
         
         resolve(new Response(
           JSON.stringify(response),

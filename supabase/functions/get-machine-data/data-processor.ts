@@ -1,9 +1,8 @@
 
 import type { InfluxDataPoint, ProcessedDataPoint } from './types.ts';
-import { MACHINE_ID } from './config.ts';
 
-export function processDataPoint(data: InfluxDataPoint): { dataPoint: ProcessedDataPoint; waterLevel: number | null } {
-  console.log('Processing data point:', data);
+export function processRawData(data: InfluxDataPoint, machineId: string): ProcessedDataPoint {
+  console.log('🔄 Processing raw data:', data);
 
   // Extract water level with precision handling
   const waterLevel = data.water_level_L ? Number(data.water_level_L) : null;
@@ -15,7 +14,7 @@ export function processDataPoint(data: InfluxDataPoint): { dataPoint: ProcessedD
   };
 
   const dataPoint: ProcessedDataPoint = {
-    machine_id: MACHINE_ID,
+    machine_id: machineId,
     timestamp_utc: data._time,
     water_level_l: waterLevel,
     compressor_on: data.compressor_on || 0,
@@ -32,16 +31,6 @@ export function processDataPoint(data: InfluxDataPoint): { dataPoint: ProcessedD
     collector_ls1: data.collector_ls1 ? Number(data.collector_ls1) : null,
   };
 
-  console.log('Processed data point:', dataPoint);
-  console.log('Water level precision check:', {
-    original: data.water_level_L,
-    processed: waterLevel,
-    stored: dataPoint.water_level_l
-  });
-  console.log('Collector LS1 value:', {
-    original: data.collector_ls1,
-    processed: dataPoint.collector_ls1
-  });
-
-  return { dataPoint, waterLevel };
+  console.log('✅ Processed data point:', dataPoint);
+  return dataPoint;
 }
