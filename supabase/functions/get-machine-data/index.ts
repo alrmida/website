@@ -271,6 +271,10 @@ serve(async (req) => {
     // Create InfluxDB client
     const influxClient = await createInfluxClient();
     
+    // Get the InfluxDB organization from environment variable
+    const INFLUXDB_ORG = Deno.env.get('INFLUXDB_ORG')!;
+    console.log('🔧 Using InfluxDB organization:', INFLUXDB_ORG);
+    
     // Create Flux query
     const query = `
       from(bucket: "awg_data_full")
@@ -285,7 +289,7 @@ serve(async (req) => {
     console.log('📊 Executing Flux query for UID:', machineUID);
 
     // Execute query with proper CSV handling
-    const queryApi = influxClient.getQueryApi('kumulus');
+    const queryApi = influxClient.getQueryApi(INFLUXDB_ORG);
     
     // Collect CSV lines properly
     const csvLines: string[] = [];
