@@ -275,11 +275,11 @@ serve(async (req) => {
     const INFLUXDB_ORG = Deno.env.get('INFLUXDB_ORG')!;
     console.log('🔧 Using InfluxDB organization:', INFLUXDB_ORG);
     
-    // Create Flux query
+    // Create Flux query with correct bucket and measurement names
     const query = `
-      from(bucket: "awg_data_full")
+      from(bucket: "KumulusData")
         |> range(start: -1h)
-        |> filter(fn: (r) => r._measurement == "awg_data")
+        |> filter(fn: (r) => r._measurement == "awg_data_full")
         |> filter(fn: (r) => r.uid == "${machineUID}")
         |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
         |> sort(columns: ["_time"], desc: true)
@@ -287,6 +287,7 @@ serve(async (req) => {
     `;
 
     console.log('📊 Executing Flux query for UID:', machineUID);
+    console.log('🔍 Query details: bucket=KumulusData, measurement=awg_data_full');
 
     // Execute query with proper CSV handling
     const queryApi = influxClient.getQueryApi(INFLUXDB_ORG);
