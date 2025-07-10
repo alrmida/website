@@ -10,6 +10,7 @@ interface LiveMachineData {
   compressorOn: number;
   isOnline: boolean;
   lastConnection?: string;
+  dataSource: 'live' | 'fallback' | 'none';
 }
 
 function calculateMachineStatus(waterLevel: number, compressorOn: number, dataAge: number): { status: string, isOnline: boolean } {
@@ -47,7 +48,8 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
     dataAge: 0,
     compressorOn: 0,
     isOnline: false,
-    lastConnection: undefined
+    lastConnection: undefined,
+    dataSource: 'none'
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +71,8 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
           dataAge: 0,
           compressorOn: 0,
           isOnline: false,
-          lastConnection: undefined
+          lastConnection: undefined,
+          dataSource: 'none'
         });
         setError(null);
         setIsLoading(false);
@@ -77,6 +80,29 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
       }
 
       console.log('Fetching live data for machine with UID:', selectedMachine.microcontroller_uid);
+      
+      // Check if we're in development environment
+      const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname.includes('lovableproject.com');
+      
+      if (isDevelopment) {
+        console.log('⚠️ Development environment detected - live data may not be available');
+        // In development, provide simulated data instead of failing
+        const simulatedData = {
+          waterLevel: 7.5, // Simulated water level
+          status: 'Producing', // Simulated status
+          lastUpdated: new Date().toISOString(),
+          dataAge: 30000, // 30 seconds old
+          compressorOn: 1,
+          isOnline: true,
+          lastConnection: new Date().toISOString(),
+          dataSource: 'fallback' as const
+        };
+        
+        setData(simulatedData);
+        setError('Development mode - using simulated data');
+        setIsLoading(false);
+        return;
+      }
       
       // Use GET request to the edge function for live data with UID parameter
       const response = await fetch(
@@ -122,7 +148,8 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
           dataAge: dataAge,
           compressorOn: compressorOn,
           isOnline: isOnline,
-          lastConnection: isOnline ? machineData._time : data.lastConnection || machineData._time
+          lastConnection: isOnline ? machineData._time : data.lastConnection || machineData._time,
+          dataSource: 'live' as const
         };
 
         console.log('Processed live machine data:', processedData);
@@ -133,7 +160,8 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
         setData(prev => ({
           ...prev,
           status: 'No Recent Data',
-          isOnline: false
+          isOnline: false,
+          dataSource: 'live'
         }));
         setError(null);
       } else {
@@ -141,12 +169,15 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
       }
     } catch (err) {
       console.error('Error fetching machine data:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(errorMessage);
+      
       // Set fallback data when there's an error, but preserve last connection time
       setData(prev => ({
         ...prev,
-        status: 'Disconnected',
-        isOnline: false
+        status: 'Connection Error',
+        isOnline: false,
+        dataSource: 'fallback'
       }));
     } finally {
       setIsLoading(false);
