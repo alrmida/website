@@ -1,4 +1,26 @@
 
+export function createInfluxClient() {
+  const INFLUXDB_URL = Deno.env.get('INFLUXDB_URL')!;
+  const INFLUXDB_TOKEN = Deno.env.get('INFLUXDB_TOKEN')!;
+  const INFLUXDB_ORG = Deno.env.get('INFLUXDB_ORG')!;
+
+  console.log('🔧 Creating InfluxDB client with:');
+  console.log('📍 URL:', INFLUXDB_URL ? 'Set' : 'Missing');
+  console.log('🔑 Token:', INFLUXDB_TOKEN ? 'Set' : 'Missing');
+  console.log('🏢 Org:', INFLUXDB_ORG ? 'Set' : 'Missing');
+
+  // Import InfluxDB client
+  const { InfluxDB } = await import('https://esm.sh/@influxdata/influxdb-client@1.33.2');
+  
+  const client = new InfluxDB({
+    url: INFLUXDB_URL,
+    token: INFLUXDB_TOKEN,
+  });
+
+  console.log('✅ InfluxDB client created successfully');
+  return client;
+}
+
 export function createInfluxQuery(bucket: string): string {
   return `
 from(bucket: "${bucket}")
