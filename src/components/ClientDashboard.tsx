@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardHeader from './DashboardHeader';
@@ -19,7 +20,7 @@ const ClientDashboard = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('daily');
 
   // Use the live machine data hook for real-time updates
-  const { data: liveData, isLoading: liveDataLoading } = useLiveMachineData(selectedMachine?.machine_id);
+  const { data: liveData, isLoading: liveDataLoading } = useLiveMachineData(selectedMachine);
 
   // Get dashboard data including charts data
   const {
@@ -41,7 +42,7 @@ const ClientDashboard = () => {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        // Fetch the latest machine from the machines table
+        // Fetch the latest machine from the machines table with microcontroller_uid
         const { data: machines, error: machinesError } = await supabase
           .from('machines')
           .select('*')

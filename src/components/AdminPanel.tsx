@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -64,7 +65,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
         role: mapDatabaseRoleToFrontend(p.role)
       })) || [];
 
-      // Fetch machines with the correct columns
+      // Fetch machines with the correct columns including microcontroller_uid
       const { data: machinesData, error: machinesError } = await supabase
         .from('machines')
         .select(`
@@ -76,6 +77,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
           purchase_date,
           client_id,
           manager_id,
+          microcontroller_uid,
           created_at,
           updated_at,
           client_profile:profiles!client_id (

@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export const useDashboardData = (selectedMachine: MachineWithClient | null) => {
   const { user } = useAuth();
   // Fetch live/static machine data based on selected machine
-  const { data: liveData, isLoading: dataLoading, error: dataError } = useLiveMachineData(selectedMachine?.machine_id);
+  const { data: liveData, isLoading: dataLoading, error: dataError } = useLiveMachineData(selectedMachine);
   
   // Fetch real production analytics data
   const { data: analyticsData, isLoading: analyticsLoading } = useProductionAnalytics(selectedMachine?.machine_id);
