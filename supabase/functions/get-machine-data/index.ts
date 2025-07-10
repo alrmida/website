@@ -40,8 +40,8 @@ serve(async (req) => {
 
     console.log('🔍 Processing data for machine UID:', machineUID);
 
-    // Create InfluxDB client
-    const influxClient = createInfluxClient();
+    // Create InfluxDB client - now async
+    const influxClient = await createInfluxClient();
     
     // Create multiple Flux queries to try different approaches
     const queries = [

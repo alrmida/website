@@ -1,5 +1,5 @@
 
-export function createInfluxClient() {
+export async function createInfluxClient() {
   const INFLUXDB_URL = Deno.env.get('INFLUXDB_URL')!;
   const INFLUXDB_TOKEN = Deno.env.get('INFLUXDB_TOKEN')!;
   const INFLUXDB_ORG = Deno.env.get('INFLUXDB_ORG')!;
