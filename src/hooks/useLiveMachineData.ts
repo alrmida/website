@@ -80,11 +80,11 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
         return;
       }
 
-      console.log('📊 Querying raw_machine_data for machine:', selectedMachine.machine_id);
+      console.log('📊 Querying simple_water_snapshots for machine:', selectedMachine.machine_id);
       
-      // Query Supabase for the most recent machine data (last 24 hours)
-      const { data: rawData, error: queryError } = await supabase
-        .from('raw_machine_data')
+      // Query Supabase for the most recent machine data from simple_water_snapshots (last 24 hours)
+      const { data: snapshotData, error: queryError } = await supabase
+        .from('simple_water_snapshots')
         .select('*')
         .eq('machine_id', selectedMachine.machine_id)
         .gte('timestamp_utc', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Last 24 hours
@@ -97,7 +97,7 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
         throw new Error(`Database query failed: ${queryError.message}`);
       }
 
-      if (!rawData) {
+      if (!snapshotData) {
         console.log('⚠️ No recent data found in last 24 hours for machine:', selectedMachine.machine_id);
         setData({
           waterLevel: 0,
@@ -115,20 +115,23 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
       }
 
       console.log('✅ Found recent machine data:', {
-        timestamp: rawData.timestamp_utc,
-        water_level: rawData.water_level_l,
-        compressor: rawData.compressor_on,
-        machine_id: rawData.machine_id
+        timestamp: snapshotData.timestamp_utc,
+        water_level: snapshotData.water_level_l,
+        machine_id: snapshotData.machine_id
       });
 
       // Calculate data age
-      const dataTime = new Date(rawData.timestamp_utc);
+      const dataTime = new Date(snapshotData.timestamp_utc);
       const now = new Date();
       const dataAge = now.getTime() - dataTime.getTime();
 
-      // Get machine data from sensor fields
-      const waterLevel = rawData.water_level_l || 0;
-      const compressorOn = rawData.compressor_on || 0;
+      // Get machine data from snapshot
+      const waterLevel = snapshotData.water_level_l || 0;
+      
+      // For simple_water_snapshots, we don't have compressor status, so we infer it
+      // If water level is below 10L and we have recent data, assume it's producing
+      // If water level is at 10L (full), assume compressor is off
+      const compressorOn = waterLevel >= 10 ? 0 : 1;
       
       // Calculate machine status and online state
       const { status, isOnline } = calculateMachineStatus(waterLevel, compressorOn, dataAge);
@@ -136,11 +139,11 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
       const processedData = {
         waterLevel: waterLevel,
         status: status,
-        lastUpdated: rawData.timestamp_utc,
+        lastUpdated: snapshotData.timestamp_utc,
         dataAge: dataAge,
         compressorOn: compressorOn,
         isOnline: isOnline,
-        lastConnection: isOnline ? rawData.timestamp_utc : data.lastConnection || rawData.timestamp_utc,
+        lastConnection: isOnline ? snapshotData.timestamp_utc : data.lastConnection || snapshotData.timestamp_utc,
         dataSource: 'live' as const
       };
 
