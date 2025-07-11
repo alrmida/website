@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Droplets, Thermometer, Zap } from 'lucide-react';
+import { RefreshCw, Droplets, Thermometer, Zap, Activity } from 'lucide-react';
 
 interface MachineInfoProps {
   machineId: string;
@@ -36,7 +36,7 @@ const MachineInfo = ({ machineId, liveData, loading, onRefresh }: MachineInfoPro
         {loading ? (
           <p className="text-gray-500">Loading machine data...</p>
         ) : liveData ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="flex items-center space-x-2">
               <Droplets className="h-5 w-5 text-blue-500" />
               <div>
@@ -55,7 +55,14 @@ const MachineInfo = ({ machineId, liveData, loading, onRefresh }: MachineInfoPro
               <Zap className="h-5 w-5 text-yellow-500" />
               <div>
                 <p className="text-sm text-gray-500">Current</p>
-                <p className="font-semibold">{liveData.current_a || 'N/A'} A</p>
+                <p className="font-semibold">{liveData.current_a?.toFixed(1) || 'N/A'} A</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Activity className="h-5 w-5 text-green-500" />
+              <div>
+                <p className="text-sm text-gray-500">Compressor</p>
+                <p className="font-semibold">{liveData.compressor_on ? 'ON' : 'OFF'}</p>
               </div>
             </div>
           </div>
