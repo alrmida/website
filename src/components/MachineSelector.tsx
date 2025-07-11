@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Shield, Wifi, WifiOff } from 'lucide-react';
+import { RefreshCw, Shield, Wifi, WifiOff, Plus } from 'lucide-react';
 import { useMachineData } from '@/hooks/useMachineData';
 import { MachineWithClient, isValidMachineId, hasLiveDataCapability } from '@/types/machine';
 import MachineList from '@/components/MachineList';
@@ -14,7 +14,7 @@ interface MachineSelectorProps {
 }
 
 const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorProps) => {
-  const { machines, loading, profile, refetch } = useMachineData();
+  const { machines, loading, profile, error, refetch } = useMachineData();
 
   // Auto-select first machine for clients when machines are loaded
   useEffect(() => {
@@ -79,6 +79,15 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {/* Show error if there's a database error */}
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm">
+            <div className="text-red-800 dark:text-red-200">
+              <strong>Database Error:</strong> {error}
+            </div>
+          </div>
+        )}
+
         {/* Enhanced debug information for admins */}
         {profile?.role === 'admin' && (
           <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-sm">
@@ -134,14 +143,28 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
         />
 
         {availableMachines.length === 0 && !loading && (
-          <div className="text-center py-4">
-            <p className="text-gray-500 dark:text-gray-400 mb-2">
-              No machines available.
+          <div className="text-center py-6">
+            <p className="text-gray-500 dark:text-gray-400 mb-4">
+              {machines.length === 0 ? 'No machines exist in the database.' : 'No valid machines available.'}
             </p>
+            
             {profile?.role === 'admin' && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-800">
-                <strong>Admin Alert:</strong> You should see all machines in the system. 
-                This indicates a database or filtering issue that needs investigation.
+              <div className="space-y-4">
+                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+                  <strong>Admin Notice:</strong> {machines.length === 0 
+                    ? 'The database contains no machines. You can add machines using the Machine Management section in the Admin Dashboard.' 
+                    : 'All machines in the database have invalid IDs. Check the Machine Management section to review and fix machine IDs.'
+                  }
+                </div>
+                
+                <Button 
+                  variant="outline" 
+                  onClick={() => window.location.href = '/#admin'} 
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Go to Machine Management
+                </Button>
               </div>
             )}
           </div>

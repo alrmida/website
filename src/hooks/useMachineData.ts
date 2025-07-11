@@ -8,6 +8,7 @@ export const useMachineData = () => {
   const { profile } = useAuth();
   const [machines, setMachines] = useState<MachineWithClient[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchData = async () => {
     if (!profile) {
@@ -19,8 +20,22 @@ export const useMachineData = () => {
     console.log('Fetching data for profile:', profile);
     console.log('Profile role:', profile.role);
     setLoading(true);
+    setError(null);
 
     try {
+      // For admins, let's first check if there are ANY machines at all
+      if (profile.role === 'admin') {
+        console.log('🔍 Admin checking total machine count...');
+        const { count, error: countError } = await supabase
+          .from('machines')
+          .select('*', { count: 'exact', head: true });
+        
+        console.log('Total machines in database:', count);
+        if (countError) {
+          console.error('Error counting machines:', countError);
+        }
+      }
+
       // For all users, fetch machines with client profile information
       console.log('Fetching machines with client profiles...');
       const { data: machinesData, error } = await supabase
@@ -37,6 +52,8 @@ export const useMachineData = () => {
 
       if (error) {
         console.error('Database error:', error);
+        setError(`Database error: ${error.message}`);
+        
         // Fallback: try to fetch without the join
         console.log('Trying fallback query without client profiles...');
         const { data: simpleMachines, error: simpleError } = await supabase
@@ -90,6 +107,7 @@ export const useMachineData = () => {
       }
     } catch (error) {
       console.error('Error fetching machine data:', error);
+      setError(error instanceof Error ? error.message : 'Unknown error occurred');
     }
 
     setLoading(false);
@@ -103,6 +121,7 @@ export const useMachineData = () => {
     machines,
     loading,
     profile,
+    error,
     refetch: fetchData
   };
 };
