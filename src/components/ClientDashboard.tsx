@@ -87,7 +87,7 @@ const ClientDashboard = () => {
         {/* Debug info for analytics data source */}
         {selectedMachine && (
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
-            <p>📊 Analytics Data Source: {totalWaterProduced > 0 ? 'Real production data available' : 'Using placeholder data (no production events found)'}</p>
+            <p>📊 Analytics Data Source: {totalWaterProduced > 0 ? 'Real production data available' : 'Using static/zero data (no production events found)'}</p>
             <p>🏭 Machine: {selectedMachine.machine_id} | Status: {liveData?.status || 'Loading...'}</p>
           </div>
         )}
@@ -97,7 +97,7 @@ const ClientDashboard = () => {
           <MachineInfo
             machineId={selectedMachine.machine_id}
             liveData={liveData ? {
-              lastUpdated: liveData.lastUpdate,
+              lastUpdated: liveData.lastUpdated,
               waterLevel: liveData.waterLevel,
               ambient_temp_c: null,
               current_a: null,
@@ -113,7 +113,7 @@ const ClientDashboard = () => {
           waterTank={waterTank}
           machineStatus={liveData?.status || 'Loading...'}
           totalWaterProduced={totalWaterProduced}
-          lastUpdate={liveData?.lastUpdate ? new Date(liveData.lastUpdate) : null}
+          lastUpdate={liveData?.lastUpdated ? new Date(liveData.lastUpdated) : null}
         />
 
         {/* Production Analytics - Charts and Visualizations */}
@@ -131,7 +131,7 @@ const ClientDashboard = () => {
         profile={profile}
         selectedMachine={selectedMachine}
         liveData={liveData ? {
-          lastUpdated: liveData.lastUpdate,
+          lastUpdated: liveData.lastUpdated,
           waterLevel: liveData.waterLevel,
           ambient_temp_c: null,
           current_a: null,
