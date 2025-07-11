@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,7 +54,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
   const clientProfiles = profiles.filter(p => p.role === 'client');
 
   // Generate machine ID when model or number changes
-  const generateIdFromModelAndNumber = () => {
+  useEffect(() => {
     if (newMachine.machine_model && newMachine.machine_number) {
       try {
         const generatedId = generateMachineId(newMachine.machine_model, newMachine.machine_number);
@@ -62,7 +63,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
         console.error('Error generating machine ID:', error);
       }
     }
-  };
+  }, [newMachine.machine_model, newMachine.machine_number]);
 
   const validateMachineForm = (data: ExtendedMachineFormData): string | null => {
     if (!data.machine_model.trim()) {
@@ -73,9 +74,10 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
       return 'Machine number must be a positive integer';
     }
     
-    if (!data.name.trim()) {
-      return 'Owner name is required';
-    }
+    // Owner name is now optional - removed this validation
+    // if (!data.name.trim()) {
+    //   return 'Owner name is required';
+    // }
 
     if (data.microcontroller_uid.trim() && !isValidMicrocontrollerUID(data.microcontroller_uid)) {
       return 'Microcontroller UID must be 24 hexadecimal characters (e.g., 353636343034510C003F0046)';
@@ -100,7 +102,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
       
       const machineData = {
         machine_id: newMachine.machine_id.trim(),
-        name: newMachine.name.trim(),
+        name: newMachine.name.trim() || 'Unassigned Machine', // Default name if empty
         location: newMachine.location.trim() || null,
         machine_model: newMachine.machine_model.trim(),
         purchase_date: newMachine.purchase_date || null,
@@ -162,15 +164,11 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
   };
 
   const updateMachine = async () => {
-    if (!editingMachine || !editMachineData.name.trim()) {
-      toast({
-        title: 'Validation Error',
-        description: 'Owner name is required',
-        variant: 'destructive',
-      });
+    if (!editingMachine) {
       return;
     }
 
+    // Owner name validation is now optional for updates too
     if (editMachineData.microcontroller_uid.trim() && !isValidMicrocontrollerUID(editMachineData.microcontroller_uid)) {
       toast({
         title: 'Validation Error',
@@ -184,7 +182,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
       console.log('Updating machine:', editingMachine.id, editMachineData);
       
       const updateData = {
-        name: editMachineData.name.trim(),
+        name: editMachineData.name.trim() || 'Unassigned Machine', // Default name if empty
         location: editMachineData.location.trim() || null,
         machine_model: editMachineData.machine_model.trim() || null,
         purchase_date: editMachineData.purchase_date || null,
@@ -270,6 +268,14 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
     return client?.username || 'Unknown Client';
   };
 
+  const getMachineOwnerDisplay = (machine: MachineWithClient) => {
+    // If machine has no owner/name or default name, show as unassigned
+    if (!machine.name || machine.name === 'Unassigned Machine') {
+      return 'Unassigned';
+    }
+    return machine.name;
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -284,8 +290,6 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                 value={newMachine.machine_model}
                 onValueChange={(value) => {
                   setNewMachine({ ...newMachine, machine_model: value });
-                  // Auto-generate ID when model changes
-                  setTimeout(generateIdFromModelAndNumber, 100);
                 }}
               >
                 <SelectTrigger>
@@ -307,8 +311,6 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                 value={newMachine.machine_number}
                 onChange={(e) => {
                   setNewMachine({ ...newMachine, machine_number: parseInt(e.target.value) || 1 });
-                  // Auto-generate ID when number changes
-                  setTimeout(generateIdFromModelAndNumber, 100);
                 }}
                 placeholder="1"
               />
@@ -345,16 +347,17 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
           
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="machineName">Owner *</Label>
+              <Label htmlFor="machineName">Owner (Optional)</Label>
               <Input
                 id="machineName"
                 value={newMachine.name}
                 onChange={(e) => setNewMachine({ ...newMachine, name: e.target.value })}
-                placeholder="French Embassy"
+                placeholder="French Embassy (leave empty if unassigned)"
               />
+              <p className="text-sm text-gray-500">Leave empty for machines not yet sold</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="clientSelect">Assign to Client</Label>
+              <Label htmlFor="clientSelect">Assign to Client (Optional)</Label>
               <Select
                 value={newMachine.client_id}
                 onValueChange={(value) => setNewMachine({ ...newMachine, client_id: value })}
@@ -397,7 +400,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
 
           <Button 
             onClick={addMachine} 
-            disabled={loading || !newMachine.machine_model || !newMachine.name || !newMachine.machine_number}
+            disabled={loading || !newMachine.machine_model || !newMachine.machine_number}
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Machine
@@ -429,12 +432,12 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="editMachineName">Owner *</Label>
+                <Label htmlFor="editMachineName">Owner (Optional)</Label>
                 <Input
                   id="editMachineName"
                   value={editMachineData.name}
                   onChange={(e) => setEditMachineData({ ...editMachineData, name: e.target.value })}
-                  placeholder="French Embassy"
+                  placeholder="French Embassy (leave empty if unassigned)"
                 />
               </div>
             </div>
@@ -496,7 +499,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
             </div>
 
             <div className="flex gap-2">
-              <Button onClick={updateMachine} disabled={loading || !editMachineData.name}>
+              <Button onClick={updateMachine} disabled={loading}>
                 Update Machine
               </Button>
               <Button variant="outline" onClick={() => setEditingMachine(null)}>
@@ -538,7 +541,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                   <TableRow key={machine.id}>
                     <TableCell className="font-mono">{machine.machine_id}</TableCell>
                     <TableCell>{getDisplayModelName(machine)}</TableCell>
-                    <TableCell>{machine.name}</TableCell>
+                    <TableCell>{getMachineOwnerDisplay(machine)}</TableCell>
                     <TableCell>{getClientName(machine.client_id)}</TableCell>
                     <TableCell>{machine.location || '-'}</TableCell>
                     <TableCell>
