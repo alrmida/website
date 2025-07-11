@@ -1,32 +1,61 @@
 
-// Generate varied static production data based on machine ID
+// Generate static production data based on machine ID (consistent, not random)
 export function getStaticProductionData(machineId: string | undefined, multiplier: number = 1) {
-  // For all machines, return zero static data - we'll use live calculations instead
+  // Return consistent zero data for all machines - no random generation
+  const today = new Date();
+  
   return {
-    daily: [
-      { date: '28 May', production: 0 },
-      { date: '29 May', production: 0 },
-      { date: '30 May', production: 0 },
-      { date: '31 May', production: 0 }
-    ],
-    monthly: [
-      { month: 'Mar 2025', production: 0 },
-      { month: 'Apr 2025', production: 0 },
-      { month: 'May 2025', production: 0 }
-    ]
+    daily: Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(today);
+      date.setDate(date.getDate() - (6 - i));
+      return {
+        date: date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+        production: 0 // Always zero - no random data
+      };
+    }),
+    monthly: Array.from({ length: 3 }, (_, i) => {
+      const date = new Date(today);
+      date.setMonth(date.getMonth() - (2 - i));
+      return {
+        month: date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }),
+        production: 0 // Always zero - no random data
+      };
+    })
   };
 }
 
-// Generate varied status data based on machine ID using KUMULUS format
+// Generate static status data based on machine ID (consistent, not random)
 export function getStaticStatusData(machineId: string | undefined) {
-  // For all machines, return zero static data - we'll use live calculations instead
-  return [
-    { date: '25 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-    { date: '26 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-    { date: '27 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-    { date: '28 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-    { date: '29 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-    { date: '30 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 },
-    { date: '31 May', producing: 0, idle: 0, fullWater: 0, disconnected: 0 }
-  ];
+  // Return consistent zero data for all machines - no random generation
+  const today = new Date();
+  
+  return Array.from({ length: 7 }, (_, i) => {
+    const date = new Date(today);
+    date.setDate(date.getDate() - (6 - i));
+    return {
+      date: date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+      producing: 0,
+      idle: 0,
+      fullWater: 0,
+      disconnected: 0
+    };
+  });
+}
+
+// Generate static monthly status data
+export function getStaticMonthlyStatusData(machineId: string | undefined) {
+  const today = new Date();
+  
+  return Array.from({ length: 3 }, (_, i) => {
+    const date = new Date(today);
+    date.setMonth(date.getMonth() - (2 - i));
+    const monthStr = date.getMonth() + 1 < 10 ? `0${date.getMonth() + 1}` : `${date.getMonth() + 1}`;
+    return {
+      month: `${date.getFullYear()}-${monthStr}`,
+      producing: 0,
+      idle: 0,
+      fullWater: 0,
+      disconnected: 0
+    };
+  });
 }

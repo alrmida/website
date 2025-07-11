@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,7 @@ import { Trash2, Plus, Pencil, Wifi, WifiOff, Lightbulb } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { MachineWithClient, MachineFormData, isValidMachineId, isValidMicrocontrollerUID, getDisplayModelName, getOperatingSince, hasLiveDataCapability, generateMachineId } from '@/types/machine';
 import { Profile } from './types';
+import ResetMetricsButton from '../ResetMetricsButton';
 
 interface MachineManagementProps {
   machines: MachineWithClient[];
@@ -611,7 +611,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                     </TableCell>
                     <TableCell>{getOperatingSince(machine)}</TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
                         <Button
                           variant="outline"
                           size="sm"
@@ -620,6 +620,10 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                         >
                           <Pencil className="w-4 h-4" />
                         </Button>
+                        <ResetMetricsButton 
+                          machineId={machine.machine_id}
+                          onResetComplete={onRefresh}
+                        />
                         <Button
                           variant="destructive"
                           size="sm"
