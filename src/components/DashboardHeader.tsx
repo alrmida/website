@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -127,6 +128,17 @@ const DashboardHeader = () => {
                 Admin Panel
               </Button>
             )}
+
+            {/* Quick logout button for easier access */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSignOut}
+              className="flex items-center gap-2"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign Out
+            </Button>
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
