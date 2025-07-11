@@ -60,11 +60,13 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
 
   const fetchData = async () => {
     try {
-      console.log('🔍 [Phase 1] Fetching machine data directly from Supabase for:', selectedMachine?.machine_id);
+      console.log('🔍 [DEBUG] Fetching machine data for:', selectedMachine?.machine_id);
+      console.log('🔍 [DEBUG] Machine UID:', selectedMachine?.microcontroller_uid);
+      console.log('🔍 [DEBUG] Can fetch live data:', canFetchLiveData);
       
       // If machine doesn't have live data capability, return offline status
       if (!canFetchLiveData) {
-        console.log('⚠️ Machine does not have live data capability');
+        console.log('⚠️ [DEBUG] Machine does not have live data capability');
         setData({
           waterLevel: 0,
           status: 'Offline',
@@ -80,9 +82,23 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
         return;
       }
 
-      console.log('📊 [Phase 1] Querying raw_machine_data table for machine:', selectedMachine.machine_id);
+      console.log('📊 [DEBUG] Querying raw_machine_data table for machine:', selectedMachine.machine_id);
       
-      // Query Supabase directly for the most recent machine data
+      // First, let's check if there's ANY data for this machine (not just recent)
+      const { data: allData, error: allDataError } = await supabase
+        .from('raw_machine_data')
+        .select('timestamp_utc, water_level_l, compressor_on')
+        .eq('machine_id', selectedMachine.machine_id)
+        .order('timestamp_utc', { ascending: false })
+        .limit(5);
+
+      console.log('📊 [DEBUG] Total records found for this machine:', allData?.length || 0);
+      if (allData && allData.length > 0) {
+        console.log('📊 [DEBUG] Most recent record timestamp:', allData[0].timestamp_utc);
+        console.log('📊 [DEBUG] Most recent data:', allData[0]);
+      }
+
+      // Query Supabase directly for the most recent machine data (last 24 hours)
       const { data: rawData, error: queryError } = await supabase
         .from('raw_machine_data')
         .select('*')
@@ -93,12 +109,13 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
         .maybeSingle();
 
       if (queryError) {
-        console.error('❌ [Phase 1] Supabase query error:', queryError);
+        console.error('❌ [DEBUG] Supabase query error:', queryError);
         throw new Error(`Database query failed: ${queryError.message}`);
       }
 
       if (!rawData) {
-        console.log('⚠️ [Phase 1] No recent data found in raw_machine_data for machine:', selectedMachine.machine_id);
+        console.log('⚠️ [DEBUG] No recent data found in last 24 hours for machine:', selectedMachine.machine_id);
+        console.log('📊 [DEBUG] Setting machine as disconnected due to no recent data');
         setData({
           waterLevel: 0,
           status: 'Disconnected',
@@ -114,7 +131,7 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
         return;
       }
 
-      console.log('✅ [Phase 1] Found machine data from Supabase:', {
+      console.log('✅ [DEBUG] Found recent machine data:', {
         timestamp: rawData.timestamp_utc,
         water_level: rawData.water_level_l,
         compressor: rawData.compressor_on,
@@ -126,11 +143,13 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
       const now = new Date();
       const dataAge = now.getTime() - dataTime.getTime();
 
+      console.log('📊 [DEBUG] Data age:', Math.round(dataAge / 1000) + 's');
+
       // Get machine data from all 18 sensor fields
       const waterLevel = rawData.water_level_l || 0;
       const compressorOn = rawData.compressor_on || 0;
       
-      console.log('📊 [Phase 1] Processing sensor data:', {
+      console.log('📊 [DEBUG] Processing sensor data:', {
         waterLevel,
         compressorOn,
         dataAge: Math.round(dataAge / 1000) + 's',
@@ -152,7 +171,7 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
         dataSource: 'live' as const
       };
 
-      console.log('✅ [Phase 1] Processed machine data from direct Supabase query:', {
+      console.log('✅ [DEBUG] Final processed machine data:', {
         waterLevel: processedData.waterLevel,
         status: processedData.status,
         isOnline: processedData.isOnline,
@@ -163,7 +182,7 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
       setError(null);
 
     } catch (err) {
-      console.error('❌ [Phase 1] Error fetching machine data from Supabase:', err);
+      console.error('❌ [DEBUG] Error fetching machine data:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown database error';
       setError(errorMessage);
       
@@ -184,17 +203,17 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
   };
 
   useEffect(() => {
-    console.log('🚀 [Phase 1] Setting up direct Supabase data fetching for machine:', selectedMachine?.machine_id);
+    console.log('🚀 [DEBUG] Setting up data fetching for machine:', selectedMachine?.machine_id);
     
     // Initial fetch
     fetchData();
 
     // Only set up polling for machines with live data capability
     if (canFetchLiveData) {
-      console.log('⏰ [Phase 1] Setting up 10-second polling for direct Supabase queries');
+      console.log('⏰ [DEBUG] Setting up 10-second polling for direct Supabase queries');
       const interval = setInterval(fetchData, 10000);
       return () => {
-        console.log('🛑 [Phase 1] Cleaning up polling interval');
+        console.log('🛑 [DEBUG] Cleaning up polling interval');
         clearInterval(interval);
       };
     }
