@@ -14,7 +14,18 @@ interface LiveMachineData {
   dataSource: 'live' | 'fallback' | 'none';
 }
 
-function calculateMachineStatus(waterLevel: number, compressorOn: number, dataAge: number): { status: string, isOnline: boolean } {
+interface StatusFlags {
+  full_tank?: boolean;
+  producing_water?: boolean;
+  defrosting?: boolean;
+  compressor_on?: number;
+}
+
+function calculateMachineStatus(
+  waterLevel: number, 
+  dataAge: number, 
+  statusFlags?: StatusFlags
+): { status: string, isOnline: boolean } {
   // For simple_water_snapshots data, use a more lenient threshold (45 minutes)
   // since this data is captured every 15-30 minutes, not real-time
   if (dataAge > 2700000) { // 45 minutes in milliseconds
@@ -24,21 +35,31 @@ function calculateMachineStatus(waterLevel: number, compressorOn: number, dataAg
   // Machine is online if we have recent data
   const isOnline = true;
   
-  // Calculate status based on water level and compressor state
+  // Use actual status flags if available
+  if (statusFlags) {
+    if (statusFlags.defrosting === true) {
+      return { status: 'Defrosting', isOnline };
+    }
+    
+    if (statusFlags.full_tank === true) {
+      return { status: 'Full Water', isOnline };
+    }
+    
+    if (statusFlags.producing_water === true || statusFlags.compressor_on === 1) {
+      return { status: 'Producing', isOnline };
+    }
+    
+    // If we have status flags but none of the above conditions, machine is idle
+    return { status: 'Idle', isOnline };
+  }
+  
+  // Fallback to water level inference when no status flags available
   if (waterLevel > 9.9) {
-    // Tank is full or nearly full
-    if (compressorOn === 1) {
-      return { status: 'Full Water', isOnline }; // Still producing but tank is full
-    } else {
-      return { status: 'Full Water', isOnline }; // Tank full, compressor off
-    }
+    return { status: 'Full Water', isOnline };
   } else {
-    // Tank is not full
-    if (compressorOn === 1) {
-      return { status: 'Producing', isOnline }; // Actively producing water
-    } else {
-      return { status: 'Idle', isOnline }; // Not producing, waiting
-    }
+    // Without status flags, we can't distinguish between producing and idle
+    // so we'll assume idle for safety
+    return { status: 'Idle', isOnline };
   }
 }
 
@@ -81,25 +102,46 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
         return;
       }
 
-      console.log('📊 Querying simple_water_snapshots for machine:', selectedMachine.machine_id);
+      console.log('📊 Querying both simple_water_snapshots and raw_machine_data for machine:', selectedMachine.machine_id);
       
-      // Query Supabase for the most recent machine data from simple_water_snapshots (last 24 hours)
-      const { data: snapshotData, error: queryError } = await supabase
-        .from('simple_water_snapshots')
-        .select('*')
-        .eq('machine_id', selectedMachine.machine_id)
-        .gte('timestamp_utc', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Last 24 hours
-        .order('timestamp_utc', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // Query both tables simultaneously
+      const [snapshotResult, rawDataResult] = await Promise.all([
+        // Get most recent water level data (last 24 hours)
+        supabase
+          .from('simple_water_snapshots')
+          .select('*')
+          .eq('machine_id', selectedMachine.machine_id)
+          .gte('timestamp_utc', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+          .order('timestamp_utc', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        
+        // Get most recent raw machine data with status flags (last 6 hours)
+        supabase
+          .from('raw_machine_data')
+          .select('*')
+          .eq('machine_id', selectedMachine.machine_id)
+          .gte('timestamp_utc', new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString())
+          .order('timestamp_utc', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      ]);
 
-      if (queryError) {
-        console.error('❌ Supabase query error:', queryError);
-        throw new Error(`Database query failed: ${queryError.message}`);
+      if (snapshotResult.error) {
+        console.error('❌ Error querying simple_water_snapshots:', snapshotResult.error);
+        throw new Error(`Water snapshots query failed: ${snapshotResult.error.message}`);
       }
 
+      if (rawDataResult.error) {
+        console.warn('⚠️ Error querying raw_machine_data:', rawDataResult.error);
+        // Don't throw error, just log warning as we can fallback to snapshot data
+      }
+
+      const snapshotData = snapshotResult.data;
+      const rawData = rawDataResult.data;
+
       if (!snapshotData) {
-        console.log('⚠️ No recent data found in last 24 hours for machine:', selectedMachine.machine_id);
+        console.log('⚠️ No recent water level data found in last 24 hours for machine:', selectedMachine.machine_id);
         setData({
           waterLevel: 0,
           status: 'Disconnected',
@@ -115,27 +157,45 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
         return;
       }
 
-      console.log('✅ Found recent machine data:', {
+      console.log('✅ Found recent water level data:', {
         timestamp: snapshotData.timestamp_utc,
         water_level: snapshotData.water_level_l,
         machine_id: snapshotData.machine_id
       });
 
-      // Calculate data age
+      if (rawData) {
+        console.log('✅ Found recent raw machine data with status flags:', {
+          timestamp: rawData.timestamp_utc,
+          full_tank: rawData.full_tank,
+          producing_water: rawData.producing_water,
+          defrosting: rawData.defrosting,
+          compressor_on: rawData.compressor_on
+        });
+      } else {
+        console.log('⚠️ No recent raw machine data found, using water level inference');
+      }
+
+      // Calculate data age based on snapshot data (most recent)
       const dataTime = new Date(snapshotData.timestamp_utc);
       const now = new Date();
       const dataAge = now.getTime() - dataTime.getTime();
 
-      // Get machine data from snapshot
+      // Get water level from snapshot
       const waterLevel = snapshotData.water_level_l || 0;
       
-      // For simple_water_snapshots, we don't have compressor status, so we infer it
-      // If water level is below 10L and we have recent data, assume it's producing
-      // If water level is at 10L (full), assume compressor is off
-      const compressorOn = waterLevel >= 10 ? 0 : 1;
+      // Prepare status flags from raw data if available
+      const statusFlags: StatusFlags | undefined = rawData ? {
+        full_tank: rawData.full_tank,
+        producing_water: rawData.producing_water,
+        defrosting: rawData.defrosting,
+        compressor_on: rawData.compressor_on
+      } : undefined;
       
-      // Calculate machine status and online state
-      const { status, isOnline } = calculateMachineStatus(waterLevel, compressorOn, dataAge);
+      // Calculate machine status using actual flags or fallback
+      const { status, isOnline } = calculateMachineStatus(waterLevel, dataAge, statusFlags);
+
+      // Determine compressor status for display
+      const compressorOn = statusFlags?.compressor_on || (waterLevel < 10 ? 1 : 0);
 
       const processedData = {
         waterLevel: waterLevel,
@@ -152,7 +212,8 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
         waterLevel: processedData.waterLevel,
         status: processedData.status,
         isOnline: processedData.isOnline,
-        dataAge: Math.round(processedData.dataAge / 1000) + 's'
+        dataAge: Math.round(processedData.dataAge / 1000) + 's',
+        hasStatusFlags: !!statusFlags
       });
       
       setData(processedData);
