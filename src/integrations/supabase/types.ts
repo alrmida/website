@@ -201,14 +201,19 @@ export type Database = {
           compressor_on: number | null
           created_at: string
           current_a: number | null
+          defrosting: boolean | null
           disinfecting: boolean | null
+          eev_position: number | null
+          exhaust_rh_pct: number | null
           exhaust_temp_c: number | null
+          frost_identified: boolean | null
           full_tank: boolean | null
           id: string
           machine_id: string
           producing_water: boolean | null
           refrigerant_temp_c: number | null
           serving_water: boolean | null
+          time_seconds: number | null
           timestamp_utc: string
           treating_water: boolean | null
           water_level_l: number | null
@@ -220,14 +225,19 @@ export type Database = {
           compressor_on?: number | null
           created_at?: string
           current_a?: number | null
+          defrosting?: boolean | null
           disinfecting?: boolean | null
+          eev_position?: number | null
+          exhaust_rh_pct?: number | null
           exhaust_temp_c?: number | null
+          frost_identified?: boolean | null
           full_tank?: boolean | null
           id?: string
           machine_id: string
           producing_water?: boolean | null
           refrigerant_temp_c?: number | null
           serving_water?: boolean | null
+          time_seconds?: number | null
           timestamp_utc: string
           treating_water?: boolean | null
           water_level_l?: number | null
@@ -239,14 +249,19 @@ export type Database = {
           compressor_on?: number | null
           created_at?: string
           current_a?: number | null
+          defrosting?: boolean | null
           disinfecting?: boolean | null
+          eev_position?: number | null
+          exhaust_rh_pct?: number | null
           exhaust_temp_c?: number | null
+          frost_identified?: boolean | null
           full_tank?: boolean | null
           id?: string
           machine_id?: string
           producing_water?: boolean | null
           refrigerant_temp_c?: number | null
           serving_water?: boolean | null
+          time_seconds?: number | null
           timestamp_utc?: string
           treating_water?: boolean | null
           water_level_l?: number | null

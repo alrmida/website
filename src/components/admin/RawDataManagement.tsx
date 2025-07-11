@@ -24,6 +24,7 @@ interface RawMachineData {
   ambient_rh_pct: number | null;
   refrigerant_temp_c: number | null;
   exhaust_temp_c: number | null;
+  exhaust_rh_pct: number | null;
   current_a: number | null;
   treating_water: boolean | null;
   serving_water: boolean | null;
@@ -31,6 +32,10 @@ interface RawMachineData {
   full_tank: boolean | null;
   disinfecting: boolean | null;
   collector_ls1: number | null;
+  frost_identified: boolean | null;
+  defrosting: boolean | null;
+  eev_position: number | null;
+  time_seconds: number | null;
   created_at: string;
 }
 
@@ -52,7 +57,7 @@ const RawDataManagement = ({ loading, onRefresh }: RawDataManagementProps) => {
 
   const fetchRawData = async () => {
     setDataLoading(true);
-    console.log('Fetching raw machine data...');
+    console.log('Fetching enhanced raw machine data...');
     
     try {
       // First, let's check our user profile and role
@@ -79,14 +84,14 @@ const RawDataManagement = ({ loading, onRefresh }: RawDataManagementProps) => {
         setTotalCount(count || 0);
       }
 
-      // Get latest 100 records with error details
+      // Get latest 100 records with all new fields
       const { data, error } = await supabase
         .from('raw_machine_data')
         .select('*')
         .order('timestamp_utc', { ascending: false })
         .limit(100);
 
-      console.log('Data query result:', { data, error, dataLength: data?.length });
+      console.log('Enhanced data query result:', { data, error, dataLength: data?.length });
 
       if (error) {
         console.error('Data fetch error:', error);
@@ -95,10 +100,10 @@ const RawDataManagement = ({ loading, onRefresh }: RawDataManagementProps) => {
       }
       
       setRawData(data || []);
-      setDebugInfo({ success: true, profile, count, dataLength: data?.length });
+      setDebugInfo({ success: true, profile, count, dataLength: data?.length, enhancedFields: true });
       
     } catch (error: any) {
-      console.error('Error fetching raw data:', error);
+      console.error('Error fetching enhanced raw data:', error);
       toast({
         title: 'Error',
         description: `Failed to fetch raw data: ${error.message}`,
@@ -155,9 +160,9 @@ const RawDataManagement = ({ loading, onRefresh }: RawDataManagementProps) => {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-semibold">Raw Machine Data</h3>
+          <h3 className="text-lg font-semibold">Enhanced Raw Machine Data</h3>
           <p className="text-sm text-muted-foreground">
-            Total records: {totalCount} (showing latest 100)
+            Total records: {totalCount} (showing latest 100) - Now includes all 18 sensor fields
           </p>
           {debugInfo && (
             <details className="mt-2">
@@ -193,7 +198,7 @@ const RawDataManagement = ({ loading, onRefresh }: RawDataManagementProps) => {
       {dataLoading ? (
         <div className="text-center py-8">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-          <p className="mt-2">Loading raw data...</p>
+          <p className="mt-2">Loading enhanced raw data...</p>
         </div>
       ) : (
         <div className="border rounded-md">
@@ -203,27 +208,32 @@ const RawDataManagement = ({ loading, onRefresh }: RawDataManagementProps) => {
                 <TableRow>
                   <TableHead className="min-w-[120px]">Machine ID</TableHead>
                   <TableHead className="min-w-[140px]">Timestamp</TableHead>
+                  <TableHead className="min-w-[100px]">Time (sec)</TableHead>
                   <TableHead className="min-w-[100px]">Water Level (L)</TableHead>
                   <TableHead className="min-w-[90px]">Compressor</TableHead>
+                  <TableHead className="min-w-[100px]">Current (A)</TableHead>
                   <TableHead className="min-w-[100px]">Collector LS1</TableHead>
                   <TableHead className="min-w-[110px]">Ambient Temp (°C)</TableHead>
                   <TableHead className="min-w-[110px]">Ambient RH (%)</TableHead>
                   <TableHead className="min-w-[120px]">Refrigerant Temp (°C)</TableHead>
                   <TableHead className="min-w-[110px]">Exhaust Temp (°C)</TableHead>
-                  <TableHead className="min-w-[100px]">Current (A)</TableHead>
+                  <TableHead className="min-w-[110px]">Exhaust RH (%)</TableHead>
+                  <TableHead className="min-w-[90px]">EEV Position</TableHead>
                   <TableHead className="min-w-[110px]">Treating Water</TableHead>
                   <TableHead className="min-w-[110px]">Serving Water</TableHead>
                   <TableHead className="min-w-[120px]">Producing Water</TableHead>
                   <TableHead className="min-w-[90px]">Full Tank</TableHead>
                   <TableHead className="min-w-[100px]">Disinfecting</TableHead>
+                  <TableHead className="min-w-[110px]">Frost Identified</TableHead>
+                  <TableHead className="min-w-[100px]">Defrosting</TableHead>
                   <TableHead className="min-w-[140px]">Created</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rawData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={16} className="text-center py-8">
-                      No raw data found. The edge function may be having issues storing data.
+                    <TableCell colSpan={21} className="text-center py-8">
+                      No enhanced raw data found. The edge function may be having issues storing data.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -231,11 +241,17 @@ const RawDataManagement = ({ loading, onRefresh }: RawDataManagementProps) => {
                     <TableRow key={record.id}>
                       <TableCell className="font-medium">{record.machine_id}</TableCell>
                       <TableCell className="text-xs">{formatTimestamp(record.timestamp_utc)}</TableCell>
+                      <TableCell>{formatNumber(record.time_seconds, 0)}</TableCell>
                       <TableCell>{formatNumber(record.water_level_l)}</TableCell>
                       <TableCell>
                         <Badge variant={record.compressor_on ? "default" : "outline"}>
                           {record.compressor_on ? 'ON' : 'OFF'}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className={record.current_a ? "text-green-600 font-medium" : "text-gray-400"}>
+                          {formatNumber(record.current_a, 1)}A
+                        </span>
                       </TableCell>
                       <TableCell>
                         <Badge variant={record.collector_ls1 === 0 ? "destructive" : "default"}>
@@ -246,12 +262,23 @@ const RawDataManagement = ({ loading, onRefresh }: RawDataManagementProps) => {
                       <TableCell>{formatNumber(record.ambient_rh_pct)}</TableCell>
                       <TableCell>{formatNumber(record.refrigerant_temp_c)}</TableCell>
                       <TableCell>{formatNumber(record.exhaust_temp_c)}</TableCell>
-                      <TableCell>{formatNumber(record.current_a, 0)}</TableCell>
+                      <TableCell>{formatNumber(record.exhaust_rh_pct)}</TableCell>
+                      <TableCell>{record.eev_position || 'N/A'}</TableCell>
                       <TableCell>{getBooleanBadge(record.treating_water)}</TableCell>
                       <TableCell>{getBooleanBadge(record.serving_water)}</TableCell>
                       <TableCell>{getBooleanBadge(record.producing_water)}</TableCell>
                       <TableCell>{getBooleanBadge(record.full_tank)}</TableCell>
                       <TableCell>{getBooleanBadge(record.disinfecting)}</TableCell>
+                      <TableCell>
+                        <Badge variant={record.frost_identified ? "destructive" : "outline"}>
+                          {record.frost_identified ? 'FROST' : 'CLEAR'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={record.defrosting ? "default" : "outline"}>
+                          {record.defrosting ? 'ACTIVE' : 'OFF'}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="text-xs">{formatTimestamp(record.created_at)}</TableCell>
                     </TableRow>
                   ))

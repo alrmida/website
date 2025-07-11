@@ -71,7 +71,7 @@ async function createInfluxClient() {
   }
 }
 
-// Fixed CSV parser - now expects proper CSV format
+// Enhanced CSV parser to handle all 18 Node-RED fields
 function parseCSVResponse(csvText: string) {
   console.log('🔍 Parsing CSV response (first 200 chars):', csvText.substring(0, 200));
   
@@ -100,14 +100,48 @@ function parseCSVResponse(csvText: string) {
       
       if (header === '_time') {
         data[header] = value;
-      } else if (header.includes('water_level') || header === 'water_level_L') {
-        data.water_level_L = !isNaN(Number(value)) && value !== '' ? Number(value) : null;
-      } else if (header.includes('compressor') || header === 'compressor_on') {
-        data.compressor_on = !isNaN(Number(value)) && value !== '' ? Number(value) : 0;
-      } else if (!isNaN(Number(value)) && value !== '') {
-        data[header] = Number(value);
       } else {
-        data[header] = value;
+        // Map all InfluxDB field names to our expected format
+        const fieldMapping: { [key: string]: string } = {
+          'time_seconds': 'time_seconds',
+          'ambient_temp_C': 'ambient_temp_C',
+          'refrigerant_temp_C': 'refrigerant_temp_C',
+          'ambient_rh_pct': 'ambient_rh_pct',
+          'exhaust_temp_C': 'exhaust_temp_C',
+          'exhaust_rh_pct': 'exhaust_rh_pct',
+          'water_level_L': 'water_level_L',
+          'current_A': 'current_A',
+          'collector_ls1': 'collector_ls1',
+          'treating_water': 'treating_water',
+          'serving_water': 'serving_water',
+          'producing_water': 'producing_water',
+          'compressor_on': 'compressor_on',
+          'full_tank': 'full_tank',
+          'disinfecting': 'disinfecting',
+          'frost_identified': 'frost_identified',
+          'defrosting': 'defrosting',
+          'eev_position': 'eev_position'
+        };
+
+        const mappedField = fieldMapping[header] || header;
+        
+        // Parse numeric values
+        if (['time_seconds', 'ambient_temp_C', 'refrigerant_temp_C', 'ambient_rh_pct', 
+             'exhaust_temp_C', 'exhaust_rh_pct', 'water_level_L', 'current_A'].includes(mappedField)) {
+          data[mappedField] = !isNaN(Number(value)) && value !== '' ? Number(value) : null;
+        }
+        // Parse integer values
+        else if (['collector_ls1', 'compressor_on', 'eev_position'].includes(mappedField)) {
+          data[mappedField] = !isNaN(Number(value)) && value !== '' ? Math.round(Number(value)) : null;
+        }
+        // Parse boolean values (1/0 from Node-RED)
+        else if (['treating_water', 'serving_water', 'producing_water', 'full_tank', 
+                  'disinfecting', 'frost_identified', 'defrosting'].includes(mappedField)) {
+          data[mappedField] = Number(value) === 1;
+        }
+        else {
+          data[header] = value;
+        }
       }
     }
 
@@ -125,46 +159,47 @@ function parseCSVResponse(csvText: string) {
   }
 }
 
-// Fixed data processor - now uses correct machine ID
+// Enhanced data processor to handle all 18 fields
 function processRawData(data: any, machineId: string) {
   console.log('🔄 Processing raw data for machine:', machineId);
 
-  const waterLevel = data.water_level_L ? Number(data.water_level_L) : null;
-  
-  const convertToBoolean = (value: number | boolean | undefined): boolean => {
-    if (typeof value === 'boolean') return value;
-    return value === 1;
-  };
-
   const dataPoint = {
-    machine_id: machineId, // Use the actual machine ID, not UID_prefix
+    machine_id: machineId,
     timestamp_utc: data._time,
-    water_level_l: waterLevel,
+    // Core sensor data
+    time_seconds: data.time_seconds,
+    water_level_l: data.water_level_L,
+    ambient_temp_c: data.ambient_temp_C,
+    refrigerant_temp_c: data.refrigerant_temp_C,
+    ambient_rh_pct: data.ambient_rh_pct,
+    exhaust_temp_c: data.exhaust_temp_C,
+    exhaust_rh_pct: data.exhaust_rh_pct,
+    current_a: data.current_A,
+    // Control and status fields
+    collector_ls1: data.collector_ls1,
     compressor_on: data.compressor_on || 0,
-    ambient_temp_c: data.ambient_temp_C ? Number(data.ambient_temp_C) : null,
-    ambient_rh_pct: data.ambient_rh_pct ? Number(data.ambient_rh_pct) : null,
-    refrigerant_temp_c: data.refrigerant_temp_C ? Number(data.refrigerant_temp_C) : null,
-    exhaust_temp_c: data.exhaust_temp_C ? Number(data.exhaust_temp_C) : null,
-    current_a: data.current_A ? Number(data.current_A) : null,
-    treating_water: convertToBoolean(data.treating_water),
-    serving_water: convertToBoolean(data.serving_water),
-    producing_water: convertToBoolean(data.producing_water),
-    full_tank: convertToBoolean(data.full_tank),
-    disinfecting: convertToBoolean(data.disinfecting),
-    collector_ls1: data.collector_ls1 ? Number(data.collector_ls1) : null,
+    eev_position: data.eev_position,
+    // Boolean status fields
+    treating_water: data.treating_water || false,
+    serving_water: data.serving_water || false,
+    producing_water: data.producing_water || false,
+    full_tank: data.full_tank || false,
+    disinfecting: data.disinfecting || false,
+    frost_identified: data.frost_identified || false,
+    defrosting: data.defrosting || false,
   };
 
-  console.log('✅ Processed data point:', dataPoint);
+  console.log('✅ Processed data point with all 18 fields:', dataPoint);
   return dataPoint;
 }
 
-// Store data in Supabase - now uses dynamic machine ID
+// Store data in Supabase
 async function storeDataPoint(supabase: any, dataPoint: any, waterLevel: number | null) {
   try {
     const { data: existingData } = await supabase
       .from('raw_machine_data')
       .select('id')
-      .eq('machine_id', dataPoint.machine_id) // Use the dynamic machine_id from dataPoint
+      .eq('machine_id', dataPoint.machine_id)
       .eq('timestamp_utc', dataPoint.timestamp_utc)
       .maybeSingle();
 
@@ -176,7 +211,7 @@ async function storeDataPoint(supabase: any, dataPoint: any, waterLevel: number 
       if (insertError) {
         console.error('Error storing data in Supabase:', insertError);
       } else {
-        console.log('Successfully stored new data point for machine:', dataPoint.machine_id, 'with water level:', waterLevel);
+        console.log('Successfully stored new data point for machine:', dataPoint.machine_id, 'with all sensor data');
       }
     } else {
       console.log('Data point already exists, skipping insert');
@@ -186,7 +221,7 @@ async function storeDataPoint(supabase: any, dataPoint: any, waterLevel: number 
   }
 }
 
-// Build response
+// Build response with enhanced debug info
 function buildResponse(data: any) {
   console.log('🏗️ Building response from data:', data);
   
@@ -196,24 +231,28 @@ function buildResponse(data: any) {
       _time: data._time,
       water_level_L: data.water_level_L,
       compressor_on: data.compressor_on || 0,
-      collector_ls1: data.collector_ls1 || null,
+      current_A: data.current_A,
+      collector_ls1: data.collector_ls1,
+      ambient_temp_C: data.ambient_temp_C,
+      refrigerant_temp_C: data.refrigerant_temp_C,
+      exhaust_temp_C: data.exhaust_temp_C,
+      frost_identified: data.frost_identified,
+      defrosting: data.defrosting,
     },
     debug: {
       originalData: data,
-      waterLevelPrecision: {
-        original: data.water_level_L,
-        returned: data.water_level_L
-      }
+      allFieldsCount: Object.keys(data).length,
+      parsedFields: Object.keys(data).filter(key => key !== '_time')
     }
   };
 
-  console.log('📤 Built response:', response);
+  console.log('📤 Built enhanced response with all available fields:', response);
   return response;
 }
 
 // Main serve function
 serve(async (req) => {
-  console.log('🚀 Edge Function get-machine-data invoked:', req.method);
+  console.log('🚀 Enhanced Edge Function get-machine-data invoked:', req.method);
 
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -241,7 +280,7 @@ serve(async (req) => {
       console.log('⚠️ No UID provided, using default UID:', machineUID);
     }
 
-    console.log('🔍 Processing data for machine UID:', machineUID);
+    console.log('🔍 Processing enhanced data for machine UID:', machineUID);
 
     // Create Supabase client for machine lookup
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -275,7 +314,7 @@ serve(async (req) => {
     const INFLUXDB_ORG = Deno.env.get('INFLUXDB_ORG')!;
     console.log('🔧 Using InfluxDB organization:', INFLUXDB_ORG);
     
-    // Create Flux query with correct bucket and measurement names
+    // Create enhanced Flux query to get all 18 fields
     const query = `
       from(bucket: "KumulusData")
         |> range(start: -1h)
@@ -286,8 +325,8 @@ serve(async (req) => {
         |> limit(n: 1)
     `;
 
-    console.log('📊 Executing Flux query for UID:', machineUID);
-    console.log('🔍 Query details: bucket=KumulusData, measurement=awg_data_full');
+    console.log('📊 Executing enhanced Flux query for UID:', machineUID);
+    console.log('🔍 Query details: bucket=KumulusData, measurement=awg_data_full, retrieving all 18 sensor fields');
 
     // Execute query with proper CSV handling
     const queryApi = influxClient.getQueryApi(INFLUXDB_ORG);
@@ -327,7 +366,7 @@ serve(async (req) => {
       );
     }
 
-    // Parse and process the data
+    // Parse and process the enhanced data
     const parsedData = parseCSVResponse(queryResult);
     
     if (!parsedData) {
@@ -344,20 +383,23 @@ serve(async (req) => {
       );
     }
 
-    console.log('🔄 Processing data point:', parsedData._time);
+    console.log('🔄 Processing enhanced data point:', parsedData._time);
     console.log('💧 Water level:', parsedData.water_level_L);
     console.log('⚡ Compressor:', parsedData.compressor_on);
+    console.log('🔌 Current:', parsedData.current_A);
+    console.log('❄️ Frost identified:', parsedData.frost_identified);
+    console.log('🧊 Defrosting:', parsedData.defrosting);
     
-    // Process the raw data using the correct machine ID
+    // Process the raw data using the correct machine ID with all 18 fields
     const processedData = processRawData(parsedData, machineId);
-    console.log('⚙️ Processed data:', processedData);
+    console.log('⚙️ Processed enhanced data with all sensor fields:', processedData);
 
-    // Store data in Supabase with correct machine ID
+    // Store enhanced data in Supabase
     await storeDataPoint(supabase, processedData, parsedData.water_level_L);
     
-    // Build and return response
+    // Build and return enhanced response
     const response = buildResponse(parsedData);
-    console.log('📤 Returning response for UID:', machineUID, 'machine ID:', machineId, 'with water level:', parsedData.water_level_L);
+    console.log('📤 Returning enhanced response for UID:', machineUID, 'machine ID:', machineId, 'with all sensor data');
     
     return new Response(
       JSON.stringify(response),
@@ -368,7 +410,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('❌ Edge Function error:', error);
+    console.error('❌ Enhanced Edge Function error:', error);
     return new Response(
       JSON.stringify({ 
         status: 'error', 
