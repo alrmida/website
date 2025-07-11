@@ -7,7 +7,8 @@ import MachineManagement from './admin/MachineManagement';
 import InvitationManagement from './admin/InvitationManagement';
 import RawDataManagement from './admin/RawDataManagement';
 import AdminDataPanel from './admin/AdminDataPanel';
-import { Users, Settings, Mail, Database, Activity } from 'lucide-react';
+import ClientDashboard from './ClientDashboard';
+import { Users, Settings, Mail, Database, Activity, Monitor } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMachineData } from '@/hooks/useMachineData';
 import { supabase } from '@/integrations/supabase/client';
@@ -121,6 +122,10 @@ const AdminDashboard = () => {
               <Settings className="h-4 w-4" />
               <span>Machines</span>
             </TabsTrigger>
+            <TabsTrigger value="dashboard" className="flex items-center space-x-2">
+              <Monitor className="h-4 w-4" />
+              <span>Machine Dashboard</span>
+            </TabsTrigger>
             <TabsTrigger value="invitations" className="flex items-center space-x-2">
               <Mail className="h-4 w-4" />
               <span>Invitations</span>
@@ -149,6 +154,18 @@ const AdminDashboard = () => {
               loading={machinesLoading}
               onRefresh={handleRefresh}
             />
+          </TabsContent>
+
+          <TabsContent value="dashboard">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                Machine Dashboard View
+              </h2>
+              <p className="text-gray-600 dark:text-gray-300 mb-6">
+                This is the same view that clients and commercial users see when they access the machine dashboard.
+              </p>
+              <ClientDashboard />
+            </div>
           </TabsContent>
 
           <TabsContent value="invitations">
