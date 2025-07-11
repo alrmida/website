@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -71,25 +70,41 @@ async function createInfluxClient() {
   }
 }
 
-// Enhanced CSV parser to handle all 18 Node-RED fields
+// Enhanced CSV parser to handle all 18 Node-RED fields with better error handling
 function parseCSVResponse(csvText: string) {
-  console.log('🔍 Parsing CSV response (first 200 chars):', csvText.substring(0, 200));
+  console.log('🔍 Parsing CSV response (full text):', csvText);
   
   try {
-    const lines = csvText.trim().split('\n');
+    const lines = csvText.trim().split('\n').filter(line => line.trim() !== '');
+    console.log('📝 CSV lines found:', lines.length);
+    
     if (lines.length < 2) {
-      console.log('⚠️ No data found in CSV response');
+      console.log('⚠️ No data found in CSV response - need at least header + data row');
       return null;
     }
 
-    const headers = lines[0].split(',').map(h => h.trim().replace(/\r$/, ''));
-    const dataRow = lines[1].split(',').map(d => d.trim().replace(/\r$/, ''));
+    // Handle potential BOM and clean headers
+    const headerLine = lines[0].replace(/^\uFEFF/, '');
+    const headers = headerLine.split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+    
+    // Find the data line (skip annotation lines that start with #)
+    const dataLine = lines.find(line => !line.startsWith('#') && line !== headerLine);
+    
+    if (!dataLine) {
+      console.log('⚠️ No data line found in CSV response');
+      return null;
+    }
+    
+    const dataRow = dataLine.split(',').map(d => d.trim().replace(/^"|"$/g, ''));
     
     console.log('📊 CSV headers:', headers);
     console.log('📋 Data row:', dataRow);
+    console.log('📏 Headers length:', headers.length, 'Data length:', dataRow.length);
     
     if (dataRow.length !== headers.length) {
       console.error('❌ CSV parsing error: header/data length mismatch');
+      console.error('Headers:', headers);
+      console.error('Data:', dataRow);
       return null;
     }
 
@@ -98,8 +113,14 @@ function parseCSVResponse(csvText: string) {
       const header = headers[i].trim();
       const value = dataRow[i].trim();
       
+      console.log(`🔍 Processing field ${i}: "${header}" = "${value}"`);
+      
       if (header === '_time') {
         data[header] = value;
+      } else if (value === '' || value === 'null' || value === 'NULL') {
+        // Handle empty/null values
+        data[header] = null;
+        console.log(`⚠️ Null value for ${header}`);
       } else {
         // Map all InfluxDB field names to our expected format
         const fieldMapping: { [key: string]: string } = {
@@ -125,22 +146,34 @@ function parseCSVResponse(csvText: string) {
 
         const mappedField = fieldMapping[header] || header;
         
-        // Parse numeric values
+        // Parse numeric values with better validation
         if (['time_seconds', 'ambient_temp_C', 'refrigerant_temp_C', 'ambient_rh_pct', 
              'exhaust_temp_C', 'exhaust_rh_pct', 'water_level_L', 'current_A'].includes(mappedField)) {
-          data[mappedField] = !isNaN(Number(value)) && value !== '' ? Number(value) : null;
+          const numValue = parseFloat(value);
+          data[mappedField] = !isNaN(numValue) ? numValue : null;
+          console.log(`📊 Numeric field ${mappedField}: ${value} -> ${data[mappedField]}`);
         }
         // Parse integer values
         else if (['collector_ls1', 'compressor_on', 'eev_position'].includes(mappedField)) {
-          data[mappedField] = !isNaN(Number(value)) && value !== '' ? Math.round(Number(value)) : null;
+          const intValue = parseInt(value);
+          data[mappedField] = !isNaN(intValue) ? intValue : null;
+          console.log(`🔢 Integer field ${mappedField}: ${value} -> ${data[mappedField]}`);
         }
-        // Parse boolean values (1/0 from Node-RED)
+        // Parse boolean values (handle both 1/0 and true/false)
         else if (['treating_water', 'serving_water', 'producing_water', 'full_tank', 
                   'disinfecting', 'frost_identified', 'defrosting'].includes(mappedField)) {
-          data[mappedField] = Number(value) === 1;
+          if (value === '1' || value.toLowerCase() === 'true') {
+            data[mappedField] = true;
+          } else if (value === '0' || value.toLowerCase() === 'false') {
+            data[mappedField] = false;
+          } else {
+            data[mappedField] = null;
+          }
+          console.log(`✅ Boolean field ${mappedField}: ${value} -> ${data[mappedField]}`);
         }
         else {
           data[header] = value;
+          console.log(`📝 String field ${header}: ${value}`);
         }
       }
     }
@@ -152,9 +185,15 @@ function parseCSVResponse(csvText: string) {
       return null;
     }
 
+    // Validate that we have essential fields
+    if (data.water_level_L === null || data.water_level_L === undefined) {
+      console.log('⚠️ No water_level_L found, checking if data is valid');
+    }
+
     return data;
   } catch (error) {
     console.error('❌ CSV parsing error:', error);
+    console.error('❌ CSV text that failed to parse:', csvText);
     return null;
   }
 }
@@ -236,13 +275,18 @@ function buildResponse(data: any) {
       ambient_temp_C: data.ambient_temp_C,
       refrigerant_temp_C: data.refrigerant_temp_C,
       exhaust_temp_C: data.exhaust_temp_C,
+      exhaust_rh_pct: data.exhaust_rh_pct,
       frost_identified: data.frost_identified,
       defrosting: data.defrosting,
+      eev_position: data.eev_position,
+      time_seconds: data.time_seconds,
     },
     debug: {
       originalData: data,
       allFieldsCount: Object.keys(data).length,
-      parsedFields: Object.keys(data).filter(key => key !== '_time')
+      parsedFields: Object.keys(data).filter(key => key !== '_time'),
+      waterLevel: data.water_level_L,
+      compressorStatus: data.compressor_on
     }
   };
 
