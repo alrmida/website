@@ -8,6 +8,7 @@ import MetricsCards from './MetricsCards';
 import ProductionAnalytics from './ProductionAnalytics';
 import DashboardFooter from './DashboardFooter';
 import ResetMetricsButton from './ResetMetricsButton';
+import DataPipelineMonitor from './DataPipelineMonitor';
 import { MachineWithClient } from '@/types/machine';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDashboardData } from '@/hooks/useDashboardData';
@@ -132,8 +133,15 @@ const ClientDashboard = () => {
           selectedMachine={selectedMachine}
         />
 
+        {/* Data Pipeline Monitor - Show for kumulus personnel to track restoration progress */}
+        {profile?.role === 'kumulus_personnel' && (
+          <div className="mb-6">
+            <DataPipelineMonitor selectedMachine={selectedMachine} />
+          </div>
+        )}
+
         {/* Reset Metrics Button - Show for commercial users */}
-        {selectedMachine && profile?.role === 'commercial' && (
+        {selectedMachine && profile?.role === 'kumulus_personnel' && (
           <div className="mb-6 flex justify-end">
             <ResetMetricsButton 
               machineId={selectedMachine.machine_id}
@@ -143,7 +151,7 @@ const ClientDashboard = () => {
         )}
 
         {/* Machine Info and Water Tank - Show for commercial users only */}
-        {selectedMachine && profile?.role === 'commercial' && (
+        {selectedMachine && profile?.role === 'kumulus_personnel' && (
           <MachineInfo
             machineId={selectedMachine.machine_id}
             liveData={processedLiveData}

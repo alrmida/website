@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { MachineWithClient, hasLiveDataCapability } from '@/types/machine';
 
 interface LiveMachineData {
@@ -59,11 +60,11 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
 
   const fetchData = async () => {
     try {
-      console.log('Fetching machine data for:', selectedMachine?.machine_id);
+      console.log('🔍 [Phase 1] Fetching machine data directly from Supabase for:', selectedMachine?.machine_id);
       
       // If machine doesn't have live data capability, return offline status
       if (!canFetchLiveData) {
-        console.log('Machine does not have live data capability');
+        console.log('⚠️ Machine does not have live data capability');
         setData({
           waterLevel: 0,
           status: 'Offline',
@@ -79,62 +80,25 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
         return;
       }
 
-      console.log('Fetching live data for machine with UID:', selectedMachine.microcontroller_uid);
+      console.log('📊 [Phase 1] Querying raw_machine_data table for machine:', selectedMachine.machine_id);
       
-      // Use GET request to the edge function for live data with UID parameter
-      const response = await fetch(
-        `https://dolkcmipdzqrtpaflvaf.supabase.co/functions/v1/get-machine-data?uid=${selectedMachine.microcontroller_uid}`,
-        {
-          method: 'GET',
-          headers: {
-            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRvbGtjbWlwZHpxcnRwYWZsdmFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg4OTY2MDUsImV4cCI6MjA2NDQ3MjYwNX0.ezGW3OsanYsDSHireReMkeV_sEs3HzyfATzGLKHfQCc',
-            'Accept': 'application/json',
-          },
-        }
-      );
+      // Query Supabase directly for the most recent machine data
+      const { data: rawData, error: queryError } = await supabase
+        .from('raw_machine_data')
+        .select('*')
+        .eq('machine_id', selectedMachine.machine_id)
+        .gte('timestamp_utc', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Last 24 hours
+        .order('timestamp_utc', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      console.log('Response status:', response.status);
-      
-      if (!response.ok) {
-        throw new Error(`Edge Function returned a non-2xx status code: ${response.status}`);
+      if (queryError) {
+        console.error('❌ [Phase 1] Supabase query error:', queryError);
+        throw new Error(`Database query failed: ${queryError.message}`);
       }
 
-      const result = await response.json();
-      console.log('Received live data:', result);
-
-      // Handle the response format
-      if (result.status === 'ok' && result.data) {
-        const machineData = result.data;
-        
-        // Calculate data age
-        const dataTime = new Date(machineData._time);
-        const now = new Date();
-        const dataAge = now.getTime() - dataTime.getTime();
-
-        // Get machine data
-        const waterLevel = machineData.water_level_L || 0;
-        const compressorOn = machineData.compressor_on || 0;
-        
-        // Calculate machine status and online state
-        const { status, isOnline } = calculateMachineStatus(waterLevel, compressorOn, dataAge);
-
-        const processedData = {
-          waterLevel: waterLevel,
-          status: status,
-          lastUpdated: machineData._time,
-          dataAge: dataAge,
-          compressorOn: compressorOn,
-          isOnline: isOnline,
-          lastConnection: isOnline ? machineData._time : data.lastConnection || machineData._time,
-          dataSource: 'live' as const
-        };
-
-        console.log('Processed live machine data:', processedData);
-        setData(processedData);
-        setError(null);
-      } else if (result.status === 'no_data') {
-        // Handle no data case - machine is disconnected
-        console.log('No recent data available for machine');
+      if (!rawData) {
+        console.log('⚠️ [Phase 1] No recent data found in raw_machine_data for machine:', selectedMachine.machine_id);
         setData({
           waterLevel: 0,
           status: 'Disconnected',
@@ -146,12 +110,61 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
           dataSource: 'live'
         });
         setError(null);
-      } else {
-        throw new Error('Invalid response format from edge function');
+        setIsLoading(false);
+        return;
       }
+
+      console.log('✅ [Phase 1] Found machine data from Supabase:', {
+        timestamp: rawData.timestamp_utc,
+        water_level: rawData.water_level_l,
+        compressor: rawData.compressor_on,
+        machine_id: rawData.machine_id
+      });
+
+      // Calculate data age
+      const dataTime = new Date(rawData.timestamp_utc);
+      const now = new Date();
+      const dataAge = now.getTime() - dataTime.getTime();
+
+      // Get machine data from all 18 sensor fields
+      const waterLevel = rawData.water_level_l || 0;
+      const compressorOn = rawData.compressor_on || 0;
+      
+      console.log('📊 [Phase 1] Processing sensor data:', {
+        waterLevel,
+        compressorOn,
+        dataAge: Math.round(dataAge / 1000) + 's',
+        ambient_temp: rawData.ambient_temp_c,
+        current: rawData.current_a
+      });
+      
+      // Calculate machine status and online state
+      const { status, isOnline } = calculateMachineStatus(waterLevel, compressorOn, dataAge);
+
+      const processedData = {
+        waterLevel: waterLevel,
+        status: status,
+        lastUpdated: rawData.timestamp_utc,
+        dataAge: dataAge,
+        compressorOn: compressorOn,
+        isOnline: isOnline,
+        lastConnection: isOnline ? rawData.timestamp_utc : data.lastConnection || rawData.timestamp_utc,
+        dataSource: 'live' as const
+      };
+
+      console.log('✅ [Phase 1] Processed machine data from direct Supabase query:', {
+        waterLevel: processedData.waterLevel,
+        status: processedData.status,
+        isOnline: processedData.isOnline,
+        dataAge: Math.round(processedData.dataAge / 1000) + 's'
+      });
+      
+      setData(processedData);
+      setError(null);
+
     } catch (err) {
-      console.error('Error fetching machine data:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.error('❌ [Phase 1] Error fetching machine data from Supabase:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown database error';
       setError(errorMessage);
       
       // Set disconnected state when there's an error - show 0% water level
@@ -171,15 +184,21 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
   };
 
   useEffect(() => {
+    console.log('🚀 [Phase 1] Setting up direct Supabase data fetching for machine:', selectedMachine?.machine_id);
+    
     // Initial fetch
     fetchData();
 
     // Only set up polling for machines with live data capability
     if (canFetchLiveData) {
+      console.log('⏰ [Phase 1] Setting up 10-second polling for direct Supabase queries');
       const interval = setInterval(fetchData, 10000);
-      return () => clearInterval(interval);
+      return () => {
+        console.log('🛑 [Phase 1] Cleaning up polling interval');
+        clearInterval(interval);
+      };
     }
-  }, [selectedMachine?.id, selectedMachine?.microcontroller_uid, canFetchLiveData]);
+  }, [selectedMachine?.id, selectedMachine?.machine_id, canFetchLiveData]);
 
   return { data, isLoading, error, refetch: fetchData };
 };
