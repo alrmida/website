@@ -323,7 +323,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                   className="bg-gray-50"
                   placeholder="KU001619000001"
                 />
-                <Lightbulb className="w-4 h-4 text-yellow-500" title="Auto-generated from model and number" />
+                <Lightbulb className="w-4 h-4 text-yellow-500" />
               </div>
             </div>
           </div>
