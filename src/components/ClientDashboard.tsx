@@ -134,14 +134,14 @@ const ClientDashboard = () => {
         />
 
         {/* Data Pipeline Monitor - Show for kumulus personnel to track restoration progress */}
-        {profile?.role === 'kumulus_personnel' && (
+        {profile?.role === 'commercial' && (
           <div className="mb-6">
             <DataPipelineMonitor selectedMachine={selectedMachine} />
           </div>
         )}
 
         {/* Reset Metrics Button - Show for commercial users */}
-        {selectedMachine && profile?.role === 'kumulus_personnel' && (
+        {selectedMachine && profile?.role === 'commercial' && (
           <div className="mb-6 flex justify-end">
             <ResetMetricsButton 
               machineId={selectedMachine.machine_id}
@@ -151,7 +151,7 @@ const ClientDashboard = () => {
         )}
 
         {/* Machine Info and Water Tank - Show for commercial users only */}
-        {selectedMachine && profile?.role === 'kumulus_personnel' && (
+        {selectedMachine && profile?.role === 'commercial' && (
           <MachineInfo
             machineId={selectedMachine.machine_id}
             liveData={processedLiveData}
