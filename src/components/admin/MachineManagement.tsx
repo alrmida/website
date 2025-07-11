@@ -228,6 +228,56 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
     }
   };
 
+  const updateMachineId = async (machineId: number, newId: string) => {
+    try {
+      console.log('Updating machine ID from database id:', machineId, 'to new machine_id:', newId);
+      
+      const { error } = await supabase
+        .from('machines')
+        .update({ 
+          machine_id: newId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', machineId);
+
+      if (error) {
+        console.error('Update machine ID error:', error);
+        throw error;
+      }
+
+      console.log('Machine ID updated successfully');
+
+      toast({
+        title: 'Success',
+        description: `Machine ID updated to ${newId}`,
+      });
+      
+      onRefresh();
+    } catch (error: any) {
+      console.error('Error updating machine ID:', error);
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Fix the specific machine ID from 79 to 97
+  useEffect(() => {
+    const fixMachineId = async () => {
+      const machineToFix = machines.find(m => m.machine_id === 'KU001619000079');
+      if (machineToFix) {
+        console.log('Found machine with ID 79, updating to 97...');
+        await updateMachineId(machineToFix.id, 'KU001619000097');
+      }
+    };
+
+    if (machines.length > 0) {
+      fixMachineId();
+    }
+  }, [machines]);
+
   const deleteMachine = async (id: number) => {
     if (!confirm('Are you sure you want to delete this machine?')) {
       return;
