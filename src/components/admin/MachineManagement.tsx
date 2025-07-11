@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,9 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, Plus, Pencil, Wifi, WifiOff } from 'lucide-react';
+import { Trash2, Plus, Pencil, Wifi, WifiOff, Lightbulb } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { MachineWithClient, MachineFormData, isValidMachineId, isValidMicrocontrollerUID, getDisplayModelName, getOperatingSince, hasLiveDataCapability } from '@/types/machine';
+import { MachineWithClient, MachineFormData, isValidMachineId, isValidMicrocontrollerUID, getDisplayModelName, getOperatingSince, hasLiveDataCapability, generateMachineId } from '@/types/machine';
 import { Profile } from './types';
 
 interface MachineManagementProps {
@@ -23,6 +22,7 @@ interface MachineManagementProps {
 // Extended form data to include client assignment
 interface ExtendedMachineFormData extends MachineFormData {
   client_id: string;
+  machine_number: number;
 }
 
 const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: MachineManagementProps) => {
@@ -35,11 +35,12 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
     location: '',
     purchase_date: '',
     microcontroller_uid: '',
-    client_id: 'unassigned'
+    client_id: 'unassigned',
+    machine_number: 1
   });
 
   const [editingMachine, setEditingMachine] = useState<MachineWithClient | null>(null);
-  const [editMachineData, setEditMachineData] = useState<Omit<ExtendedMachineFormData, 'machine_id'>>({
+  const [editMachineData, setEditMachineData] = useState<Omit<ExtendedMachineFormData, 'machine_id' | 'machine_number'>>({
     machine_model: '',
     name: '',
     location: '',
@@ -51,13 +52,25 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
   // Get client profiles only
   const clientProfiles = profiles.filter(p => p.role === 'client');
 
+  // Generate machine ID when model or number changes
+  const generateIdFromModelAndNumber = () => {
+    if (newMachine.machine_model && newMachine.machine_number) {
+      try {
+        const generatedId = generateMachineId(newMachine.machine_model, newMachine.machine_number);
+        setNewMachine(prev => ({ ...prev, machine_id: generatedId }));
+      } catch (error) {
+        console.error('Error generating machine ID:', error);
+      }
+    }
+  };
+
   const validateMachineForm = (data: ExtendedMachineFormData): string | null => {
-    if (!data.machine_id.trim()) {
-      return 'Machine ID is required';
+    if (!data.machine_model.trim()) {
+      return 'Machine model is required';
     }
     
-    if (!isValidMachineId(data.machine_id)) {
-      return 'Machine ID must follow format: KU + 12 digits (e.g., KU001619000079)';
+    if (!data.machine_number || data.machine_number < 1) {
+      return 'Machine number must be a positive integer';
     }
     
     if (!data.name.trim()) {
@@ -89,7 +102,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
         machine_id: newMachine.machine_id.trim(),
         name: newMachine.name.trim(),
         location: newMachine.location.trim() || null,
-        machine_model: newMachine.machine_model.trim() || null,
+        machine_model: newMachine.machine_model.trim(),
         purchase_date: newMachine.purchase_date || null,
         microcontroller_uid: newMachine.microcontroller_uid.trim() || null,
         client_id: newMachine.client_id === 'unassigned' ? null : newMachine.client_id,
@@ -122,7 +135,8 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
         location: '', 
         purchase_date: '',
         microcontroller_uid: '',
-        client_id: 'unassigned'
+        client_id: 'unassigned',
+        machine_number: 1
       });
       onRefresh();
     } catch (error: any) {
@@ -263,28 +277,54 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
           <CardTitle>Add New Machine</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="machineId">Machine ID *</Label>
-              <Input
-                id="machineId"
-                value={newMachine.machine_id}
-                onChange={(e) => setNewMachine({ ...newMachine, machine_id: e.target.value })}
-                placeholder="KU001619000079"
-                className={!isValidMachineId(newMachine.machine_id) && newMachine.machine_id ? 'border-red-500' : ''}
-              />
-              {newMachine.machine_id && !isValidMachineId(newMachine.machine_id) && (
-                <p className="text-sm text-red-500">Format: KU + 12 digits</p>
-              )}
+              <Label htmlFor="machineModel">Model *</Label>
+              <Select
+                value={newMachine.machine_model}
+                onValueChange={(value) => {
+                  setNewMachine({ ...newMachine, machine_model: value });
+                  // Auto-generate ID when model changes
+                  setTimeout(generateIdFromModelAndNumber, 100);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select model" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Amphore">Amphore</SelectItem>
+                  <SelectItem value="BoKs">BoKs</SelectItem>
+                  <SelectItem value="Water Dispenser">Water Dispenser</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="machineModel">Model</Label>
+              <Label htmlFor="machineNumber">Machine Number *</Label>
               <Input
-                id="machineModel"
-                value={newMachine.machine_model}
-                onChange={(e) => setNewMachine({ ...newMachine, machine_model: e.target.value })}
-                placeholder="Amphore"
+                id="machineNumber"
+                type="number"
+                min="1"
+                value={newMachine.machine_number}
+                onChange={(e) => {
+                  setNewMachine({ ...newMachine, machine_number: parseInt(e.target.value) || 1 });
+                  // Auto-generate ID when number changes
+                  setTimeout(generateIdFromModelAndNumber, 100);
+                }}
+                placeholder="1"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="generatedId">Generated ID</Label>
+              <div className="flex items-center space-x-2">
+                <Input
+                  id="generatedId"
+                  value={newMachine.machine_id}
+                  readOnly
+                  className="bg-gray-50"
+                  placeholder="KU001619000001"
+                />
+                <Lightbulb className="w-4 h-4 text-yellow-500" title="Auto-generated from model and number" />
+              </div>
             </div>
           </div>
 
@@ -300,7 +340,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
             {newMachine.microcontroller_uid && !isValidMicrocontrollerUID(newMachine.microcontroller_uid) && (
               <p className="text-sm text-red-500">Must be 24 hexadecimal characters</p>
             )}
-            <p className="text-sm text-gray-500">Optional: Required for live data functionality</p>
+            <p className="text-sm text-gray-500">Required for live data functionality</p>
           </div>
           
           <div className="grid grid-cols-2 gap-4">
@@ -357,7 +397,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
 
           <Button 
             onClick={addMachine} 
-            disabled={loading || !newMachine.machine_id || !newMachine.name}
+            disabled={loading || !newMachine.machine_model || !newMachine.name || !newMachine.machine_number}
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Machine
@@ -374,12 +414,19 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="editMachineModel">Model</Label>
-                <Input
-                  id="editMachineModel"
+                <Select
                   value={editMachineData.machine_model}
-                  onChange={(e) => setEditMachineData({ ...editMachineData, machine_model: e.target.value })}
-                  placeholder="Amphore"
-                />
+                  onValueChange={(value) => setEditMachineData({ ...editMachineData, machine_model: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Amphore">Amphore</SelectItem>
+                    <SelectItem value="BoKs">BoKs</SelectItem>
+                    <SelectItem value="Water Dispenser">Water Dispenser</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="editMachineName">Owner *</Label>
@@ -404,7 +451,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
               {editMachineData.microcontroller_uid && !isValidMicrocontrollerUID(editMachineData.microcontroller_uid) && (
                 <p className="text-sm text-red-500">Must be 24 hexadecimal characters</p>
               )}
-              <p className="text-sm text-gray-500">Optional: Required for live data functionality</p>
+              <p className="text-sm text-gray-500">Required for live data functionality</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

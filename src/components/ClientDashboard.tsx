@@ -7,43 +7,22 @@ import MachineInfo from './MachineInfo';
 import MetricsCards from './MetricsCards';
 import ProductionAnalytics from './ProductionAnalytics';
 import DashboardFooter from './DashboardFooter';
-import ResetMetricsButton from './ResetMetricsButton';
-import DataPipelineMonitor from './DataPipelineMonitor';
 import { MachineWithClient } from '@/types/machine';
 import { useAuth } from '@/contexts/AuthContext';
-import { useDashboardData } from '@/hooks/useDashboardData';
-import { useLiveMachineData } from '@/hooks/useLiveMachineData';
-import { useSimpleWaterProduction } from '@/hooks/useSimpleWaterProduction';
+import { useSimpleMachineData } from '@/hooks/useSimpleMachineData';
 
 const ClientDashboard = () => {
   const { profile } = useAuth();
   const [selectedMachine, setSelectedMachine] = useState<MachineWithClient | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState('daily');
 
-  // Use the live machine data hook for real-time updates
-  const { data: liveData, isLoading: liveDataLoading } = useLiveMachineData(selectedMachine);
-
-  // Get dashboard data including charts data
-  const {
-    dailyProductionData,
-    monthlyProductionData,
-    statusData,
-    monthlyStatusData,
-    totalWaterProduced,
-    dataLoading,
-    dataError
-  } = useDashboardData(selectedMachine);
-
-  // Use the new simplified water production system
-  const { data: simpleProduction, isLoading: simpleProductionLoading, refetch: refetchSimpleProduction } = useSimpleWaterProduction(
-    selectedMachine?.machine_id, 
-    liveData?.waterLevel
-  );
+  // Use the new simple machine data hook
+  const { data: machineData, loading: dataLoading, error: dataError } = useSimpleMachineData(selectedMachine);
 
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        // Fetch the latest machine from the machines table with microcontroller_uid
+        // Fetch the first available machine
         const { data: machines, error: machinesError } = await supabase
           .from('machines')
           .select('*')
@@ -51,15 +30,13 @@ const ClientDashboard = () => {
 
         if (machinesError) {
           console.error('Error fetching machines:', machinesError);
-          throw machinesError;
+          return;
         }
 
         if (machines && machines.length > 0) {
           const initialMachine = machines[0];
           setSelectedMachine(initialMachine as MachineWithClient);
           console.log('Setting initial machine:', initialMachine);
-        } else {
-          console.warn('No machines found.');
         }
       } catch (error) {
         console.error('Error fetching initial data:', error);
@@ -69,58 +46,62 @@ const ClientDashboard = () => {
     fetchInitialData();
   }, []);
 
-  // Background water production tracking effect
-  useEffect(() => {
-    if (!selectedMachine?.machine_id || !liveData?.waterLevel) return;
-
-    console.log('🔄 Simple water production tracking active for machine:', selectedMachine.machine_id);
-    console.log('📊 Current total production:', simpleProduction.totalProduced);
-    console.log('💧 Current water level:', liveData.waterLevel);
-    console.log('📸 Last snapshot:', simpleProduction.lastSnapshot?.toISOString());
-    
-    // The useSimpleWaterProduction hook handles the automatic snapshots and calculations
-    
-  }, [selectedMachine?.machine_id, liveData?.waterLevel, simpleProduction.totalProduced]);
-
-  const handleMachineSelect = async (machine: MachineWithClient) => {
+  const handleMachineSelect = (machine: MachineWithClient) => {
     console.log('Selected machine:', machine);
     setSelectedMachine(machine);
   };
 
-  const handleRefresh = () => {
-    console.log('🔄 Manual refresh triggered - live data will auto-refresh');
-    // The useLiveMachineData hook handles refreshing automatically
-  };
-
-  const handleResetComplete = () => {
-    console.log('🔄 Metrics reset completed, refreshing data...');
-    refetchSimpleProduction();
-    // The other hooks will automatically refresh on next data fetch
-  };
-
-  // Convert live data structure to match the expected format
-  const processedLiveData = liveData ? {
-    lastUpdated: liveData.lastUpdated,
-    waterLevel: liveData.waterLevel,
-    ambient_temp_c: null, // Not available in live data structure
-    current_a: null, // Not available in live data structure
-    compressor_on: liveData.compressorOn,
-    // Add other properties as needed
-  } : null;
-
-  // Prepare data for MetricsCards component - use simple production data when available
+  // Prepare data for components
   const waterTank = {
-    currentLevel: liveData?.waterLevel || 0,
+    currentLevel: machineData?.waterLevel || 0,
     maxCapacity: 10.0,
-    percentage: Math.round(((liveData?.waterLevel || 0) / 10.0) * 100)
+    percentage: Math.round(((machineData?.waterLevel || 0) / 10.0) * 100)
   };
 
-  const machineStatus = liveData?.status || 'Loading...';
+  const machineStatus = machineData?.status || 'Loading...';
 
-  // Use simple production total if available and greater than 0, otherwise fall back to dashboard data
-  const displayTotalWaterProduced = simpleProduction.totalProduced > 0 
-    ? simpleProduction.totalProduced 
-    : totalWaterProduced;
+  // Simple production data for now (will be enhanced later)
+  const dailyProductionData = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (6 - i));
+    return {
+      date: date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+      production: Math.random() * 50 // Placeholder data
+    };
+  });
+
+  const monthlyProductionData = Array.from({ length: 3 }, (_, i) => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - (2 - i));
+    return {
+      month: date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }),
+      production: Math.random() * 1000 // Placeholder data
+    };
+  });
+
+  const statusData = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (6 - i));
+    return {
+      date: date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+      producing: Math.random() * 12,
+      idle: Math.random() * 8,
+      fullWater: Math.random() * 4,
+      disconnected: 0
+    };
+  });
+
+  const monthlyStatusData = Array.from({ length: 3 }, (_, i) => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - (2 - i));
+    return {
+      month: date.getMonth() < 10 ? `${date.getFullYear()}-0${date.getMonth() + 1}` : `${date.getFullYear()}-${date.getMonth() + 1}`,
+      producing: Math.random() * 300,
+      idle: Math.random() * 200,
+      fullWater: Math.random() * 100,
+      disconnected: Math.random() * 50
+    };
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -133,39 +114,35 @@ const ClientDashboard = () => {
           selectedMachine={selectedMachine}
         />
 
-        {/* Data Pipeline Monitor - Show for kumulus personnel to track restoration progress */}
-        {profile?.role === 'commercial' && (
-          <div className="mb-6">
-            <DataPipelineMonitor selectedMachine={selectedMachine} />
+        {/* Show error if data fetch fails */}
+        {dataError && (
+          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+            <p>Error fetching machine data: {dataError}</p>
           </div>
         )}
 
-        {/* Reset Metrics Button - Show for commercial users */}
-        {selectedMachine && profile?.role === 'commercial' && (
-          <div className="mb-6 flex justify-end">
-            <ResetMetricsButton 
-              machineId={selectedMachine.machine_id}
-              onResetComplete={handleResetComplete}
-            />
-          </div>
-        )}
-
-        {/* Machine Info and Water Tank - Show for commercial users only */}
+        {/* Machine Info - Show for commercial users only */}
         {selectedMachine && profile?.role === 'commercial' && (
           <MachineInfo
             machineId={selectedMachine.machine_id}
-            liveData={processedLiveData}
-            loading={liveDataLoading}
-            onRefresh={handleRefresh}
+            liveData={machineData ? {
+              lastUpdated: machineData.lastUpdate,
+              waterLevel: machineData.waterLevel,
+              ambient_temp_c: null,
+              current_a: null,
+              compressor_on: machineData.compressorOn,
+            } : null}
+            loading={dataLoading}
+            onRefresh={() => {}} // Will be handled by the hook
           />
         )}
 
-        {/* Metrics Cards Grid - Updated with simple production data and last snapshot timestamp */}
+        {/* Metrics Cards Grid */}
         <MetricsCards 
           waterTank={waterTank}
           machineStatus={machineStatus}
-          totalWaterProduced={displayTotalWaterProduced}
-          lastUpdate={simpleProduction.lastSnapshot}
+          totalWaterProduced={0} // Will be calculated properly later
+          lastUpdate={machineData?.lastUpdate ? new Date(machineData.lastUpdate) : null}
         />
 
         {/* Production Analytics - Charts and Visualizations */}
@@ -182,7 +159,13 @@ const ClientDashboard = () => {
       <DashboardFooter 
         profile={profile}
         selectedMachine={selectedMachine}
-        liveData={processedLiveData}
+        liveData={machineData ? {
+          lastUpdated: machineData.lastUpdate,
+          waterLevel: machineData.waterLevel,
+          ambient_temp_c: null,
+          current_a: null,
+          compressor_on: machineData.compressorOn,
+        } : null}
       />
     </div>
   );

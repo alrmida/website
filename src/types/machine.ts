@@ -31,9 +31,9 @@ export interface MachineFormData {
   microcontroller_uid: string;
 }
 
-// Validation function for machine IDs
+// Validation function for machine IDs - Updated to use 6 digits after 619
 export const isValidMachineId = (machineId: string): boolean => {
-  return /^KU\d{12}$/.test(machineId.trim());
+  return /^KU00[123]619\d{6}$/.test(machineId.trim());
 };
 
 // Validation function for microcontroller UIDs
@@ -41,22 +41,21 @@ export const isValidMicrocontrollerUID = (uid: string): boolean => {
   return /^[0-9A-Fa-f]{24}$/.test(uid.trim());
 };
 
-// Helper to get display model name (fallback logic)
+// Helper to get display model name based on machine ID pattern
 export const getDisplayModelName = (machine: DatabaseMachine): string => {
-  // Use database model if available, otherwise fallback to ID-based logic
+  // Use database model if available, otherwise infer from ID
   if (machine.machine_model) {
     return machine.machine_model;
   }
   
-  // Fallback logic for backwards compatibility
-  if (machine.machine_id === 'KU001619000079') return 'Amphore';
-  if (machine.machine_id.startsWith('KU0016190000')) return 'Amphore';
-  if (machine.machine_id.startsWith('KU0016191000')) return 'BoKs';
-  if (machine.machine_id.startsWith('KU0016192000')) return 'Dispenser';
+  // Infer model from machine ID pattern (6 digits after 619)
+  if (machine.machine_id.includes('001619')) return 'Amphore';
+  if (machine.machine_id.includes('002619')) return 'BoKs';
+  if (machine.machine_id.includes('003619')) return 'Water Dispenser';
   return 'Unknown';
 };
 
-// Helper to get operating since date (should come from purchase_date or created_at)
+// Helper to get operating since date
 export const getOperatingSince = (machine: DatabaseMachine): string => {
   if (machine.purchase_date) {
     return new Date(machine.purchase_date).toLocaleDateString('en-US', {
@@ -80,4 +79,25 @@ export const getOperatingSince = (machine: DatabaseMachine): string => {
 // Helper to check if machine has live data capability
 export const hasLiveDataCapability = (machine: DatabaseMachine): boolean => {
   return machine.microcontroller_uid !== null && machine.microcontroller_uid !== '';
+};
+
+// Helper to generate machine ID based on model and number
+export const generateMachineId = (model: string, machineNumber: number): string => {
+  let modelCode = '';
+  switch (model.toLowerCase()) {
+    case 'amphore':
+      modelCode = '001';
+      break;
+    case 'boks':
+      modelCode = '002';
+      break;
+    case 'water dispenser':
+      modelCode = '003';
+      break;
+    default:
+      throw new Error('Invalid model');
+  }
+  
+  const paddedNumber = machineNumber.toString().padStart(6, '0');
+  return `KU${modelCode}619${paddedNumber}`;
 };
