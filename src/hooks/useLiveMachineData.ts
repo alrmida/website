@@ -15,8 +15,9 @@ interface LiveMachineData {
 }
 
 function calculateMachineStatus(waterLevel: number, compressorOn: number, dataAge: number): { status: string, isOnline: boolean } {
-  // If no data for 60+ seconds, machine is disconnected/offline
-  if (dataAge > 60000) { // 60 seconds in milliseconds
+  // For simple_water_snapshots data, use a more lenient threshold (45 minutes)
+  // since this data is captured every 15-30 minutes, not real-time
+  if (dataAge > 2700000) { // 45 minutes in milliseconds
     return { status: 'Disconnected', isOnline: false };
   }
   
