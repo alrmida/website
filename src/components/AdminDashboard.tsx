@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DashboardHeader from './DashboardHeader';
@@ -6,7 +5,7 @@ import UserManagement from './admin/UserManagement';
 import MachineManagement from './admin/MachineManagement';
 import InvitationManagement from './admin/InvitationManagement';
 import RawDataManagement from './admin/RawDataManagement';
-import AdminDataPanel from './admin/AdminDataPanel';
+import { AdminDataPanel } from './admin/AdminDataPanel';
 import ClientDashboard from './ClientDashboard';
 import { Users, Settings, Mail, Database, Activity, Monitor } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';

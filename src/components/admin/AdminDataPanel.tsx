@@ -1,8 +1,8 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DataIngestionMonitor } from './DataIngestionMonitor';
-import { DataFlowDiagnostics } from './DataFlowDiagnostics';
+import DataIngestionMonitor from './DataIngestionMonitor';
+import DataFlowDiagnostics from './DataFlowDiagnostics';
 import { DataPipelineTest } from './DataPipelineTest';
 
 export const AdminDataPanel = () => {
