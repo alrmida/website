@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useRealTimeDataCollection } from '@/hooks/useRealTimeDataCollection';
-import { RealTimeDataTable } from './RealTimeDataTable';
+import RealTimeDataTable from './RealTimeDataTable';
 import { MachineWithClient } from '@/types/machine';
 
 interface WaterProductionMetricsProps {
@@ -107,7 +107,7 @@ export const WaterProductionMetrics = ({ selectedMachine }: WaterProductionMetri
             </p>
           </CardHeader>
           <CardContent>
-            <RealTimeDataTable data={collectedData.slice(0, 20)} />
+            <RealTimeDataTable />
           </CardContent>
         </Card>
       )}

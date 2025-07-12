@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,7 @@ import { Trash2, Plus, Edit, Save, X } from 'lucide-react';
 import { MachineWithClient, MachineFormData, generateMachineId, isValidMachineId, isValidMicrocontrollerUID } from '@/types/machine';
 import { useMachineData } from '@/hooks/useMachineData';
 
-export const MachineManagement = () => {
+const MachineManagement = () => {
   const { machines, loading, error, refetch } = useMachineData();
   const [editingMachine, setEditingMachine] = useState<MachineWithClient | null>(null);
   const [formData, setFormData] = useState<MachineFormData>({
@@ -326,3 +327,5 @@ export const MachineManagement = () => {
     </div>
   );
 };
+
+export default MachineManagement;
