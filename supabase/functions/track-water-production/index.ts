@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -116,24 +115,26 @@ async function fetchLatestDataFromInflux(): Promise<{ waterLevel: number; timest
   }
 
   try {
-    // Use a longer time range to check for data availability
+    console.log('🔍 Starting InfluxDB query for latest data...');
+    
+    // Use a shorter time range first to get the most recent data
     const query = `
       from(bucket: "${INFLUX_BUCKET}")
-        |> range(start: -6h)
+        |> range(start: -2h)
         |> filter(fn: (r) => r._measurement == "awg_data_full")
         |> filter(fn: (r) => r._field == "water_level_L")
         |> sort(columns: ["_time"], desc: true)
-        |> limit(n: 10)
+        |> limit(n: 1)
     `;
 
     const baseUrl = INFLUX_URL.replace(/\/+$/, '');
     const queryUrl = `${baseUrl}/api/v2/query?org=${encodeURIComponent(INFLUX_ORG)}`;
     
-    console.log('🔍 Enhanced debugging: Fetching data from InfluxDB...');
     console.log('🔗 Query URL:', queryUrl);
     console.log('📝 Query:', query);
+    console.log('⏰ Current time:', new Date().toISOString());
     
-    await logDataIngestion('INFO', 'Starting InfluxDB query', {
+    await logDataIngestion('INFO', 'Starting InfluxDB query for latest data', {
       influxQuery: query
     });
     
@@ -162,20 +163,55 @@ async function fetchLatestDataFromInflux(): Promise<{ waterLevel: number; timest
     console.log('📊 InfluxDB Response Analysis:');
     console.log(`   - Total lines: ${lines.length}`);
     console.log(`   - Response size: ${responseText.length} characters`);
+    console.log(`   - First few lines:`, lines.slice(0, 3));
     
     await logDataIngestion('INFO', 'InfluxDB query successful', {
       influxResponseSize: responseText.length
     });
     
     if (lines.length < 2) {
-      console.log('⚠️ No data found in InfluxDB response');
-      await logDataIngestion('WARNING', 'No data in InfluxDB response', {
-        influxResponseSize: responseText.length
+      console.log('⚠️ No data found in InfluxDB response - trying longer time range');
+      
+      // Try a longer time range if no recent data
+      const longerQuery = `
+        from(bucket: "${INFLUX_BUCKET}")
+          |> range(start: -24h)
+          |> filter(fn: (r) => r._measurement == "awg_data_full")
+          |> filter(fn: (r) => r._field == "water_level_L")
+          |> sort(columns: ["_time"], desc: true)
+          |> limit(n: 1)
+      `;
+      
+      const longerResponse = await fetch(queryUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token ${INFLUX_TOKEN}`,
+          'Content-Type': 'application/vnd.flux',
+          'Accept': 'application/csv',
+        },
+        body: longerQuery,
       });
-      return null;
+      
+      if (longerResponse.ok) {
+        const longerResponseText = await longerResponse.text();
+        const longerLines = longerResponseText.trim().split('\n');
+        console.log('📊 Extended search found:', longerLines.length, 'lines');
+        
+        if (longerLines.length >= 2) {
+          lines.length = 0;
+          lines.push(...longerLines);
+        }
+      }
+      
+      if (lines.length < 2) {
+        await logDataIngestion('WARNING', 'No data in InfluxDB response even with 24h range', {
+          influxResponseSize: responseText.length
+        });
+        return null;
+      }
     }
 
-    // Parse CSV response and analyze multiple data points
+    // Parse CSV response
     const headers = lines[0].split(',').map(h => h.trim());
     console.log('📋 Headers:', headers);
     
@@ -190,60 +226,39 @@ async function fetchLatestDataFromInflux(): Promise<{ waterLevel: number; timest
       return null;
     }
 
-    // Analyze all available data points
-    const dataPoints = [];
-    for (let i = 1; i < Math.min(lines.length, 6); i++) { // Check up to 5 data points
-      const dataRow = lines[i].split(',').map(d => d.trim());
-      const timestamp = dataRow[timeIndex];
-      const waterLevel = parseFloat(dataRow[valueIndex]);
-      
-      if (!isNaN(waterLevel)) {
-        const dataAge = Date.now() - new Date(timestamp).getTime();
-        const ageMinutes = Math.round(dataAge / 1000 / 60);
-        dataPoints.push({ timestamp, waterLevel, ageMinutes });
-        
-        console.log(`📍 Data point ${i}: ${waterLevel}L at ${timestamp} (${ageMinutes} min ago)`);
-      }
-    }
-
-    if (dataPoints.length === 0) {
+    // Get the latest data point
+    const dataRow = lines[1].split(',').map(d => d.trim());
+    const timestamp = dataRow[timeIndex];
+    const waterLevel = parseFloat(dataRow[valueIndex]);
+    
+    if (isNaN(waterLevel)) {
       console.error('❌ No valid water level data found');
       await logDataIngestion('ERROR', 'No valid water level data found');
       return null;
     }
 
-    // Use the most recent data point
-    const latestPoint = dataPoints[0];
-    const freshnessMinutes = latestPoint.ageMinutes;
+    const dataAge = Date.now() - new Date(timestamp).getTime();
+    const freshnessMinutes = Math.round(dataAge / 1000 / 60);
     
-    console.log('✅ Using latest data point:', latestPoint);
-    console.log(`🕒 Data freshness: ${freshnessMinutes} minutes old`);
+    console.log('✅ Latest data point:', { timestamp, waterLevel, freshnessMinutes });
     
-    // Enhanced freshness analysis
-    if (freshnessMinutes > 120) { // More than 2 hours
-      console.log('🚨 STALE DATA DETECTED - Data is very old!');
-      await logDataIngestion('WARNING', 'Stale data detected', {
-        dataTimestamp: latestPoint.timestamp,
-        freshnessMinutes,
-        errorDetails: `Data is ${freshnessMinutes} minutes old, indicating potential data ingestion issue`
-      });
-    } else if (freshnessMinutes > 30) {
-      console.log('⚠️ Data is getting old');
-      await logDataIngestion('WARNING', 'Data freshness concern', {
-        dataTimestamp: latestPoint.timestamp,
+    if (freshnessMinutes > 60) {
+      console.log('⚠️ Data is older than 1 hour');
+      await logDataIngestion('WARNING', 'Data is older than 1 hour', {
+        dataTimestamp: timestamp,
         freshnessMinutes
       });
     } else {
-      console.log('✅ Data is fresh');
+      console.log('✅ Data is relatively fresh');
       await logDataIngestion('SUCCESS', 'Fresh data retrieved', {
-        dataTimestamp: latestPoint.timestamp,
+        dataTimestamp: timestamp,
         freshnessMinutes
       });
     }
 
     return { 
-      waterLevel: latestPoint.waterLevel, 
-      timestamp: latestPoint.timestamp 
+      waterLevel, 
+      timestamp 
     };
 
   } catch (error) {
@@ -305,7 +320,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    console.log('🚀 Enhanced water production tracking with comprehensive debugging...');
+    console.log('🚀 Water production tracking started at:', new Date().toISOString());
     
     await logDataIngestion('INFO', 'Track water production function started');
 
@@ -325,14 +340,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { waterLevel, timestamp } = latestData;
     
-    if (!isDataFresh(timestamp)) {
-      console.log('⚠️ Data is too old, but continuing with enhanced monitoring');
-      await logDataIngestion('WARNING', 'Data is old but processing continues', {
-        dataTimestamp: timestamp,
-        freshnessMinutes: Math.round((Date.now() - new Date(timestamp).getTime()) / 1000 / 60)
-      });
-    }
-
     if (!waterLevel || waterLevel < 0) {
       console.log('⚠️ Invalid water level data:', waterLevel);
       await logDataIngestion('ERROR', 'Invalid water level data', {
@@ -347,8 +354,9 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    console.log(`📊 Processing enhanced data for machine ${MACHINE_ID}: ${waterLevel}L at ${timestamp}`);
+    console.log(`📊 Processing data for machine ${MACHINE_ID}: ${waterLevel}L at ${timestamp}`);
 
+    // Store the snapshot with enhanced error handling
     const { error: snapshotError } = await supabase
       .from('simple_water_snapshots')
       .insert({
@@ -364,7 +372,8 @@ const handler = async (req: Request): Promise<Response> => {
       });
       return new Response(JSON.stringify({ 
         status: 'error', 
-        message: 'Failed to store snapshot' 
+        message: 'Failed to store snapshot',
+        error: snapshotError.message
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -415,7 +424,7 @@ const handler = async (req: Request): Promise<Response> => {
     const timeDiff = new Date(currentSnapshot.timestamp_utc).getTime() - new Date(previousSnapshot.timestamp_utc).getTime();
     const timeDiffMinutes = timeDiff / (1000 * 60);
 
-    console.log(`🔍 Enhanced comparison:`, {
+    console.log(`🔍 Comparison:`, {
       current: currentSnapshot.water_level_l,
       previous: previousSnapshot.water_level_l,
       difference: waterLevelDiff,
@@ -537,7 +546,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
   } catch (error) {
-    console.error('💥 Unexpected error in enhanced track-water-production:', error);
+    console.error('💥 Unexpected error in track-water-production:', error);
     await logDataIngestion('ERROR', 'Unexpected error in track-water-production', {
       errorDetails: error instanceof Error ? error.message : 'Unknown error'
     });
