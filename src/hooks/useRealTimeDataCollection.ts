@@ -27,10 +27,9 @@ interface RawDataPoint {
   created_at: string;
 }
 
-const MACHINE_ID = 'KU001619000079';
 const MAX_LINES = 180; // 30 minutes worth of data (assuming 10-second intervals)
 
-export const useRealTimeDataCollection = () => {
+export const useRealTimeDataCollection = (machineId?: string) => {
   const [collectedData, setCollectedData] = useState<RawDataPoint[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isCollecting, setIsCollecting] = useState(false);
@@ -41,9 +40,14 @@ export const useRealTimeDataCollection = () => {
 
   // Start collecting enhanced data
   const startCollection = () => {
+    if (!machineId) {
+      console.log('⚠️ No machine ID provided to real-time data collection');
+      return;
+    }
+
     if (intervalRef.current) return; // Already collecting
 
-    console.log('🚀 Starting enhanced real-time data collection with all 18 sensor fields...');
+    console.log('🚀 Starting enhanced real-time data collection for machine:', machineId);
     setIsCollecting(true);
     
     // Reset tracking variables when starting fresh
@@ -65,17 +69,19 @@ export const useRealTimeDataCollection = () => {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
       setIsCollecting(false);
-      console.log('⏹️ Stopped enhanced real-time data collection');
+      console.log('⏹️ Stopped enhanced real-time data collection for machine:', machineId);
     }
   };
 
   // Fetch all new data points with enhanced sensor data
   const fetchNewDataPoints = async () => {
+    if (!machineId) return;
+
     try {
       let query = supabase
         .from('raw_machine_data')
         .select('*')
-        .eq('machine_id', MACHINE_ID)
+        .eq('machine_id', machineId)
         .order('timestamp_utc', { ascending: false });
 
       // If we have a last fetched timestamp, get records newer than that
@@ -94,11 +100,11 @@ export const useRealTimeDataCollection = () => {
       }
 
       if (!data || data.length === 0) {
-        console.log('📝 No new enhanced data points found');
+        console.log('📝 No new enhanced data points found for machine:', machineId);
         return;
       }
 
-      console.log(`📊 Fetched ${data.length} potential new enhanced data point(s) with all sensor fields`);
+      console.log(`📊 Fetched ${data.length} potential new enhanced data point(s) for machine:`, machineId);
       
       // Filter out duplicates using timestamp-based deduplication
       const newDataPoints = data.filter(item => {
@@ -159,6 +165,8 @@ export const useRealTimeDataCollection = () => {
 
   // Process the collected batch with enhanced data
   const processBatch = async (dataToProcess?: RawDataPoint[]) => {
+    if (!machineId) return;
+
     const batchData = dataToProcess || collectedData;
     
     if (batchData.length === 0) {
@@ -167,7 +175,7 @@ export const useRealTimeDataCollection = () => {
     }
 
     setIsProcessing(true);
-    console.log(`🔍 Processing enhanced batch of ${batchData.length} data points with all sensor fields...`);
+    console.log(`🔍 Processing enhanced batch of ${batchData.length} data points for machine:`, machineId);
     console.log(`📅 Enhanced batch timespan: ${batchData[batchData.length - 1]?.timestamp_utc} to ${batchData[0]?.timestamp_utc}`);
 
     try {
@@ -278,7 +286,7 @@ export const useRealTimeDataCollection = () => {
     const { data: lastMetrics } = await supabase
       .from('water_production_metrics')
       .select('total_water_produced, pump_cycles_count')
-      .eq('machine_id', MACHINE_ID)
+      .eq('machine_id', machineId)
       .order('calculation_period_end', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -294,7 +302,7 @@ export const useRealTimeDataCollection = () => {
     const { error } = await supabase
       .from('water_production_metrics')
       .insert([{
-        machine_id: MACHINE_ID,
+        machine_id: machineId,
         calculation_period_start: startTime.toISOString(),
         calculation_period_end: endTime.toISOString(),
         total_water_produced: newTotal,
@@ -326,9 +334,11 @@ export const useRealTimeDataCollection = () => {
 
   // Auto-start enhanced collection on mount
   useEffect(() => {
-    startCollection();
+    if (machineId) {
+      startCollection();
+    }
     return () => stopCollection();
-  }, []);
+  }, [machineId]);
 
   return {
     collectedData,

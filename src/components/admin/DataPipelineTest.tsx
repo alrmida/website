@@ -5,9 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-export const DataPipelineTest = () => {
+interface DataPipelineTestProps {
+  selectedMachineId?: string;
+}
+
+export const DataPipelineTest = ({ selectedMachineId }: DataPipelineTestProps) => {
   const [testing, setTesting] = useState(false);
   const [results, setResults] = useState<any>(null);
+
+  // Use provided machine ID or fall back to a default for testing
+  const machineId = selectedMachineId || 'KU001619000079';
 
   const testTrackWaterProduction = async () => {
     setTesting(true);
@@ -39,7 +46,7 @@ export const DataPipelineTest = () => {
       const { data: snapshots, error: snapshotError } = await supabase
         .from('simple_water_snapshots')
         .select('*')
-        .eq('machine_id', 'KU001619000079')
+        .eq('machine_id', machineId)
         .order('timestamp_utc', { ascending: false })
         .limit(5);
 
@@ -68,11 +75,11 @@ export const DataPipelineTest = () => {
       const { data: snapshots } = await supabase
         .from('simple_water_snapshots')
         .select('*')
-        .eq('machine_id', 'KU001619000079')
+        .eq('machine_id', machineId)
         .order('timestamp_utc', { ascending: false })
         .limit(1);
 
-      // Check raw_machine_data
+      // Check raw_machine_data with microcontroller UID
       const { data: rawData } = await supabase
         .from('raw_machine_data')
         .select('*')
@@ -90,6 +97,7 @@ export const DataPipelineTest = () => {
 
       setResults({
         freshness: {
+          machineId: machineId,
           latestSnapshot: snapshots?.[0],
           snapshotAgeMinutes: snapshotAge,
           latestRawData: rawData?.[0],
@@ -109,6 +117,7 @@ export const DataPipelineTest = () => {
     <Card className="w-full">
       <CardHeader>
         <CardTitle>Data Pipeline Testing</CardTitle>
+        <p className="text-sm text-gray-600">Testing for machine: {machineId}</p>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex gap-2">

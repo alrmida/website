@@ -28,10 +28,15 @@ const DashboardNotifications = ({ selectedMachine, dataError, dataLoading, liveD
     }
   };
 
+  // Only show notifications if we have a selected machine with live data capability
+  if (!selectedMachine?.microcontroller_uid) {
+    return null;
+  }
+
   return (
     <>
       {/* Show softer message for live data machine when disconnected */}
-      {dataError && selectedMachine?.machine_id === 'KU001619000079' && (
+      {dataError && (
         <div className="mb-4 p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded">
           <p><strong>Live Machine Status:</strong> No recent data received from the machine.</p>
           {liveData?.lastConnection && (
@@ -41,7 +46,7 @@ const DashboardNotifications = ({ selectedMachine, dataError, dataLoading, liveD
       )}
 
       {/* Show disconnection message with last connection time */}
-      {selectedMachine?.machine_id === 'KU001619000079' && liveData?.status === 'Disconnected' && !dataError && (
+      {liveData?.status === 'Disconnected' && !dataError && (
         <div className="mb-4 p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded">
           <p><strong>Machine Disconnected:</strong> No recent data from the machine.</p>
           {liveData?.lastConnection && (
@@ -51,7 +56,7 @@ const DashboardNotifications = ({ selectedMachine, dataError, dataLoading, liveD
       )}
 
       {/* Show loading indicator only for live data */}
-      {dataLoading && selectedMachine?.machine_id === 'KU001619000079' && (
+      {dataLoading && (
         <div className="mb-4 p-4 bg-blue-100 border border-blue-400 text-blue-700 rounded">
           <p>Checking for live machine data...</p>
         </div>

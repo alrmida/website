@@ -28,9 +28,8 @@ interface PumpEvent {
 }
 
 const BATCH_INTERVAL = 15 * 60 * 1000; // 15 minutes in milliseconds
-const MACHINE_ID = 'KU001619000079';
 
-export const useBatchWaterProductionCalculator = () => {
+export const useBatchWaterProductionCalculator = (machineId?: string) => {
   const [productionData, setProductionData] = useState<WaterProductionData>({
     currentProductionRate: 0,
     totalProduced: 0,
@@ -44,7 +43,12 @@ export const useBatchWaterProductionCalculator = () => {
 
   // Load existing metrics from database on component mount
   useEffect(() => {
-    console.log('🔄 Initializing batch water production calculator...');
+    if (!machineId) {
+      console.log('⚠️ No machine ID provided to batch water production calculator');
+      return;
+    }
+
+    console.log('🔄 Initializing batch water production calculator for machine:', machineId);
     loadExistingMetrics();
     
     // Set up batch processing interval
@@ -63,16 +67,18 @@ export const useBatchWaterProductionCalculator = () => {
       clearInterval(interval);
       clearTimeout(initialTimeout);
     };
-  }, []);
+  }, [machineId]);
 
   const loadExistingMetrics = async () => {
+    if (!machineId) return;
+
     try {
-      console.log('📊 Loading existing water production metrics...');
+      console.log('📊 Loading existing water production metrics for machine:', machineId);
       
       const { data: metrics, error } = await supabase
         .from('water_production_metrics')
         .select('*')
-        .eq('machine_id', MACHINE_ID)
+        .eq('machine_id', machineId)
         .order('calculation_period_end', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -101,13 +107,18 @@ export const useBatchWaterProductionCalculator = () => {
   };
 
   const processBatchData = async () => {
+    if (!machineId) {
+      console.log('⚠️ No machine ID available for batch processing');
+      return;
+    }
+
     if (isProcessing) {
       console.log('⏳ Batch processing already in progress, skipping...');
       return;
     }
 
     setIsProcessing(true);
-    console.log('🔍 Starting batch water production calculation...');
+    console.log('🔍 Starting batch water production calculation for machine:', machineId);
 
     try {
       // Determine the time window for this batch
@@ -118,7 +129,7 @@ export const useBatchWaterProductionCalculator = () => {
       const { data: lastMetrics } = await supabase
         .from('water_production_metrics')
         .select('calculation_period_end')
-        .eq('machine_id', MACHINE_ID)
+        .eq('machine_id', machineId)
         .order('calculation_period_end', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -133,7 +144,7 @@ export const useBatchWaterProductionCalculator = () => {
       const { data: rawData, error } = await supabase
         .from('raw_machine_data')
         .select('id, machine_id, timestamp_utc, water_level_l, collector_ls1, compressor_on')
-        .eq('machine_id', MACHINE_ID)
+        .eq('machine_id', machineId)
         .gte('timestamp_utc', actualStartTime.toISOString())
         .lt('timestamp_utc', endTime.toISOString())
         .order('timestamp_utc', { ascending: true });
@@ -145,13 +156,13 @@ export const useBatchWaterProductionCalculator = () => {
 
       if (!rawData || rawData.length === 0) {
         console.log('⚠️ No raw data found for the time period');
-        console.log('🔍 Checking if there is ANY data in raw_machine_data table...');
+        console.log('🔍 Checking if there is ANY data in raw_machine_data table for machine:', machineId);
         
         // Check if there's any data at all
         const { data: anyData, error: anyError } = await supabase
           .from('raw_machine_data')
           .select('id, timestamp_utc, collector_ls1')
-          .eq('machine_id', MACHINE_ID)
+          .eq('machine_id', machineId)
           .order('timestamp_utc', { ascending: false })
           .limit(5);
         
@@ -160,7 +171,7 @@ export const useBatchWaterProductionCalculator = () => {
         } else if (anyData && anyData.length > 0) {
           console.log('✅ Found some data in table, latest 5 records:', anyData);
         } else {
-          console.log('❌ No data found in raw_machine_data table at all');
+          console.log('❌ No data found in raw_machine_data table for machine:', machineId);
         }
         return;
       }
@@ -210,7 +221,7 @@ export const useBatchWaterProductionCalculator = () => {
 
       // Store the new metrics
       await storeMetrics({
-        machine_id: MACHINE_ID,
+        machine_id: machineId,
         calculation_period_start: actualStartTime.toISOString(),
         calculation_period_end: endTime.toISOString(),
         total_water_produced: updatedTotals.totalProduced,
@@ -287,10 +298,12 @@ export const useBatchWaterProductionCalculator = () => {
   };
 
   const getCurrentTotals = async () => {
+    if (!machineId) return { totalProduced: 0, pumpCycles: 0, lastPumpEvent: null };
+
     const { data: metrics } = await supabase
       .from('water_production_metrics')
       .select('total_water_produced, pump_cycles_count, last_pump_event')
-      .eq('machine_id', MACHINE_ID)
+      .eq('machine_id', machineId)
       .order('calculation_period_end', { ascending: false })
       .limit(1)
       .maybeSingle();
