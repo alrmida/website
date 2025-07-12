@@ -4,17 +4,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { MachineWithClient } from '@/types/machine';
 
 interface DataPipelineTestProps {
-  selectedMachineId?: string;
+  selectedMachine?: MachineWithClient;
 }
 
-export const DataPipelineTest = ({ selectedMachineId }: DataPipelineTestProps) => {
+export const DataPipelineTest = ({ selectedMachine }: DataPipelineTestProps) => {
   const [testing, setTesting] = useState(false);
   const [results, setResults] = useState<any>(null);
-
-  // Use provided machine ID or fall back to a default for testing
-  const machineId = selectedMachineId || 'KU001619000079';
 
   const testTrackWaterProduction = async () => {
     setTesting(true);
@@ -42,19 +40,21 @@ export const DataPipelineTest = ({ selectedMachineId }: DataPipelineTestProps) =
         timestamp: new Date().toISOString() 
       });
 
-      // Check if new data was added to simple_water_snapshots
-      const { data: snapshots, error: snapshotError } = await supabase
-        .from('simple_water_snapshots')
-        .select('*')
-        .eq('machine_id', machineId)
-        .order('timestamp_utc', { ascending: false })
-        .limit(5);
+      // Check if new data was added to simple_water_snapshots for the selected machine
+      if (selectedMachine) {
+        const { data: snapshots, error: snapshotError } = await supabase
+          .from('simple_water_snapshots')
+          .select('*')
+          .eq('machine_id', selectedMachine.machine_id)
+          .order('timestamp_utc', { ascending: false })
+          .limit(5);
 
-      if (!snapshotError && snapshots) {
-        setResults(prev => ({
-          ...prev,
-          latestSnapshots: snapshots
-        }));
+        if (!snapshotError && snapshots) {
+          setResults(prev => ({
+            ...prev,
+            latestSnapshots: snapshots
+          }));
+        }
       }
 
     } catch (error) {
@@ -70,20 +70,25 @@ export const DataPipelineTest = ({ selectedMachineId }: DataPipelineTestProps) =
   };
 
   const checkDataFreshness = async () => {
+    if (!selectedMachine) {
+      toast.error('Please select a machine first');
+      return;
+    }
+
     try {
-      // Check simple_water_snapshots
+      // Check simple_water_snapshots for selected machine
       const { data: snapshots } = await supabase
         .from('simple_water_snapshots')
         .select('*')
-        .eq('machine_id', machineId)
+        .eq('machine_id', selectedMachine.machine_id)
         .order('timestamp_utc', { ascending: false })
         .limit(1);
 
-      // Check raw_machine_data with microcontroller UID
+      // Check raw_machine_data for selected machine
       const { data: rawData } = await supabase
         .from('raw_machine_data')
         .select('*')
-        .eq('machine_id', '353636343034510C003F0046')
+        .eq('machine_id', selectedMachine.machine_id)
         .order('timestamp_utc', { ascending: false })
         .limit(1);
 
@@ -97,7 +102,7 @@ export const DataPipelineTest = ({ selectedMachineId }: DataPipelineTestProps) =
 
       setResults({
         freshness: {
-          machineId: machineId,
+          machineId: selectedMachine.machine_id,
           latestSnapshot: snapshots?.[0],
           snapshotAgeMinutes: snapshotAge,
           latestRawData: rawData?.[0],
@@ -113,11 +118,24 @@ export const DataPipelineTest = ({ selectedMachineId }: DataPipelineTestProps) =
     }
   };
 
+  if (!selectedMachine) {
+    return (
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle>Data Pipeline Testing</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-gray-500">Please select a machine to test the data pipeline.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="w-full">
       <CardHeader>
         <CardTitle>Data Pipeline Testing</CardTitle>
-        <p className="text-sm text-gray-600">Testing for machine: {machineId}</p>
+        <p className="text-sm text-gray-600">Testing for machine: {selectedMachine.machine_id}</p>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex gap-2">

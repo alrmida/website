@@ -4,472 +4,217 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useToast } from '@/hooks/use-toast';
-import { Trash2, Plus, Pencil, Wifi, WifiOff, Lightbulb } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { MachineWithClient, MachineFormData, isValidMachineId, isValidMicrocontrollerUID, getDisplayModelName, getOperatingSince, hasLiveDataCapability, generateMachineId } from '@/types/machine';
-import { Profile } from './types';
-import ResetMetricsButton from '../ResetMetricsButton';
+import { toast } from 'sonner';
+import { Trash2, Plus, Edit, Save, X } from 'lucide-react';
+import { MachineWithClient, MachineFormData, generateMachineId, isValidMachineId, isValidMicrocontrollerUID } from '@/types/machine';
+import { useMachineData } from '@/hooks/useMachineData';
 
-interface MachineManagementProps {
-  machines: MachineWithClient[];
-  profiles: Profile[];
-  profile: any;
-  loading: boolean;
-  onRefresh: () => void;
-}
-
-// Extended form data to include client assignment
-interface ExtendedMachineFormData extends MachineFormData {
-  client_id: string;
-  machine_number: number;
-}
-
-const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: MachineManagementProps) => {
-  const { toast } = useToast();
-  
-  const [newMachine, setNewMachine] = useState<ExtendedMachineFormData>({
-    machine_id: '',
-    machine_model: '',
-    name: '',
-    location: '',
-    purchase_date: '',
-    microcontroller_uid: '',
-    client_id: 'unassigned',
-    machine_number: 1
-  });
-
+export const MachineManagement = () => {
+  const { machines, loading, error, refetch } = useMachineData();
   const [editingMachine, setEditingMachine] = useState<MachineWithClient | null>(null);
-  const [editMachineData, setEditMachineData] = useState<Omit<ExtendedMachineFormData, 'machine_id' | 'machine_number'>>({
-    machine_model: '',
+  const [formData, setFormData] = useState<MachineFormData>({
+    machine_id: '',
     name: '',
     location: '',
+    machine_model: '',
     purchase_date: '',
-    microcontroller_uid: '',
-    client_id: 'unassigned'
+    microcontroller_uid: ''
   });
+  const [clients, setClients] = useState<Array<{ id: string; username: string }>>([]);
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
 
-  // Get client profiles only
-  const clientProfiles = profiles.filter(p => p.role === 'client');
-
-  // Generate machine ID when model or number changes
   useEffect(() => {
-    if (newMachine.machine_model && newMachine.machine_number) {
-      try {
-        const generatedId = generateMachineId(newMachine.machine_model, newMachine.machine_number);
-        setNewMachine(prev => ({ ...prev, machine_id: generatedId }));
-      } catch (error) {
-        console.error('Error generating machine ID:', error);
-      }
-    }
-  }, [newMachine.machine_model, newMachine.machine_number]);
+    fetchClients();
+  }, []);
 
-  const validateMachineForm = (data: ExtendedMachineFormData): string | null => {
-    if (!data.machine_model.trim()) {
-      return 'Machine model is required';
-    }
+  const fetchClients = async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, username')
+      .eq('role', 'client');
     
-    if (!data.machine_number || data.machine_number < 1) {
-      return 'Machine number must be a positive integer';
-    }
-    
-    // Owner name is now optional - removed this validation
-    // if (!data.name.trim()) {
-    //   return 'Owner name is required';
-    // }
-
-    if (data.microcontroller_uid.trim() && !isValidMicrocontrollerUID(data.microcontroller_uid)) {
-      return 'Microcontroller UID must be 24 hexadecimal characters (e.g., 353636343034510C003F0046)';
-    }
-    
-    return null;
-  };
-
-  const addMachine = async () => {
-    const validationError = validateMachineForm(newMachine);
-    if (validationError) {
-      toast({
-        title: 'Validation Error',
-        description: validationError,
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    try {
-      console.log('Adding machine:', newMachine);
-      
-      const machineData = {
-        machine_id: newMachine.machine_id.trim(),
-        name: newMachine.name.trim() || 'Unassigned Machine', // Default name if empty
-        location: newMachine.location.trim() || null,
-        machine_model: newMachine.machine_model.trim(),
-        purchase_date: newMachine.purchase_date || null,
-        microcontroller_uid: newMachine.microcontroller_uid.trim() || null,
-        client_id: newMachine.client_id === 'unassigned' ? null : newMachine.client_id,
-        manager_id: profile?.id || null,
-      };
-      
-      console.log('Machine data to insert:', machineData);
-
-      const { data, error } = await supabase
-        .from('machines')
-        .insert([machineData])
-        .select('*');
-
-      if (error) {
-        console.error('Insert error:', error);
-        throw error;
-      }
-
-      console.log('Machine added successfully:', data);
-
-      toast({
-        title: 'Success',
-        description: 'Machine added successfully',
-      });
-      
-      setNewMachine({ 
-        machine_id: '', 
-        machine_model: '',
-        name: '', 
-        location: '', 
-        purchase_date: '',
-        microcontroller_uid: '',
-        client_id: 'unassigned',
-        machine_number: 1
-      });
-      onRefresh();
-    } catch (error: any) {
-      console.error('Error adding machine:', error);
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
+    if (error) {
+      console.error('Error fetching clients:', error);
+      toast.error('Failed to fetch clients');
+    } else {
+      setClients(data || []);
     }
   };
 
-  const startEditMachine = (machine: MachineWithClient) => {
-    setEditingMachine(machine);
-    setEditMachineData({
-      machine_model: machine.machine_model || '',
-      name: machine.name,
-      location: machine.location || '',
-      purchase_date: machine.purchase_date || '',
-      microcontroller_uid: machine.microcontroller_uid || '',
-      client_id: machine.client_id || 'unassigned',
+  const resetForm = () => {
+    setFormData({
+      machine_id: '',
+      name: '',
+      location: '',
+      machine_model: '',
+      purchase_date: '',
+      microcontroller_uid: ''
     });
+    setSelectedClientId('');
+    setEditingMachine(null);
   };
 
-  const updateMachine = async () => {
-    if (!editingMachine) {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!isValidMachineId(formData.machine_id)) {
+      toast.error('Invalid machine ID format. Use format: KU00[1-3]619XXXXXX');
       return;
     }
 
-    // Owner name validation is now optional for updates too
-    if (editMachineData.microcontroller_uid.trim() && !isValidMicrocontrollerUID(editMachineData.microcontroller_uid)) {
-      toast({
-        title: 'Validation Error',
-        description: 'Microcontroller UID must be 24 hexadecimal characters',
-        variant: 'destructive',
-      });
+    if (formData.microcontroller_uid && !isValidMicrocontrollerUID(formData.microcontroller_uid)) {
+      toast.error('Invalid microcontroller UID format. Must be 24 hex characters.');
       return;
     }
-    
+
     try {
-      console.log('Updating machine:', editingMachine.id, editMachineData);
-      
-      const updateData = {
-        name: editMachineData.name.trim() || 'Unassigned Machine', // Default name if empty
-        location: editMachineData.location.trim() || null,
-        machine_model: editMachineData.machine_model.trim() || null,
-        purchase_date: editMachineData.purchase_date || null,
-        microcontroller_uid: editMachineData.microcontroller_uid.trim() || null,
-        client_id: editMachineData.client_id === 'unassigned' ? null : editMachineData.client_id,
-        updated_at: new Date().toISOString(),
-      };
-      
       const { error } = await supabase
         .from('machines')
-        .update(updateData)
+        .insert([{
+          ...formData,
+          client_id: selectedClientId || null,
+          purchase_date: formData.purchase_date || null,
+          microcontroller_uid: formData.microcontroller_uid || null
+        }]);
+
+      if (error) {
+        console.error('Error creating machine:', error);
+        toast.error(`Failed to create machine: ${error.message}`);
+        return;
+      }
+
+      toast.success('Machine created successfully');
+      resetForm();
+      refetch();
+    } catch (error) {
+      console.error('Exception creating machine:', error);
+      toast.error('Failed to create machine');
+    }
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMachine) return;
+
+    if (!isValidMachineId(formData.machine_id)) {
+      toast.error('Invalid machine ID format. Use format: KU00[1-3]619XXXXXX');
+      return;
+    }
+
+    if (formData.microcontroller_uid && !isValidMicrocontrollerUID(formData.microcontroller_uid)) {
+      toast.error('Invalid microcontroller UID format. Must be 24 hex characters.');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('machines')
+        .update({
+          ...formData,
+          client_id: selectedClientId || null,
+          purchase_date: formData.purchase_date || null,
+          microcontroller_uid: formData.microcontroller_uid || null
+        })
         .eq('id', editingMachine.id);
 
       if (error) {
-        console.error('Update error:', error);
-        throw error;
+        console.error('Error updating machine:', error);
+        toast.error(`Failed to update machine: ${error.message}`);
+        return;
       }
 
-      console.log('Machine updated successfully');
-
-      toast({
-        title: 'Success',
-        description: 'Machine updated successfully',
-      });
-      
-      setEditingMachine(null);
-      setEditMachineData({ 
-        machine_model: '',
-        name: '', 
-        location: '', 
-        purchase_date: '',
-        microcontroller_uid: '',
-        client_id: 'unassigned'
-      });
-      onRefresh();
-    } catch (error: any) {
-      console.error('Error updating machine:', error);
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast.success('Machine updated successfully');
+      resetForm();
+      refetch();
+    } catch (error) {
+      console.error('Exception updating machine:', error);
+      toast.error('Failed to update machine');
     }
   };
 
-  const updateMachineId = async (machineId: number, newId: string) => {
+  const handleDelete = async (machineId: number) => {
+    if (!confirm('Are you sure you want to delete this machine?')) return;
+
     try {
-      console.log('Updating machine ID from database id:', machineId, 'to new machine_id:', newId);
-      
-      const { error } = await supabase
-        .from('machines')
-        .update({ 
-          machine_id: newId,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', machineId);
-
-      if (error) {
-        console.error('Update machine ID error:', error);
-        throw error;
-      }
-
-      console.log('Machine ID updated successfully');
-
-      toast({
-        title: 'Success',
-        description: `Machine ID updated to ${newId}`,
-      });
-      
-      onRefresh();
-    } catch (error: any) {
-      console.error('Error updating machine ID:', error);
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
-    }
-  };
-
-  // Fix the specific machine ID from 79 to 97
-  useEffect(() => {
-    const fixMachineId = async () => {
-      const machineToFix = machines.find(m => m.machine_id === 'KU001619000079');
-      if (machineToFix) {
-        console.log('Found machine with ID 79, updating to 97...');
-        await updateMachineId(machineToFix.id, 'KU001619000097');
-      }
-    };
-
-    if (machines.length > 0) {
-      fixMachineId();
-    }
-  }, [machines]);
-
-  const deleteMachine = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this machine?')) {
-      return;
-    }
-    
-    try {
-      console.log('Deleting machine with id:', id);
-      
       const { error } = await supabase
         .from('machines')
         .delete()
-        .eq('id', id);
+        .eq('id', machineId);
 
       if (error) {
-        console.error('Delete error:', error);
-        throw error;
+        console.error('Error deleting machine:', error);
+        toast.error(`Failed to delete machine: ${error.message}`);
+        return;
       }
 
-      toast({
-        title: 'Success',
-        description: 'Machine deleted successfully',
-      });
-      
-      onRefresh();
-    } catch (error: any) {
-      console.error('Error deleting machine:', error);
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast.success('Machine deleted successfully');
+      refetch();
+    } catch (error) {
+      console.error('Exception deleting machine:', error);
+      toast.error('Failed to delete machine');
     }
   };
 
-  const getClientName = (clientId: string | null) => {
-    if (!clientId) return 'Unassigned';
-    const client = clientProfiles.find(p => p.id === clientId);
-    return client?.username || 'Unknown Client';
+  const startEdit = (machine: MachineWithClient) => {
+    setEditingMachine(machine);
+    setFormData({
+      machine_id: machine.machine_id,
+      name: machine.name,
+      location: machine.location || '',
+      machine_model: machine.machine_model || '',
+      purchase_date: machine.purchase_date || '',
+      microcontroller_uid: machine.microcontroller_uid || ''
+    });
+    setSelectedClientId(machine.client_id || '');
   };
 
-  const getMachineOwnerDisplay = (machine: MachineWithClient) => {
-    // If machine has no owner/name or default name, show as unassigned
-    if (!machine.name || machine.name === 'Unassigned Machine') {
-      return 'Unassigned';
-    }
-    return machine.name;
-  };
+  if (loading) return <div>Loading machines...</div>;
+  if (error) return <div>Error: {error}</div>;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Add New Machine</CardTitle>
+          <CardTitle>
+            {editingMachine ? 'Edit Machine' : 'Add New Machine'}
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="machineModel">Model *</Label>
-              <Select
-                value={newMachine.machine_model}
-                onValueChange={(value) => {
-                  setNewMachine({ ...newMachine, machine_model: value });
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select model" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Amphore">Amphore</SelectItem>
-                  <SelectItem value="BoKs">BoKs</SelectItem>
-                  <SelectItem value="Water Dispenser">Water Dispenser</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="machineNumber">Machine Number *</Label>
-              <Input
-                id="machineNumber"
-                type="number"
-                min="1"
-                value={newMachine.machine_number}
-                onChange={(e) => {
-                  setNewMachine({ ...newMachine, machine_number: parseInt(e.target.value) || 1 });
-                }}
-                placeholder="1"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="generatedId">Generated ID</Label>
-              <div className="flex items-center space-x-2">
+        <CardContent>
+          <form onSubmit={editingMachine ? handleUpdate : handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="machine_id">Machine ID</Label>
                 <Input
-                  id="generatedId"
-                  value={newMachine.machine_id}
-                  readOnly
-                  className="bg-gray-50"
+                  id="machine_id"
+                  value={formData.machine_id}
+                  onChange={(e) => setFormData(prev => ({ ...prev, machine_id: e.target.value }))}
                   placeholder="KU001619000001"
+                  required
                 />
-                <Lightbulb className="w-4 h-4 text-yellow-500" />
               </div>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="microcontrollerUid">Microcontroller UID</Label>
-            <Input
-              id="microcontrollerUid"
-              value={newMachine.microcontroller_uid}
-              onChange={(e) => setNewMachine({ ...newMachine, microcontroller_uid: e.target.value })}
-              placeholder="353636343034510C003F0046"
-              className={newMachine.microcontroller_uid && !isValidMicrocontrollerUID(newMachine.microcontroller_uid) ? 'border-red-500' : ''}
-            />
-            {newMachine.microcontroller_uid && !isValidMicrocontrollerUID(newMachine.microcontroller_uid) && (
-              <p className="text-sm text-red-500">Must be 24 hexadecimal characters</p>
-            )}
-            <p className="text-sm text-gray-500">Required for live data functionality</p>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="machineName">Owner (Optional)</Label>
-              <Input
-                id="machineName"
-                value={newMachine.name}
-                onChange={(e) => setNewMachine({ ...newMachine, name: e.target.value })}
-                placeholder="French Embassy (leave empty if unassigned)"
-              />
-              <p className="text-sm text-gray-500">Leave empty for machines not yet sold</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="clientSelect">Assign to Client (Optional)</Label>
-              <Select
-                value={newMachine.client_id}
-                onValueChange={(value) => setNewMachine({ ...newMachine, client_id: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a client (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">No client assigned</SelectItem>
-                  {clientProfiles.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.username}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="machineLocation">Location</Label>
-              <Input
-                id="machineLocation"
-                value={newMachine.location}
-                onChange={(e) => setNewMachine({ ...newMachine, location: e.target.value })}
-                placeholder="Paris, France"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="purchaseDate">Purchase Date</Label>
-              <Input
-                id="purchaseDate"
-                type="date"
-                value={newMachine.purchase_date}
-                onChange={(e) => setNewMachine({ ...newMachine, purchase_date: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <Button 
-            onClick={addMachine} 
-            disabled={loading || !newMachine.machine_model || !newMachine.machine_number}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Machine
-          </Button>
-        </CardContent>
-      </Card>
-
-      {editingMachine && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Edit Machine: {editingMachine.machine_id}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="editMachineModel">Model</Label>
+              <div>
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="location">Location</Label>
+                <Input
+                  id="location"
+                  value={formData.location}
+                  onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="machine_model">Machine Model</Label>
                 <Select
-                  value={editMachineData.machine_model}
-                  onValueChange={(value) => setEditMachineData({ ...editMachineData, machine_model: value })}
+                  value={formData.machine_model}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, machine_model: value }))}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select model" />
@@ -481,45 +226,35 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="editMachineName">Owner (Optional)</Label>
+              <div>
+                <Label htmlFor="purchase_date">Purchase Date</Label>
                 <Input
-                  id="editMachineName"
-                  value={editMachineData.name}
-                  onChange={(e) => setEditMachineData({ ...editMachineData, name: e.target.value })}
-                  placeholder="French Embassy (leave empty if unassigned)"
+                  id="purchase_date"
+                  type="date"
+                  value={formData.purchase_date}
+                  onChange={(e) => setFormData(prev => ({ ...prev, purchase_date: e.target.value }))}
                 />
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="editMicrocontrollerUid">Microcontroller UID</Label>
-              <Input
-                id="editMicrocontrollerUid"
-                value={editMachineData.microcontroller_uid}
-                onChange={(e) => setEditMachineData({ ...editMachineData, microcontroller_uid: e.target.value })}
-                placeholder="353636343034510C003F0046"
-                className={editMachineData.microcontroller_uid && !isValidMicrocontrollerUID(editMachineData.microcontroller_uid) ? 'border-red-500' : ''}
-              />
-              {editMachineData.microcontroller_uid && !isValidMicrocontrollerUID(editMachineData.microcontroller_uid) && (
-                <p className="text-sm text-red-500">Must be 24 hexadecimal characters</p>
-              )}
-              <p className="text-sm text-gray-500">Required for live data functionality</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="editClientSelect">Assign to Client</Label>
+              <div>
+                <Label htmlFor="microcontroller_uid">Microcontroller UID</Label>
+                <Input
+                  id="microcontroller_uid"
+                  value={formData.microcontroller_uid}
+                  onChange={(e) => setFormData(prev => ({ ...prev, microcontroller_uid: e.target.value }))}
+                  placeholder="353636343034510C003F0046"
+                />
+              </div>
+              <div>
+                <Label htmlFor="client">Client</Label>
                 <Select
-                  value={editMachineData.client_id}
-                  onValueChange={(value) => setEditMachineData({ ...editMachineData, client_id: value })}
+                  value={selectedClientId}
+                  onValueChange={setSelectedClientId}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a client (optional)" />
+                    <SelectValue placeholder="Select client (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="unassigned">No client assigned</SelectItem>
-                    {clientProfiles.map((client) => (
+                    {clients.map((client) => (
                       <SelectItem key={client.id} value={client.id}>
                         {client.username}
                       </SelectItem>
@@ -527,122 +262,67 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="editMachineLocation">Location</Label>
-                <Input
-                  id="editMachineLocation"
-                  value={editMachineData.location}
-                  onChange={(e) => setEditMachineData({ ...editMachineData, location: e.target.value })}
-                  placeholder="Paris, France"
-                />
-              </div>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="editPurchaseDate">Purchase Date</Label>
-              <Input
-                id="editPurchaseDate"
-                type="date"
-                value={editMachineData.purchase_date}
-                onChange={(e) => setEditMachineData({ ...editMachineData, purchase_date: e.target.value })}
-              />
-            </div>
-
             <div className="flex gap-2">
-              <Button onClick={updateMachine} disabled={loading}>
-                Update Machine
+              <Button type="submit">
+                {editingMachine ? <Save className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                {editingMachine ? 'Update Machine' : 'Add Machine'}
               </Button>
-              <Button variant="outline" onClick={() => setEditingMachine(null)}>
-                Cancel
-              </Button>
+              {editingMachine && (
+                <Button type="button" variant="outline" onClick={resetForm}>
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel
+                </Button>
+              )}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </form>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Machines ({machines.length})</CardTitle>
+          <CardTitle>Existing Machines ({machines.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          {machines.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500">No machines found</p>
-              <Button onClick={onRefresh} variant="outline" className="mt-2">
-                Refresh
-              </Button>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Machine ID</TableHead>
-                  <TableHead>Model</TableHead>
-                  <TableHead>Owner</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Live Data</TableHead>
-                  <TableHead>Operating Since</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {machines.map((machine) => (
-                  <TableRow key={machine.id}>
-                    <TableCell className="font-mono">{machine.machine_id}</TableCell>
-                    <TableCell>{getDisplayModelName(machine)}</TableCell>
-                    <TableCell>{getMachineOwnerDisplay(machine)}</TableCell>
-                    <TableCell>{getClientName(machine.client_id)}</TableCell>
-                    <TableCell>{machine.location || '-'}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {hasLiveDataCapability(machine) ? (
-                          <>
-                            <Wifi className="w-4 h-4 text-green-600" />
-                            <span className="text-sm text-green-600">Available</span>
-                          </>
-                        ) : (
-                          <>
-                            <WifiOff className="w-4 h-4 text-gray-400" />
-                            <span className="text-sm text-gray-400">No UID</span>
-                          </>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>{getOperatingSince(machine)}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2 flex-wrap">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => startEditMachine(machine)}
-                          disabled={loading}
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <ResetMetricsButton 
-                          machineId={machine.machine_id}
-                          onResetComplete={onRefresh}
-                        />
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => deleteMachine(machine.id)}
-                          disabled={loading}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+          <div className="space-y-4">
+            {machines.map((machine) => (
+              <div key={machine.id} className="border rounded-lg p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-semibold">{machine.machine_id}</h3>
+                    <p className="text-sm text-gray-600">{machine.name}</p>
+                    <p className="text-sm text-gray-600">
+                      {machine.machine_model} - {machine.location || 'No location'}
+                    </p>
+                    {machine.microcontroller_uid && (
+                      <p className="text-xs text-blue-600">UID: {machine.microcontroller_uid}</p>
+                    )}
+                    {machine.client_profile?.username && (
+                      <p className="text-xs text-green-600">Client: {machine.client_profile.username}</p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => startEdit(machine)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDelete(machine.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
     </div>
   );
 };
-
-export default MachineManagement;
