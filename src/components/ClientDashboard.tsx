@@ -7,6 +7,7 @@ import MachineInfo from './MachineInfo';
 import MetricsCards from './MetricsCards';
 import ProductionAnalytics from './ProductionAnalytics';
 import DashboardFooter from './DashboardFooter';
+import DashboardNotifications from './DashboardNotifications';
 import { MachineWithClient } from '@/types/machine';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDashboardData } from '@/hooks/useDashboardData';
@@ -77,18 +78,25 @@ const ClientDashboard = () => {
           selectedMachine={selectedMachine}
         />
 
-        {/* Show error if data fetch fails */}
-        {dataError && (
-          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-            <p>Error fetching machine data: {dataError}</p>
-          </div>
-        )}
+        {/* Dashboard Notifications - Show connection status and errors */}
+        <DashboardNotifications
+          selectedMachine={selectedMachine}
+          dataError={dataError}
+          dataLoading={dataLoading}
+          liveData={liveData}
+        />
 
-        {/* Debug info for analytics data source */}
+        {/* Debug info for data source and analytics */}
         {selectedMachine && (
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
             <p>📊 Analytics Data Source: {totalWaterProduced > 0 ? 'Real production data available' : 'Using static/zero data (no production events found)'}</p>
-            <p>🏭 Machine: {selectedMachine.machine_id} | Status: {liveData?.status || 'Loading...'}</p>
+            <p>🏭 Machine: {selectedMachine.machine_id} | Status: {liveData?.status || 'Loading...'} | Data Source: {liveData?.dataSource || 'none'}</p>
+            {liveData?.dataSource === 'live' && (
+              <p>🌐 Live Data: Connected via edge function | Water Level: {liveData.waterLevel?.toFixed(3)}L</p>
+            )}
+            {liveData?.dataSource === 'fallback' && (
+              <p>⚠️ Fallback Data: Using Supabase tables (edge function unavailable)</p>
+            )}
           </div>
         )}
 
