@@ -71,9 +71,32 @@ async function createInfluxClient() {
   }
 }
 
+// Fixed CSV parsing function
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      result.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  
+  result.push(current);
+  return result.map(field => field.trim());
+}
+
 // Improved approach - get all fields with better debugging and wider time range
 async function fetchLatestMachineData(queryApi: any, machineUID: string) {
-  console.log('🔍 Fetching latest machine data with improved debugging for UID:', machineUID);
+  console.log('🔍 Fetching latest machine data with fixed CSV parsing for UID:', machineUID);
   
   // Define the fields we want to fetch
   const fields = [
@@ -84,7 +107,7 @@ async function fetchLatestMachineData(queryApi: any, machineUID: string) {
     'defrosting', 'time_seconds'
   ];
 
-  // Use a much wider time range to ensure we catch recent data - changed from -24h to -1h
+  // Use a much wider time range to ensure we catch recent data
   const baseQuery = `
     from(bucket: "KumulusData")
       |> range(start: -1h)
@@ -106,7 +129,7 @@ async function fetchLatestMachineData(queryApi: any, machineUID: string) {
         |> sort(columns: ["_time"], desc: true)
         |> limit(n: 1)`;
 
-      console.log(`🔍 Executing query for ${field}:`, query);
+      console.log(`🔍 Executing query for ${field}`);
 
       const csvLines: string[] = [];
       await new Promise<void>((resolve, reject) => {
@@ -124,22 +147,34 @@ async function fetchLatestMachineData(queryApi: any, machineUID: string) {
         });
       });
 
-      console.log(`📄 Raw CSV response for ${field} (${csvLines.length} lines):`, csvLines);
+      console.log(`📄 Raw CSV response for ${field} (${csvLines.length} lines)`);
 
       if (csvLines.length > 1) {
-        // Parse the CSV response (skip header)
-        const dataLine = csvLines.find(line => !line.startsWith('#') && line !== csvLines[0]);
-        if (dataLine) {
-          const values = dataLine.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
-          const headers = csvLines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+        // Find the header line (starts with ,result,table...)
+        let headerLineIndex = -1;
+        let dataLineIndex = -1;
+        
+        for (let i = 0; i < csvLines.length; i++) {
+          const line = csvLines[i];
+          if (line.startsWith(',result,table')) {
+            headerLineIndex = i;
+          } else if (headerLineIndex >= 0 && line.length > 0 && !line.startsWith('#') && !line.startsWith(',result')) {
+            dataLineIndex = i;
+            break;
+          }
+        }
+
+        if (headerLineIndex >= 0 && dataLineIndex >= 0) {
+          const headers = parseCSVLine(csvLines[headerLineIndex]);
+          const values = parseCSVLine(csvLines[dataLineIndex]);
           
-          console.log(`📋 Headers for ${field}:`, headers);
-          console.log(`📋 Values for ${field}:`, values);
+          console.log(`📋 Headers for ${field}:`, headers.slice(0, 10)); // Show first 10 for brevity
+          console.log(`📋 Values for ${field}:`, values.slice(0, 10));
           
           const timeIndex = headers.indexOf('_time');
           const valueIndex = headers.indexOf('_value');
           
-          if (timeIndex >= 0 && valueIndex >= 0) {
+          if (timeIndex >= 0 && valueIndex >= 0 && timeIndex < values.length && valueIndex < values.length) {
             const timestamp = values[timeIndex];
             const value = values[valueIndex];
             
@@ -166,10 +201,10 @@ async function fetchLatestMachineData(queryApi: any, machineUID: string) {
               console.log(`⚠️ Empty or null value for ${field}`);
             }
           } else {
-            console.log(`❌ Missing _time or _value columns for ${field}`);
+            console.log(`❌ Missing _time or _value columns for ${field}. TimeIndex: ${timeIndex}, ValueIndex: ${valueIndex}, ValuesLength: ${values.length}`);
           }
         } else {
-          console.log(`⚠️ No data line found for ${field}`);
+          console.log(`❌ Could not find header or data line for ${field}. HeaderIndex: ${headerLineIndex}, DataIndex: ${dataLineIndex}`);
         }
       } else {
         console.log(`⚠️ No CSV data returned for ${field} (only ${csvLines.length} lines)`);
@@ -299,7 +334,7 @@ function buildResponse(data: any) {
       time_seconds: data.time_seconds,
     },
     debug: {
-      queryApproach: 'improved_with_debugging',
+      queryApproach: 'fixed_csv_parsing',
       fieldsRetrieved: Object.keys(data).length - 1,
       waterLevel: data.water_level_L,
       compressorStatus: data.compressor_on,
@@ -308,13 +343,13 @@ function buildResponse(data: any) {
     }
   };
 
-  console.log('📤 Built response with improved debugging approach');
+  console.log('📤 Built response with fixed CSV parsing approach');
   return response;
 }
 
 // Main serve function
 serve(async (req) => {
-  console.log('🚀 Improved Edge Function get-machine-data invoked:', req.method);
+  console.log('🚀 Fixed Edge Function get-machine-data invoked:', req.method);
 
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -342,7 +377,7 @@ serve(async (req) => {
       console.log('⚠️ No UID provided, using default UID:', machineUID);
     }
 
-    console.log('🔍 Processing data for machine UID with improved debugging:', machineUID);
+    console.log('🔍 Processing data for machine UID with fixed CSV parsing:', machineUID);
 
     // Create Supabase client for machine lookup
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -378,7 +413,7 @@ serve(async (req) => {
     
     const queryApi = influxClient.getQueryApi(INFLUXDB_ORG);
 
-    // Fetch data using the improved approach with debugging
+    // Fetch data using the fixed CSV parsing approach
     const parsedData = await fetchLatestMachineData(queryApi, machineUID);
     
     if (!parsedData) {
