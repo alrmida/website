@@ -71,9 +71,9 @@ async function createInfluxClient() {
   }
 }
 
-// New simplified approach - get all fields with separate queries
+// Improved approach - get all fields with better debugging and wider time range
 async function fetchLatestMachineData(queryApi: any, machineUID: string) {
-  console.log('🔍 Fetching latest machine data using direct field queries for UID:', machineUID);
+  console.log('🔍 Fetching latest machine data with improved debugging for UID:', machineUID);
   
   // Define the fields we want to fetch
   const fields = [
@@ -84,16 +84,19 @@ async function fetchLatestMachineData(queryApi: any, machineUID: string) {
     'defrosting', 'time_seconds'
   ];
 
-  // Use your proven query pattern - get latest data with wider time range
+  // Use a much wider time range to ensure we catch recent data - changed from -24h to -1h
   const baseQuery = `
     from(bucket: "KumulusData")
-      |> range(start: -24h)
+      |> range(start: -1h)
       |> filter(fn: (r) => r["_measurement"] == "awg_data_full")
       |> filter(fn: (r) => r["uid"] == "${machineUID}")
   `;
 
+  console.log('📊 Base InfluxDB query:', baseQuery);
+
   const result: any = {};
   let latestTime: string | null = null;
+  let fieldsFound = 0;
 
   // Fetch each field individually to avoid pivot issues
   for (const field of fields) {
@@ -103,7 +106,7 @@ async function fetchLatestMachineData(queryApi: any, machineUID: string) {
         |> sort(columns: ["_time"], desc: true)
         |> limit(n: 1)`;
 
-      console.log(`📊 Fetching ${field} for UID: ${machineUID}`);
+      console.log(`🔍 Executing query for ${field}:`, query);
 
       const csvLines: string[] = [];
       await new Promise<void>((resolve, reject) => {
@@ -121,6 +124,8 @@ async function fetchLatestMachineData(queryApi: any, machineUID: string) {
         });
       });
 
+      console.log(`📄 Raw CSV response for ${field} (${csvLines.length} lines):`, csvLines);
+
       if (csvLines.length > 1) {
         // Parse the CSV response (skip header)
         const dataLine = csvLines.find(line => !line.startsWith('#') && line !== csvLines[0]);
@@ -128,12 +133,17 @@ async function fetchLatestMachineData(queryApi: any, machineUID: string) {
           const values = dataLine.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
           const headers = csvLines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
           
+          console.log(`📋 Headers for ${field}:`, headers);
+          console.log(`📋 Values for ${field}:`, values);
+          
           const timeIndex = headers.indexOf('_time');
           const valueIndex = headers.indexOf('_value');
           
           if (timeIndex >= 0 && valueIndex >= 0) {
             const timestamp = values[timeIndex];
             const value = values[valueIndex];
+            
+            console.log(`⏰ Found ${field} at timestamp ${timestamp} with value ${value}`);
             
             // Track the latest timestamp
             if (!latestTime || timestamp > latestTime) {
@@ -150,9 +160,19 @@ async function fetchLatestMachineData(queryApi: any, machineUID: string) {
               } else {
                 result[field] = parseFloat(value) || 0;
               }
+              fieldsFound++;
+              console.log(`✅ Successfully stored ${field}: ${result[field]}`);
+            } else {
+              console.log(`⚠️ Empty or null value for ${field}`);
             }
+          } else {
+            console.log(`❌ Missing _time or _value columns for ${field}`);
           }
+        } else {
+          console.log(`⚠️ No data line found for ${field}`);
         }
+      } else {
+        console.log(`⚠️ No CSV data returned for ${field} (only ${csvLines.length} lines)`);
       }
     } catch (error) {
       console.error(`❌ Failed to fetch ${field}:`, error);
@@ -162,14 +182,27 @@ async function fetchLatestMachineData(queryApi: any, machineUID: string) {
 
   if (latestTime) {
     result._time = latestTime;
+    
+    // Calculate data freshness
+    const now = new Date();
+    const dataTime = new Date(latestTime);
+    const ageMinutes = Math.round((now.getTime() - dataTime.getTime()) / (1000 * 60));
+    
     console.log('✅ Successfully fetched latest machine data:', {
       timestamp: latestTime,
-      fieldsCount: Object.keys(result).length - 1,
+      dataAgeMinutes: ageMinutes,
+      fieldsFound: fieldsFound,
+      totalFields: fields.length,
       waterLevel: result.water_level_L,
       compressor: result.compressor_on
     });
+    
+    if (ageMinutes > 60) {
+      console.log(`⚠️ Data is ${ageMinutes} minutes old - might be stale`);
+    }
   } else {
-    console.log('⚠️ No recent data found for UID:', machineUID);
+    console.log('❌ No recent data found for UID:', machineUID);
+    console.log('🔍 Debug: Total fields attempted:', fields.length, 'Fields found:', fieldsFound);
     return null;
   }
 
@@ -266,21 +299,22 @@ function buildResponse(data: any) {
       time_seconds: data.time_seconds,
     },
     debug: {
-      queryApproach: 'direct_field_queries',
+      queryApproach: 'improved_with_debugging',
       fieldsRetrieved: Object.keys(data).length - 1,
       waterLevel: data.water_level_L,
       compressorStatus: data.compressor_on,
-      timestamp: data._time
+      timestamp: data._time,
+      dataFreshness: data._time ? `${Math.round((new Date().getTime() - new Date(data._time).getTime()) / (1000 * 60))} minutes old` : 'unknown'
     }
   };
 
-  console.log('📤 Built response with direct query approach');
+  console.log('📤 Built response with improved debugging approach');
   return response;
 }
 
 // Main serve function
 serve(async (req) => {
-  console.log('🚀 Fixed Edge Function get-machine-data invoked:', req.method);
+  console.log('🚀 Improved Edge Function get-machine-data invoked:', req.method);
 
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -308,7 +342,7 @@ serve(async (req) => {
       console.log('⚠️ No UID provided, using default UID:', machineUID);
     }
 
-    console.log('🔍 Processing data for machine UID using direct queries:', machineUID);
+    console.log('🔍 Processing data for machine UID with improved debugging:', machineUID);
 
     // Create Supabase client for machine lookup
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -344,15 +378,21 @@ serve(async (req) => {
     
     const queryApi = influxClient.getQueryApi(INFLUXDB_ORG);
 
-    // Fetch data using the new direct approach
+    // Fetch data using the improved approach with debugging
     const parsedData = await fetchLatestMachineData(queryApi, machineUID);
     
     if (!parsedData) {
+      console.log('❌ No data retrieved from InfluxDB for UID:', machineUID);
       return new Response(
         JSON.stringify({ 
           status: 'no_data', 
-          message: 'No recent data found for this machine UID',
-          uid: machineUID
+          message: 'No recent data found for this machine UID in the last hour',
+          uid: machineUID,
+          debug: {
+            searchRange: '1 hour',
+            bucket: 'KumulusData',
+            measurement: 'awg_data_full'
+          }
         }),
         { 
           status: 200, 
@@ -369,7 +409,7 @@ serve(async (req) => {
     const processedData = processRawData(parsedData, machineId);
     console.log('⚙️ Processed data with all sensor fields');
 
-    // Store data in Supabase to restore the pipeline
+    // Store data in Supabase to maintain the pipeline
     await storeDataPoint(supabase, processedData);
     
     // Build and return response
