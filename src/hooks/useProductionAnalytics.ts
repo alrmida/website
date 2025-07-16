@@ -41,8 +41,26 @@ export const useProductionAnalytics = (machineId?: string) => {
     }
   };
 
+  // Initial fetch when machineId changes
   useEffect(() => {
     fetchProductionAnalytics();
+  }, [machineId]);
+
+  // Set up automatic polling every 2 minutes
+  useEffect(() => {
+    if (!machineId) return;
+
+    console.log('🔄 Setting up production analytics polling for machine:', machineId);
+    
+    const interval = setInterval(() => {
+      console.log('🔄 Auto-refreshing production analytics data...');
+      fetchProductionAnalytics();
+    }, 2 * 60 * 1000); // 2 minutes
+
+    return () => {
+      console.log('🛑 Cleaning up production analytics polling');
+      clearInterval(interval);
+    };
   }, [machineId]);
 
   return { data, isLoading, error, refetch: fetchProductionAnalytics };
