@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -183,7 +182,10 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
           </TabsList>
 
           <TabsContent value="users" className="space-y-4">
-            <UserManagement profiles={profiles} />
+            <UserManagement 
+              profiles={profiles} 
+              onRefresh={fetchData}
+            />
           </TabsContent>
 
           <TabsContent value="machines" className="space-y-4">
