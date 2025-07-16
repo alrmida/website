@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface WaterProductionData {
   totalProduced: number;
+  lastProductionEvent: Date | null;
   lastSnapshot: Date | null;
   isTracking: boolean;
 }
@@ -11,6 +12,7 @@ interface WaterProductionData {
 export const useSimpleWaterProduction = (machineId?: string, currentWaterLevel?: number) => {
   const [data, setData] = useState<WaterProductionData>({
     totalProduced: 0,
+    lastProductionEvent: null,
     lastSnapshot: null,
     isTracking: false
   });
@@ -30,15 +32,21 @@ export const useSimpleWaterProduction = (machineId?: string, currentWaterLevel?:
       // Get sum of ONLY production events (exclude drainage events)
       const { data: events, error: eventsError } = await supabase
         .from('water_production_events')
-        .select('production_liters')
+        .select('production_liters, timestamp_utc')
         .eq('machine_id', machineId)
-        .eq('event_type', 'production'); // Only include actual production events
+        .eq('event_type', 'production') // Only include actual production events
+        .order('timestamp_utc', { ascending: false });
 
       if (eventsError) {
         throw eventsError;
       }
 
       const totalProduced = events?.reduce((sum, event) => sum + (event.production_liters || 0), 0) || 0;
+      
+      // Get the most recent production event timestamp
+      const lastProductionEvent = events && events.length > 0 
+        ? new Date(events[0].timestamp_utc) 
+        : null;
 
       // Get last snapshot timestamp
       const { data: lastSnapshot, error: snapshotError } = await supabase
@@ -51,6 +59,7 @@ export const useSimpleWaterProduction = (machineId?: string, currentWaterLevel?:
 
       const newData = {
         totalProduced: Math.round(totalProduced * 100) / 100,
+        lastProductionEvent,
         lastSnapshot: lastSnapshot ? new Date(lastSnapshot.timestamp_utc) : null,
         isTracking: true // Server is always tracking
       };
@@ -61,6 +70,7 @@ export const useSimpleWaterProduction = (machineId?: string, currentWaterLevel?:
       console.log('✅ Server-tracked production data updated (production events only):', {
         totalProduced: newData.totalProduced,
         eventsCount: events?.length || 0,
+        lastProductionEvent: newData.lastProductionEvent?.toISOString(),
         lastSnapshot: newData.lastSnapshot?.toISOString()
       });
 
@@ -81,10 +91,10 @@ export const useSimpleWaterProduction = (machineId?: string, currentWaterLevel?:
   useEffect(() => {
     if (!machineId) return;
 
-    // Refresh every 5 minutes to show latest server-calculated data
+    // Refresh every 2 minutes to show latest server-calculated data
     const interval = setInterval(() => {
       fetchTotalProduction();
-    }, 5 * 60 * 1000); // 5 minutes
+    }, 2 * 60 * 1000); // 2 minutes
 
     return () => clearInterval(interval);
   }, [machineId]);

@@ -74,6 +74,12 @@ const SimpleWaterTracking = ({ machineId, currentWaterLevel }: SimpleWaterTracki
               </span>
             </div>
             <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600 dark:text-gray-300">Last Production:</span>
+              <span className="text-sm text-gray-500">
+                {formatDate(data.lastProductionEvent)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-300">Last Server Snapshot:</span>
               <span className="text-sm text-gray-500">
                 {formatDate(data.lastSnapshot)}
