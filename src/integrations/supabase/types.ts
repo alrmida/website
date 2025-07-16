@@ -444,6 +444,31 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_create_user: {
+        Args: {
+          p_email: string
+          p_password: string
+          p_username: string
+          p_role: Database["public"]["Enums"]["user_role"]
+          p_contact_email?: string
+          p_contact_phone?: string
+        }
+        Returns: string
+      }
+      admin_delete_user: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
+      admin_update_user_profile: {
+        Args: {
+          p_user_id: string
+          p_username: string
+          p_role: Database["public"]["Enums"]["user_role"]
+          p_contact_email?: string
+          p_contact_phone?: string
+        }
+        Returns: undefined
+      }
       create_demo_sales_account: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -463,6 +488,18 @@ export type Database = {
       get_user_role: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
+      }
+      get_users_with_auth_emails: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          username: string
+          role: Database["public"]["Enums"]["user_role"]
+          contact_email: string
+          contact_phone: string
+          created_at: string
+          auth_email: string
+        }[]
       }
       reset_machine_metrics: {
         Args: { p_machine_id: string; p_admin_user_id: string }

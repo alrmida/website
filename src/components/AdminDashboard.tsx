@@ -142,6 +142,7 @@ const AdminDashboard = () => {
           <TabsContent value="users">
             <UserManagement 
               profiles={profiles}
+              onRefresh={handleRefresh}
             />
           </TabsContent>
 
