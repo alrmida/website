@@ -36,22 +36,22 @@ function calculateMachineStatus(
   // Use status flags with new precise conditions
   if (statusFlags) {
     // Priority 1: Defrosting (can override other states)
-    if (statusFlags.defrosting === true) {
+    if (statusFlags.defrosting) {
       return { status: 'Defrosting', isOnline };
     }
     
     // Priority 2: Producing (compressor is 1 AND producing water is 1)
-    if (statusFlags.compressor_on === 1 && statusFlags.producing_water === true) {
+    if (statusFlags.compressor_on === 1 && statusFlags.producing_water) {
       return { status: 'Producing', isOnline };
     }
     
     // Priority 3: Full Water (full water flag is 1 and compressor is 0)
-    if (statusFlags.full_tank === true && statusFlags.compressor_on !== 1) {
+    if (statusFlags.full_tank && statusFlags.compressor_on !== 1) {
       return { status: 'Full Water', isOnline };
     }
     
     // Priority 4: Idle (machine is online AND compressor is 0 and defrosting is 0)
-    if (statusFlags.compressor_on !== 1 && statusFlags.defrosting !== true) {
+    if (statusFlags.compressor_on !== 1 && !statusFlags.defrosting) {
       return { status: 'Idle', isOnline };
     }
   }
