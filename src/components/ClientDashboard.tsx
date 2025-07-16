@@ -11,6 +11,7 @@ import DashboardNotifications from './DashboardNotifications';
 import { MachineWithClient } from '@/types/machine';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDashboardData } from '@/hooks/useDashboardData';
+import { useSimpleWaterProduction } from '@/hooks/useSimpleWaterProduction';
 
 const ClientDashboard = () => {
   const { profile } = useAuth();
@@ -30,6 +31,12 @@ const ClientDashboard = () => {
     dataLoading,
     dataError
   } = useDashboardData(selectedMachine);
+
+  // Get the actual production tracking data with real timestamps
+  const { data: productionData } = useSimpleWaterProduction(
+    selectedMachine?.machine_id, 
+    liveData?.waterLevel
+  );
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -116,12 +123,12 @@ const ClientDashboard = () => {
           />
         )}
 
-        {/* Metrics Cards Grid */}
+        {/* Metrics Cards Grid - Now using actual production event timestamp */}
         <MetricsCards 
           waterTank={waterTank}
           machineStatus={liveData?.status || 'Loading...'}
           totalWaterProduced={totalWaterProduced}
-          lastUpdate={liveData?.lastUpdated ? new Date(liveData.lastUpdated) : null}
+          lastUpdate={productionData.lastProductionEvent}
         />
 
         {/* Production Analytics - Charts and Visualizations */}
