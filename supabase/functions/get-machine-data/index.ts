@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -328,22 +327,37 @@ function buildResponse(data: any) {
       refrigerant_temp_C: data.refrigerant_temp_C,
       exhaust_temp_C: data.exhaust_temp_C,
       exhaust_rh_pct: data.exhaust_rh_pct,
-      frost_identified: data.frost_identified,
-      defrosting: data.defrosting,
+      frost_identified: data.frost_identified || false,
+      defrosting: data.defrosting || false,
       eev_position: data.eev_position,
       time_seconds: data.time_seconds,
+      // Add the missing boolean status fields
+      producing_water: data.producing_water || false,
+      full_tank: data.full_tank || false,
+      treating_water: data.treating_water || false,
+      serving_water: data.serving_water || false,
+      disinfecting: data.disinfecting || false,
     },
     debug: {
       queryApproach: 'fixed_csv_parsing',
       fieldsRetrieved: Object.keys(data).length - 1,
       waterLevel: data.water_level_L,
       compressorStatus: data.compressor_on,
+      producingWater: data.producing_water,
+      fullTank: data.full_tank,
       timestamp: data._time,
       dataFreshness: data._time ? `${Math.round((new Date().getTime() - new Date(data._time).getTime()) / (1000 * 60))} minutes old` : 'unknown'
     }
   };
 
-  console.log('📤 Built response with fixed CSV parsing approach');
+  console.log('📤 Built response with all status fields included');
+  console.log('🔍 Status fields in response:', {
+    producing_water: response.data.producing_water,
+    full_tank: response.data.full_tank,
+    compressor_on: response.data.compressor_on,
+    defrosting: response.data.defrosting
+  });
+  
   return response;
 }
 
