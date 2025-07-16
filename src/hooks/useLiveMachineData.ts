@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { MachineWithClient, hasLiveDataCapability } from '@/types/machine';
@@ -26,39 +25,39 @@ function calculateMachineStatus(
   dataAge: number, 
   statusFlags?: StatusFlags
 ): { status: string, isOnline: boolean } {
-  // For edge function data, use a shorter threshold (10 minutes)
-  // since this should be real-time data
-  if (dataAge > 600000) { // 10 minutes in milliseconds
+  // Check for offline status first - changed to 5 minutes threshold
+  if (dataAge > 300000) { // 5 minutes in milliseconds
     return { status: 'Disconnected', isOnline: false };
   }
   
   // Machine is online if we have recent data
   const isOnline = true;
   
-  // Use actual status flags if available
+  // Use status flags with new precise conditions
   if (statusFlags) {
+    // Priority 1: Defrosting (can override other states)
     if (statusFlags.defrosting === true) {
       return { status: 'Defrosting', isOnline };
     }
     
-    if (statusFlags.full_tank === true) {
-      return { status: 'Full Water', isOnline };
-    }
-    
-    if (statusFlags.producing_water === true || statusFlags.compressor_on === 1) {
+    // Priority 2: Producing (compressor is 1 AND producing water is 1)
+    if (statusFlags.compressor_on === 1 && statusFlags.producing_water === true) {
       return { status: 'Producing', isOnline };
     }
     
-    // If we have status flags but none of the above conditions, machine is idle
-    return { status: 'Idle', isOnline };
+    // Priority 3: Full Water (full water flag is 1 and compressor is 0)
+    if (statusFlags.full_tank === true && statusFlags.compressor_on !== 1) {
+      return { status: 'Full Water', isOnline };
+    }
+    
+    // Priority 4: Idle (machine is online AND compressor is 0 and defrosting is 0)
+    if (statusFlags.compressor_on !== 1 && statusFlags.defrosting !== true) {
+      return { status: 'Idle', isOnline };
+    }
   }
   
-  // Fallback to water level inference when no status flags available
-  if (waterLevel > 9.9) {
-    return { status: 'Full Water', isOnline };
-  } else {
-    return { status: 'Idle', isOnline };
-  }
+  // If we don't have status flags, default to Idle since machine is online
+  return { status: 'Idle', isOnline };
 }
 
 // Fetch data directly from edge function for live machines
