@@ -142,9 +142,8 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                         </Button>
                       </div>
                     </TableCell>
-                  )}
-                </TableRow>
-              )}
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           )}
