@@ -85,10 +85,10 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
         machine_id: data.machine_id,
         name: data.name,
         location: data.location || null,
-        machine_model: data.machine_model || null,
+        machine_model: data.machine_model === 'none' ? null : data.machine_model || null,
         purchase_date: data.purchase_date || null,
         microcontroller_uid: data.microcontroller_uid || null,
-        client_id: data.client_id || null,
+        client_id: data.client_id === 'unassigned' ? null : data.client_id || null,
       };
 
       const { error } = await supabase
@@ -191,6 +191,7 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
                         <SelectValue placeholder="Select model" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="none">No model specified</SelectItem>
                         <SelectItem value="Amphore">Amphore</SelectItem>
                         <SelectItem value="BoKs">BoKs</SelectItem>
                         <SelectItem value="Water Dispenser">Water Dispenser</SelectItem>
@@ -242,7 +243,7 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
                         <SelectValue placeholder="Select client" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No assignment</SelectItem>
+                        <SelectItem value="unassigned">No assignment</SelectItem>
                         {clientProfiles.map((profile) => (
                           <SelectItem key={profile.id} value={profile.id}>
                             {profile.username}
