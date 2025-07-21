@@ -32,7 +32,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Profile } from './types';
 import { isValidMachineId, isValidMicrocontrollerUID } from '@/types/machine';
 
-const machineFormSchema = z.object({
+const machineCreateSchema = z.object({
   machine_id: z.string().min(1, 'Machine ID is required').refine(isValidMachineId, {
     message: 'Machine ID must follow format KU00[123]619XXXXXX (6 digits after 619)',
   }),
@@ -49,7 +49,7 @@ const machineFormSchema = z.object({
   client_id: z.string().optional(),
 });
 
-type MachineFormData = z.infer<typeof machineFormSchema>;
+type MachineCreateData = z.infer<typeof machineCreateSchema>;
 
 interface MachineCreateModalProps {
   open: boolean;
@@ -62,8 +62,8 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const form = useForm<MachineFormData>({
-    resolver: zodResolver(machineFormSchema),
+  const form = useForm<MachineCreateData>({
+    resolver: zodResolver(machineCreateSchema),
     defaultValues: {
       machine_id: '',
       name: '',
@@ -77,23 +77,25 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
 
   const clientProfiles = profiles.filter(profile => profile.role === 'client');
 
-  const onSubmit = async (data: MachineFormData) => {
+  const onSubmit = async (data: MachineCreateData) => {
     try {
       setLoading(true);
 
+      // First, create the machine without the microcontroller_uid
       const machineData = {
         machine_id: data.machine_id,
         name: data.name,
         location: data.location || null,
         machine_model: data.machine_model === 'none' ? null : data.machine_model || null,
         purchase_date: data.purchase_date || null,
-        microcontroller_uid: data.microcontroller_uid || null,
         client_id: data.client_id === 'unassigned' ? null : data.client_id || null,
       };
 
-      const { error } = await supabase
+      const { data: newMachine, error } = await supabase
         .from('machines')
-        .insert(machineData);
+        .insert([machineData])
+        .select()
+        .single();
 
       if (error) {
         console.error('Error creating machine:', error);
@@ -103,6 +105,24 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
           variant: 'destructive',
         });
         return;
+      }
+
+      // If a microcontroller UID is provided, assign it to the machine
+      if (data.microcontroller_uid && data.microcontroller_uid.trim() !== '') {
+        const { error: assignError } = await supabase.rpc('assign_microcontroller_uid', {
+          p_machine_id: newMachine.id,
+          p_microcontroller_uid: data.microcontroller_uid,
+          p_notes: 'Initial assignment during machine creation'
+        });
+
+        if (assignError) {
+          console.error('Error assigning microcontroller UID:', assignError);
+          toast({
+            title: 'Warning',
+            description: `Machine created but failed to assign microcontroller UID: ${assignError.message}`,
+            variant: 'destructive',
+          });
+        }
       }
 
       toast({
@@ -129,9 +149,9 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Add New Machine</DialogTitle>
+          <DialogTitle>Create New Machine</DialogTitle>
           <DialogDescription>
-            Create a new machine in the system
+            Add a new machine to the system
           </DialogDescription>
         </DialogHeader>
 
@@ -170,9 +190,9 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
               name="location"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Location (Optional)</FormLabel>
+                  <FormLabel>Location</FormLabel>
                   <FormControl>
-                    <Input placeholder="Installation location" {...field} />
+                    <Input placeholder="Machine location" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -184,7 +204,7 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
               name="machine_model"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Model (Optional)</FormLabel>
+                  <FormLabel>Model</FormLabel>
                   <FormControl>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <SelectTrigger>
@@ -208,7 +228,7 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
               name="purchase_date"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Purchase Date (Optional)</FormLabel>
+                  <FormLabel>Purchase Date</FormLabel>
                   <FormControl>
                     <Input type="date" {...field} />
                   </FormControl>
@@ -222,7 +242,7 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
               name="microcontroller_uid"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Microcontroller UID (Optional)</FormLabel>
+                  <FormLabel>Microcontroller UID</FormLabel>
                   <FormControl>
                     <Input placeholder="24 hex characters" {...field} />
                   </FormControl>
@@ -236,7 +256,7 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
               name="client_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Assign to Client (Optional)</FormLabel>
+                  <FormLabel>Assigned Client</FormLabel>
                   <FormControl>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <SelectTrigger>

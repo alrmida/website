@@ -1,6 +1,8 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { MachineWithClient, hasLiveDataCapability } from '@/types/machine';
+import { MachineWithClient } from '@/types/machine';
+import { useMicrocontrollerUID } from './useMicrocontrollerUID';
 
 interface LiveMachineData {
   waterLevel: number;
@@ -94,6 +96,7 @@ async function fetchLiveDataFromEdgeFunction(machineUID: string): Promise<any> {
 }
 
 export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
+  const { currentUID, loading: uidLoading } = useMicrocontrollerUID(selectedMachine?.id);
   const [data, setData] = useState<LiveMachineData>({
     waterLevel: 0,
     status: 'Loading...',
@@ -108,7 +111,7 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
   const [error, setError] = useState<string | null>(null);
 
   // Check if this machine has live data capability
-  const canFetchLiveData = selectedMachine && hasLiveDataCapability(selectedMachine);
+  const canFetchLiveData = selectedMachine && currentUID;
 
   const fetchData = async () => {
     try {
@@ -116,7 +119,7 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
       
       // If machine doesn't have live data capability, return offline status
       if (!canFetchLiveData) {
-        console.log('⚠️ Machine does not have live data capability');
+        console.log('⚠️ Machine does not have live data capability or no current UID');
         setData({
           waterLevel: 0,
           status: 'Offline',
@@ -135,7 +138,7 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
       // For machines with live capability, try edge function first
       try {
         console.log('🌐 Attempting to fetch live data from edge function');
-        const edgeFunctionData = await fetchLiveDataFromEdgeFunction(selectedMachine.microcontroller_uid!);
+        const edgeFunctionData = await fetchLiveDataFromEdgeFunction(currentUID);
         
         if (edgeFunctionData && edgeFunctionData.data) {
           const liveData = edgeFunctionData.data;
@@ -294,6 +297,12 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
   useEffect(() => {
     console.log('🚀 Setting up data fetching for machine:', selectedMachine?.machine_id);
     
+    // Wait for UID to be loaded before fetching data
+    if (uidLoading) {
+      console.log('⏳ Waiting for UID to be loaded...');
+      return;
+    }
+
     // Initial fetch
     fetchData();
 
@@ -306,7 +315,7 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
         clearInterval(interval);
       };
     }
-  }, [selectedMachine?.id, selectedMachine?.machine_id, canFetchLiveData]);
+  }, [selectedMachine?.id, selectedMachine?.machine_id, canFetchLiveData, currentUID, uidLoading]);
 
   return { data, isLoading, error, refetch: fetchData };
 };

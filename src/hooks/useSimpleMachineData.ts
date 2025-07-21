@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { MachineWithClient } from '@/types/machine';
+import { useMicrocontrollerUID } from './useMicrocontrollerUID';
 
 export interface SimpleMachineData {
   uid: string;
@@ -14,12 +15,13 @@ export interface SimpleMachineData {
 }
 
 export const useSimpleMachineData = (machine: MachineWithClient | null) => {
+  const { currentUID, loading: uidLoading } = useMicrocontrollerUID(machine?.id);
   const [data, setData] = useState<SimpleMachineData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = async () => {
-    if (!machine?.microcontroller_uid) {
+    if (!machine || !currentUID) {
       setData(null);
       return;
     }
@@ -28,12 +30,12 @@ export const useSimpleMachineData = (machine: MachineWithClient | null) => {
     setError(null);
 
     try {
-      console.log('🔄 Fetching simple machine data for UID:', machine.microcontroller_uid);
+      console.log('🔄 Fetching simple machine data for UID:', currentUID);
 
       const { data: result, error: functionError } = await supabase.functions.invoke(
         'simple-machine-data',
         {
-          body: { uid: machine.microcontroller_uid }
+          body: { uid: currentUID }
         }
       );
 
@@ -61,13 +63,20 @@ export const useSimpleMachineData = (machine: MachineWithClient | null) => {
   };
 
   useEffect(() => {
+    // Wait for UID to be loaded before fetching data
+    if (uidLoading) {
+      console.log('⏳ Waiting for UID to be loaded...');
+      return;
+    }
+
     fetchData();
     
     // Set up interval for real-time updates (every 30 seconds)
-    const interval = setInterval(fetchData, 30000);
-    
-    return () => clearInterval(interval);
-  }, [machine?.microcontroller_uid]);
+    if (currentUID) {
+      const interval = setInterval(fetchData, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [machine?.id, currentUID, uidLoading]);
 
   return {
     data,

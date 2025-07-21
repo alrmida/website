@@ -113,10 +113,6 @@ export const useMachineData = () => {
     setLoading(false);
   };
 
-  useEffect(() => {
-    fetchData();
-  }, [profile]);
-
   return {
     machines,
     loading,

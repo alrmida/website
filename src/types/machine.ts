@@ -9,7 +9,6 @@ export interface DatabaseMachine {
   purchase_date: string | null;
   client_id: string | null;
   manager_id: string | null;
-  microcontroller_uid: string | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -29,6 +28,20 @@ export interface MachineFormData {
   machine_model: string;
   purchase_date: string;
   microcontroller_uid: string;
+}
+
+// Type for microcontroller assignments
+export interface MicrocontrollerAssignment {
+  id: string;
+  machine_id: number;
+  microcontroller_uid: string;
+  assigned_at: string;
+  unassigned_at: string | null;
+  assigned_by: string | null;
+  unassigned_by: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 // Validation function for machine IDs - Updated to use 6 digits after 619
@@ -78,7 +91,9 @@ export const getOperatingSince = (machine: DatabaseMachine): string => {
 
 // Helper to check if machine has live data capability
 export const hasLiveDataCapability = (machine: DatabaseMachine): boolean => {
-  return machine.microcontroller_uid !== null && machine.microcontroller_uid !== '';
+  // This will now be determined by checking if the machine has an active microcontroller assignment
+  // We'll need to pass the current UID separately or fetch it when needed
+  return true; // Temporary - will be updated by the hooks that fetch the current UID
 };
 
 // Helper to generate machine ID based on model and number

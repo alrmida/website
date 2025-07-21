@@ -32,6 +32,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Profile } from './types';
 import { MachineWithClient } from '@/types/machine';
 import { isValidMachineId, isValidMicrocontrollerUID } from '@/types/machine';
+import { useMicrocontrollerUID } from '@/hooks/useMicrocontrollerUID';
 
 const machineEditSchema = z.object({
   machine_id: z.string().min(1, 'Machine ID is required').refine(isValidMachineId, {
@@ -63,6 +64,7 @@ interface MachineEditModalProps {
 const MachineEditModal = ({ open, onOpenChange, machine, profiles, onSuccess }: MachineEditModalProps) => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { currentUID, assignUID } = useMicrocontrollerUID(machine?.id);
 
   const form = useForm<MachineEditData>({
     resolver: zodResolver(machineEditSchema),
@@ -87,11 +89,11 @@ const MachineEditModal = ({ open, onOpenChange, machine, profiles, onSuccess }: 
         location: machine.location || '',
         machine_model: machine.machine_model || '',
         purchase_date: machine.purchase_date ? machine.purchase_date.split('T')[0] : '',
-        microcontroller_uid: machine.microcontroller_uid || '',
+        microcontroller_uid: currentUID || '',
         client_id: machine.client_id || '',
       });
     }
-  }, [machine, open, form]);
+  }, [machine, open, currentUID, form]);
 
   const onSubmit = async (data: MachineEditData) => {
     if (!machine) return;
@@ -99,13 +101,13 @@ const MachineEditModal = ({ open, onOpenChange, machine, profiles, onSuccess }: 
     try {
       setLoading(true);
 
+      // Update machine data (without microcontroller_uid)
       const updateData = {
         machine_id: data.machine_id,
         name: data.name,
         location: data.location || null,
         machine_model: data.machine_model || null,
         purchase_date: data.purchase_date || null,
-        microcontroller_uid: data.microcontroller_uid || null,
         client_id: data.client_id || null,
         updated_at: new Date().toISOString(),
       };
@@ -123,6 +125,21 @@ const MachineEditModal = ({ open, onOpenChange, machine, profiles, onSuccess }: 
           variant: 'destructive',
         });
         return;
+      }
+
+      // Handle microcontroller UID assignment
+      const newUID = data.microcontroller_uid?.trim();
+      if (newUID && newUID !== currentUID) {
+        try {
+          await assignUID(newUID, 'UID updated via machine edit');
+        } catch (assignError) {
+          console.error('Error assigning microcontroller UID:', assignError);
+          toast({
+            title: 'Warning',
+            description: `Machine updated but failed to assign microcontroller UID: ${assignError.message}`,
+            variant: 'destructive',
+          });
+        }
       }
 
       toast({

@@ -94,6 +94,53 @@ export type Database = {
           },
         ]
       }
+      machine_microcontrollers: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          created_at: string
+          id: string
+          machine_id: number
+          microcontroller_uid: string
+          notes: string | null
+          unassigned_at: string | null
+          unassigned_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          machine_id: number
+          microcontroller_uid: string
+          notes?: string | null
+          unassigned_at?: string | null
+          unassigned_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          machine_id?: number
+          microcontroller_uid?: string
+          notes?: string | null
+          unassigned_at?: string | null
+          unassigned_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_microcontrollers_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       machines: {
         Row: {
           client_id: string | null
@@ -103,7 +150,6 @@ export type Database = {
           machine_id: string
           machine_model: string | null
           manager_id: string | null
-          microcontroller_uid: string | null
           name: string
           purchase_date: string | null
           updated_at: string | null
@@ -116,7 +162,6 @@ export type Database = {
           machine_id: string
           machine_model?: string | null
           manager_id?: string | null
-          microcontroller_uid?: string | null
           name: string
           purchase_date?: string | null
           updated_at?: string | null
@@ -129,7 +174,6 @@ export type Database = {
           machine_id?: string
           machine_model?: string | null
           manager_id?: string | null
-          microcontroller_uid?: string | null
           name?: string
           purchase_date?: string | null
           updated_at?: string | null
@@ -469,6 +513,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      assign_microcontroller_uid: {
+        Args: {
+          p_machine_id: number
+          p_microcontroller_uid: string
+          p_assigned_by?: string
+          p_notes?: string
+        }
+        Returns: string
+      }
       create_demo_sales_account: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -484,6 +537,14 @@ export type Database = {
       generate_invitation_token: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_current_microcontroller_uid: {
+        Args: { p_machine_id: number }
+        Returns: string
+      }
+      get_machine_id_from_uid: {
+        Args: { p_uid: string }
+        Returns: number
       }
       get_user_role: {
         Args: { user_id: string }

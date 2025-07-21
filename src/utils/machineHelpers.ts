@@ -1,6 +1,6 @@
 
 // Re-export types from the unified location
-export type { DatabaseMachine as Machine, MachineWithClient, MachineFormData } from '@/types/machine';
+export type { DatabaseMachine as Machine, MachineWithClient, MachineFormData, MicrocontrollerAssignment } from '@/types/machine';
 export { 
   isValidMachineId as isValidMachine, 
   isValidMicrocontrollerUID,

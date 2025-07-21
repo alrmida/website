@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Plus, Edit, Trash2, RefreshCw } from 'lucide-react';
 import { Profile as AdminProfile } from './types';
 import { MachineWithClient } from '@/types/machine';
+import { useMicrocontrollerUID } from '@/hooks/useMicrocontrollerUID';
 import MachineCreateModal from './MachineCreateModal';
 import MachineEditModal from './MachineEditModal';
 import MachineDeleteDialog from './MachineDeleteDialog';
@@ -25,6 +26,55 @@ interface MachineManagementProps {
   loading: boolean;
   onRefresh: () => void | Promise<void>;
 }
+
+const MachineRow = ({ machine, profiles, onEdit, onDelete }: {
+  machine: MachineWithClient;
+  profiles: AdminProfile[];
+  onEdit: (machine: MachineWithClient) => void;
+  onDelete: (machine: MachineWithClient) => void;
+}) => {
+  const { currentUID } = useMicrocontrollerUID(machine.id);
+
+  return (
+    <TableRow>
+      <TableCell className="font-mono text-sm">{machine.machine_id}</TableCell>
+      <TableCell className="font-medium">{machine.name}</TableCell>
+      <TableCell>{machine.location || '-'}</TableCell>
+      <TableCell>{machine.machine_model || '-'}</TableCell>
+      <TableCell>
+        {machine.client_profile?.username || 'Unassigned'}
+      </TableCell>
+      <TableCell>
+        <Badge 
+          variant={currentUID ? "default" : "secondary"}
+        >
+          {currentUID ? 'Connected' : 'Offline'}
+        </Badge>
+      </TableCell>
+      <TableCell className="font-mono text-xs">
+        {currentUID ? currentUID.substring(0, 8) + '...' : '-'}
+      </TableCell>
+      <TableCell>
+        <div className="flex space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onEdit(machine)}
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onDelete(machine)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+};
 
 const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: MachineManagementProps) => {
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -88,49 +138,23 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                   <TableHead>Model</TableHead>
                   <TableHead>Client</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Current UID</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {machines.map((machine) => (
-                  <TableRow key={machine.id}>
-                    <TableCell className="font-mono text-sm">{machine.machine_id}</TableCell>
-                    <TableCell className="font-medium">{machine.name}</TableCell>
-                    <TableCell>{machine.location || '-'}</TableCell>
-                    <TableCell>{machine.machine_model || '-'}</TableCell>
-                    <TableCell>
-                      {machine.client_profile?.username || 'Unassigned'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={machine.microcontroller_uid ? "default" : "secondary"}
-                      >
-                        {machine.microcontroller_uid ? 'Connected' : 'Offline'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(machine)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDelete(machine)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                  <MachineRow
+                    key={machine.id}
+                    machine={machine}
+                    profiles={profiles}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
                 ))}
                 {machines.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                       <div className="flex flex-col items-center space-y-2">
                         <p>No machines found</p>
                         <Button
