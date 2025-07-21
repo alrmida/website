@@ -22,7 +22,7 @@ interface AuthProfile {
 interface MachineManagementProps {
   machines: MachineWithClient[];
   profiles: AdminProfile[];
-  profile: AuthProfile; // Use AuthContext Profile type
+  profile: AuthProfile;
   loading: boolean;
   onRefresh: () => void | Promise<void>;
 }
@@ -48,7 +48,7 @@ const MachineRow = ({ machine, profiles, onEdit, onDelete }: {
         <Badge 
           variant={currentUID ? "default" : "secondary"}
         >
-          {currentUID ? 'Connected' : 'Offline'}
+          {currentUID ? 'Live Data Active' : 'No UID Assigned'}
         </Badge>
       </TableCell>
       <TableCell className="font-mono text-xs">
@@ -124,9 +124,23 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="text-center py-4">
+            <div className="text-center py-8">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
               <p className="mt-2">Loading machines...</p>
+            </div>
+          ) : machines.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <div className="flex flex-col items-center space-y-4">
+                <p className="text-lg">No machines found</p>
+                <p className="text-sm text-gray-400">Get started by adding your first machine</p>
+                <Button
+                  onClick={() => setCreateModalOpen(true)}
+                  className="mt-4"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add your first machine
+                </Button>
+              </div>
             </div>
           ) : (
             <Table>
@@ -137,7 +151,7 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                   <TableHead>Location</TableHead>
                   <TableHead>Model</TableHead>
                   <TableHead>Client</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Live Data Status</TableHead>
                   <TableHead>Current UID</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -152,22 +166,6 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
                     onDelete={handleDelete}
                   />
                 ))}
-                {machines.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
-                      <div className="flex flex-col items-center space-y-2">
-                        <p>No machines found</p>
-                        <Button
-                          variant="outline"
-                          onClick={() => setCreateModalOpen(true)}
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add your first machine
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
               </TableBody>
             </Table>
           )}

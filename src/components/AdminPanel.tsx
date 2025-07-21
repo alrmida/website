@@ -87,6 +87,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
       
       if (machinesError) {
         console.error('Machines error:', machinesError);
+        // Don't throw error for machines, just set empty array
         setMachines([]);
       } else {
         console.log('Machines fetched successfully:', machinesData);
@@ -165,13 +166,6 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
             Manage users, machines, and system settings
           </DialogDescription>
         </DialogHeader>
-
-        {loading && (
-          <div className="text-center py-4">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-            <p className="mt-2">Loading...</p>
-          </div>
-        )}
 
         <Tabs defaultValue="users" className="w-full">
           <TabsList className="grid w-full grid-cols-4">

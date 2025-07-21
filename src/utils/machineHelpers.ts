@@ -8,3 +8,15 @@ export {
   getOperatingSince,
   hasLiveDataCapability
 } from '@/types/machine';
+
+// Re-export machine number helpers
+export {
+  MACHINE_MODELS,
+  generateMachineId,
+  getModelFromName,
+  getModelFromMachineId,
+  extractMachineNumber,
+  checkMachineNumberExists,
+  getNextAvailableMachineNumber,
+  validateMachineNumber
+} from './machineNumberHelpers';

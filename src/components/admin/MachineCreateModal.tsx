@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -27,23 +27,26 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from './types';
-import { isValidMachineId, isValidMicrocontrollerUID } from '@/types/machine';
+import { isValidMicrocontrollerUID } from '@/types/machine';
+import { 
+  MACHINE_MODELS, 
+  generateMachineId, 
+  checkMachineNumberExists, 
+  getNextAvailableMachineNumber,
+  validateMachineNumber 
+} from '@/utils/machineNumberHelpers';
 
 const machineCreateSchema = z.object({
-  machine_id: z.string().min(1, 'Machine ID is required').refine(isValidMachineId, {
-    message: 'Machine ID must follow format KU00[123]619XXXXXX (6 digits after 619)',
-  }),
+  model: z.string().min(1, 'Model is required'),
+  machineNumber: z.number().min(1, 'Machine number is required'),
   name: z.string().min(1, 'Name is required'),
   location: z.string().optional(),
-  machine_model: z.string().optional(),
   purchase_date: z.string().optional(),
-  microcontroller_uid: z.string().optional().refine((val) => {
-    if (!val || val.trim() === '') return true;
-    return isValidMicrocontrollerUID(val);
-  }, {
+  microcontroller_uid: z.string().min(1, 'Microcontroller UID is required').refine(isValidMicrocontrollerUID, {
     message: 'Microcontroller UID must be 24 hexadecimal characters',
   }),
   client_id: z.string().optional(),
@@ -60,15 +63,18 @@ interface MachineCreateModalProps {
 
 const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: MachineCreateModalProps) => {
   const [loading, setLoading] = useState(false);
+  const [generatedMachineId, setGeneratedMachineId] = useState<string>('');
+  const [machineNumberExists, setMachineNumberExists] = useState(false);
+  const [suggestedNumber, setSuggestedNumber] = useState<number>(1);
   const { toast } = useToast();
 
   const form = useForm<MachineCreateData>({
     resolver: zodResolver(machineCreateSchema),
     defaultValues: {
-      machine_id: '',
+      model: '',
+      machineNumber: 1,
       name: '',
       location: '',
-      machine_model: '',
       purchase_date: '',
       microcontroller_uid: '',
       client_id: '',
@@ -76,17 +82,85 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
   });
 
   const clientProfiles = profiles.filter(profile => profile.role === 'client');
+  const selectedModel = form.watch('model');
+  const machineNumber = form.watch('machineNumber');
+
+  // Generate machine ID when model or number changes
+  useEffect(() => {
+    if (selectedModel && machineNumber) {
+      try {
+        const machineId = generateMachineId(selectedModel, machineNumber);
+        setGeneratedMachineId(machineId);
+      } catch (error) {
+        setGeneratedMachineId('');
+      }
+    } else {
+      setGeneratedMachineId('');
+    }
+  }, [selectedModel, machineNumber]);
+
+  // Check if machine number exists and suggest next available
+  useEffect(() => {
+    if (selectedModel && machineNumber) {
+      const checkExists = async () => {
+        const exists = await checkMachineNumberExists(selectedModel, machineNumber);
+        setMachineNumberExists(exists);
+      };
+      checkExists();
+    }
+  }, [selectedModel, machineNumber]);
+
+  // Get suggested next number when model changes
+  useEffect(() => {
+    if (selectedModel) {
+      const getSuggested = async () => {
+        try {
+          const nextNumber = await getNextAvailableMachineNumber(selectedModel);
+          setSuggestedNumber(nextNumber);
+          form.setValue('machineNumber', nextNumber);
+        } catch (error) {
+          console.error('Error getting next available number:', error);
+        }
+      };
+      getSuggested();
+    }
+  }, [selectedModel, form]);
 
   const onSubmit = async (data: MachineCreateData) => {
     try {
       setLoading(true);
 
-      // First, create the machine without the microcontroller_uid
+      // Validate machine number
+      const validation = validateMachineNumber(data.machineNumber);
+      if (!validation.isValid) {
+        toast({
+          title: 'Error',
+          description: validation.error,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Check if machine number is already taken
+      const exists = await checkMachineNumberExists(data.model, data.machineNumber);
+      if (exists) {
+        toast({
+          title: 'Error',
+          description: 'This machine number is already taken for the selected model',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Generate final machine ID
+      const machineId = generateMachineId(data.model, data.machineNumber);
+
+      // Create the machine
       const machineData = {
-        machine_id: data.machine_id,
+        machine_id: machineId,
         name: data.name,
         location: data.location || null,
-        machine_model: data.machine_model === 'none' ? null : data.machine_model || null,
+        machine_model: data.model,
         purchase_date: data.purchase_date || null,
         client_id: data.client_id === 'unassigned' ? null : data.client_id || null,
       };
@@ -107,28 +181,26 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
         return;
       }
 
-      // If a microcontroller UID is provided, assign it to the machine
-      if (data.microcontroller_uid && data.microcontroller_uid.trim() !== '') {
-        const { error: assignError } = await supabase.rpc('assign_microcontroller_uid', {
-          p_machine_id: newMachine.id,
-          p_microcontroller_uid: data.microcontroller_uid,
-          p_notes: 'Initial assignment during machine creation'
-        });
-
-        if (assignError) {
-          console.error('Error assigning microcontroller UID:', assignError);
-          toast({
-            title: 'Warning',
-            description: `Machine created but failed to assign microcontroller UID: ${assignError.message}`,
-            variant: 'destructive',
-          });
-        }
-      }
-
-      toast({
-        title: 'Success',
-        description: 'Machine created successfully',
+      // Assign microcontroller UID
+      const { error: assignError } = await supabase.rpc('assign_microcontroller_uid', {
+        p_machine_id: newMachine.id,
+        p_microcontroller_uid: data.microcontroller_uid,
+        p_notes: 'Initial assignment during machine creation'
       });
+
+      if (assignError) {
+        console.error('Error assigning microcontroller UID:', assignError);
+        toast({
+          title: 'Warning',
+          description: `Machine created but failed to assign microcontroller UID: ${assignError.message}`,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Success',
+          description: 'Machine created successfully with live data connection established',
+        });
+      }
 
       form.reset();
       onOpenChange(false);
@@ -151,7 +223,7 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
         <DialogHeader>
           <DialogTitle>Create New Machine</DialogTitle>
           <DialogDescription>
-            Add a new machine to the system
+            Select model and machine number to generate the Kumulus ID automatically
           </DialogDescription>
         </DialogHeader>
 
@@ -159,12 +231,23 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
-              name="machine_id"
+              name="model"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Machine ID</FormLabel>
+                  <FormLabel>Model</FormLabel>
                   <FormControl>
-                    <Input placeholder="KU001619000001" {...field} />
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select model" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MACHINE_MODELS.map((model) => (
+                          <SelectItem key={model.code} value={model.name}>
+                            {model.name} ({model.prefix}XXXXXX)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -173,10 +256,62 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
 
             <FormField
               control={form.control}
+              name="machineNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Machine Number</FormLabel>
+                  <FormControl>
+                    <div className="flex items-center space-x-2">
+                      <Input
+                        type="number"
+                        placeholder="97"
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                        min="1"
+                        max="999999"
+                      />
+                      {selectedModel && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => form.setValue('machineNumber', suggestedNumber)}
+                        >
+                          Use {suggestedNumber}
+                        </Button>
+                      )}
+                    </div>
+                  </FormControl>
+                  {machineNumberExists && (
+                    <p className="text-sm text-red-600">
+                      This number is already taken. Suggested: {suggestedNumber}
+                    </p>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {generatedMachineId && (
+              <div className="p-3 bg-gray-50 rounded-md">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Generated Machine ID
+                </label>
+                <div className="flex items-center space-x-2">
+                  <code className="text-lg font-mono font-bold">{generatedMachineId}</code>
+                  <Badge variant={machineNumberExists ? 'destructive' : 'default'}>
+                    {machineNumberExists ? 'Already exists' : 'Available'}
+                  </Badge>
+                </div>
+              </div>
+            )}
+
+            <FormField
+              control={form.control}
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Name</FormLabel>
+                  <FormLabel>Machine Name</FormLabel>
                   <FormControl>
                     <Input placeholder="Machine name" {...field} />
                   </FormControl>
@@ -193,30 +328,6 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
                   <FormLabel>Location</FormLabel>
                   <FormControl>
                     <Input placeholder="Machine location" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="machine_model"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Model</FormLabel>
-                  <FormControl>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select model" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No model specified</SelectItem>
-                        <SelectItem value="Amphore">Amphore</SelectItem>
-                        <SelectItem value="BoKs">BoKs</SelectItem>
-                        <SelectItem value="Water Dispenser">Water Dispenser</SelectItem>
-                      </SelectContent>
-                    </Select>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -242,9 +353,9 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
               name="microcontroller_uid"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Microcontroller UID</FormLabel>
+                  <FormLabel>Microcontroller UID *</FormLabel>
                   <FormControl>
-                    <Input placeholder="24 hex characters" {...field} />
+                    <Input placeholder="24 hex characters (required)" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -286,7 +397,10 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading}>
+              <Button 
+                type="submit" 
+                disabled={loading || machineNumberExists || !generatedMachineId}
+              >
                 {loading ? 'Creating...' : 'Create Machine'}
               </Button>
             </div>
