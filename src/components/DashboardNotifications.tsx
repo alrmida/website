@@ -29,8 +29,8 @@ const DashboardNotifications = ({ selectedMachine, dataError, dataLoading, liveD
     }
   };
 
-  // Only show notifications if we have a selected machine with live data capability
-  if (!selectedMachine?.microcontroller_uid) {
+  // Only show notifications if we have a selected machine
+  if (!selectedMachine) {
     return null;
   }
 
