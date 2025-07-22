@@ -14,8 +14,16 @@ interface Database {
         Row: {
           id: number;
           machine_id: string;
-          microcontroller_uid: string | null;
           name: string;
+        };
+      };
+      machine_microcontrollers: {
+        Row: {
+          id: string;
+          machine_id: number;
+          microcontroller_uid: string;
+          assigned_at: string;
+          unassigned_at: string | null;
         };
       };
       raw_machine_data: {
@@ -115,24 +123,42 @@ async function logDataIngestion(
 }
 
 async function getActiveMachines() {
-  console.log('🔍 Fetching all active machines from database...');
+  console.log('🔍 Fetching all active machines from database using new schema...');
   
-  const { data: machines, error } = await supabase
+  // Query machines with their current microcontroller assignments
+  const { data: machinesWithUIDs, error } = await supabase
     .from('machines')
-    .select('machine_id, microcontroller_uid, name')
-    .not('microcontroller_uid', 'is', null);
+    .select(`
+      id,
+      machine_id,
+      name,
+      machine_microcontrollers!inner(
+        microcontroller_uid,
+        assigned_at,
+        unassigned_at
+      )
+    `)
+    .is('machine_microcontrollers.unassigned_at', null)
+    .order('machine_microcontrollers.assigned_at', { ascending: false });
 
   if (error) {
-    console.error('❌ Error fetching machines:', error);
+    console.error('❌ Error fetching machines with UIDs:', error);
     throw new Error(`Failed to fetch machines: ${error.message}`);
   }
 
-  if (!machines || machines.length === 0) {
-    console.log('⚠️ No machines with microcontroller UIDs found');
+  if (!machinesWithUIDs || machinesWithUIDs.length === 0) {
+    console.log('⚠️ No machines with active microcontroller assignments found');
     return [];
   }
 
-  console.log(`✅ Found ${machines.length} active machines:`, machines.map(m => ({
+  // Transform the data to a simpler format
+  const machines = machinesWithUIDs.map(machine => ({
+    machine_id: machine.machine_id,
+    name: machine.name,
+    microcontroller_uid: machine.machine_microcontrollers[0]?.microcontroller_uid || null
+  })).filter(machine => machine.microcontroller_uid);
+
+  console.log(`✅ Found ${machines.length} active machines with UIDs:`, machines.map(m => ({
     id: m.machine_id,
     uid: m.microcontroller_uid,
     name: m.name
@@ -159,6 +185,7 @@ async function fetchLatestDataFromInflux(machineUID: string, machineId: string):
         |> range(start: -2h)
         |> filter(fn: (r) => r._measurement == "awg_data_full")
         |> filter(fn: (r) => r._field == "water_level_L")
+        |> filter(fn: (r) => r.uid == "${machineUID}")
         |> sort(columns: ["_time"], desc: true)
         |> limit(n: 1)
     `;
@@ -212,6 +239,7 @@ async function fetchLatestDataFromInflux(machineUID: string, machineId: string):
           |> range(start: -24h)
           |> filter(fn: (r) => r._measurement == "awg_data_full")
           |> filter(fn: (r) => r._field == "water_level_L")
+          |> filter(fn: (r) => r.uid == "${machineUID}")
           |> sort(columns: ["_time"], desc: true)
           |> limit(n: 1)
       `;
@@ -532,9 +560,9 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     console.log('🚀 Water production tracking started at:', new Date().toISOString());
-    console.log('🔄 Processing ALL machines dynamically...');
+    console.log('🔄 Processing ALL machines dynamically with updated schema...');
 
-    // Get all active machines from database
+    // Get all active machines from database using the new schema
     const machines = await getActiveMachines();
     
     if (machines.length === 0) {

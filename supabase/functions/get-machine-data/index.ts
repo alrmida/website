@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -18,15 +19,22 @@ function validateEnvironment() {
   console.log('✅ Environment variables validated');
 }
 
-// Lookup machine ID from microcontroller UID
+// Lookup machine ID from microcontroller UID using the new schema
 async function getMachineIdFromUID(supabase: any, microcontrollerUID: string): Promise<string | null> {
   try {
     console.log('🔍 Looking up machine ID for UID:', microcontrollerUID);
     
-    const { data: machine, error } = await supabase
-      .from('machines')
-      .select('machine_id')
+    // Query the machine_microcontrollers relationship table
+    const { data: assignment, error } = await supabase
+      .from('machine_microcontrollers')
+      .select(`
+        machine_id,
+        machines!inner(machine_id)
+      `)
       .eq('microcontroller_uid', microcontrollerUID)
+      .is('unassigned_at', null)
+      .order('assigned_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (error) {
@@ -34,13 +42,14 @@ async function getMachineIdFromUID(supabase: any, microcontrollerUID: string): P
       return null;
     }
 
-    if (!machine) {
-      console.log('⚠️ No machine found for UID:', microcontrollerUID);
+    if (!assignment) {
+      console.log('⚠️ No active machine assignment found for UID:', microcontrollerUID);
       return null;
     }
 
-    console.log('✅ Found machine ID:', machine.machine_id, 'for UID:', microcontrollerUID);
-    return machine.machine_id;
+    const machineId = assignment.machines.machine_id;
+    console.log('✅ Found machine ID:', machineId, 'for UID:', microcontrollerUID);
+    return machineId;
   } catch (error) {
     console.error('❌ Exception during machine lookup:', error);
     return null;
@@ -363,7 +372,7 @@ function buildResponse(data: any) {
 
 // Main serve function
 serve(async (req) => {
-  console.log('🚀 Fixed Edge Function get-machine-data invoked:', req.method);
+  console.log('🚀 Updated Edge Function get-machine-data invoked:', req.method);
 
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -391,14 +400,14 @@ serve(async (req) => {
       console.log('⚠️ No UID provided, using default UID:', machineUID);
     }
 
-    console.log('🔍 Processing data for machine UID with fixed CSV parsing:', machineUID);
+    console.log('🔍 Processing data for machine UID with updated schema:', machineUID);
 
     // Create Supabase client for machine lookup
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-    // Look up the actual machine ID from the UID
+    // Look up the actual machine ID from the UID using the new schema
     const machineId = await getMachineIdFromUID(supabase, machineUID);
     
     if (!machineId) {
