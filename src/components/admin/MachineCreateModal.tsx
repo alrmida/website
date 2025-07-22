@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -49,7 +48,7 @@ const machineCreateSchema = z.object({
   microcontroller_uid: z.string().min(1, 'Microcontroller UID is required').refine(isValidMicrocontrollerUID, {
     message: 'Microcontroller UID must be 24 hexadecimal characters',
   }),
-  client_id: z.string().optional(),
+  client_id: z.string().min(1, 'Client assignment is required'),
 });
 
 type MachineCreateData = z.infer<typeof machineCreateSchema>;
@@ -155,14 +154,14 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
       // Generate final machine ID
       const machineId = generateMachineId(data.model, data.machineNumber);
 
-      // Create the machine
+      // Create the machine with required client assignment
       const machineData = {
         machine_id: machineId,
         name: data.name,
         location: data.location || null,
         machine_model: data.model,
         purchase_date: data.purchase_date || null,
-        client_id: data.client_id === 'unassigned' ? null : data.client_id || null,
+        client_id: data.client_id,
       };
 
       const { data: newMachine, error } = await supabase
@@ -198,7 +197,7 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
       } else {
         toast({
           title: 'Success',
-          description: 'Machine created successfully with live data connection established',
+          description: `Machine created successfully and assigned to client. Live data connection established.`,
         });
       }
 
@@ -223,12 +222,37 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
         <DialogHeader>
           <DialogTitle>Create New Machine</DialogTitle>
           <DialogDescription>
-            Select model and machine number to generate the Kumulus ID automatically
+            Select model and machine number to generate the Kumulus ID automatically. Client assignment is required.
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="client_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Assigned Client *</FormLabel>
+                  <FormControl>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select client (required)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {clientProfiles.map((profile) => (
+                          <SelectItem key={profile.id} value={profile.id}>
+                            {profile.username}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="model"
@@ -355,33 +379,7 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
                 <FormItem>
                   <FormLabel>Microcontroller UID *</FormLabel>
                   <FormControl>
-                    <Input placeholder="24 hex characters (required)" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="client_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Assigned Client</FormLabel>
-                  <FormControl>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select client" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="unassigned">No assignment</SelectItem>
-                        {clientProfiles.map((profile) => (
-                          <SelectItem key={profile.id} value={profile.id}>
-                            {profile.username}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Input placeholder="24 hex characters (required for live data)" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

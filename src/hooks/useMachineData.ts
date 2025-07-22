@@ -113,6 +113,13 @@ export const useMachineData = () => {
     setLoading(false);
   };
 
+  // Add the missing useEffect to automatically fetch data when profile changes
+  useEffect(() => {
+    if (profile) {
+      fetchData();
+    }
+  }, [profile]);
+
   return {
     machines,
     loading,

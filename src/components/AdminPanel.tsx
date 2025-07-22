@@ -17,7 +17,7 @@ import MachineManagement from './admin/MachineManagement';
 import InvitationManagement from './admin/InvitationManagement';
 import RawDataManagement from './admin/RawDataManagement';
 import { Profile, Invitation } from './admin/types';
-import { MachineWithClient } from '@/types/machine';
+import { useMachineData } from '@/hooks/useMachineData';
 import { mapDatabaseRoleToFrontend } from './admin/utils';
 
 interface AdminPanelProps {
@@ -31,22 +31,24 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // State for different tabs
+  // Use the fixed useMachineData hook instead of custom fetching
+  const { machines, loading: machinesLoading, refetch: refetchMachines } = useMachineData();
+  
+  // State for other tabs (not machines)
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [machines, setMachines] = useState<MachineWithClient[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
 
   useEffect(() => {
     if (open && profile?.role === 'admin') {
-      fetchData();
+      fetchNonMachineData();
     }
   }, [open, profile]);
 
-  const fetchData = async () => {
+  const fetchNonMachineData = async () => {
     setLoading(true);
     setError(null);
     try {
-      console.log('Fetching admin data...');
+      console.log('Fetching admin data (profiles and invitations)...');
       
       // Fetch profiles
       const { data: profilesData, error: profilesError } = await supabase
@@ -65,35 +67,6 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
         role: mapDatabaseRoleToFrontend(p.role)
       })) || [];
 
-      // Fetch machines without microcontroller_uid column
-      const { data: machinesData, error: machinesError } = await supabase
-        .from('machines')
-        .select(`
-          id,
-          machine_id,
-          name,
-          location,
-          machine_model,
-          purchase_date,
-          client_id,
-          manager_id,
-          created_at,
-          updated_at,
-          client_profile:profiles!client_id (
-            username
-          )
-        `)
-        .order('created_at', { ascending: false });
-      
-      if (machinesError) {
-        console.error('Machines error:', machinesError);
-        // Don't throw error for machines, just set empty array
-        setMachines([]);
-      } else {
-        console.log('Machines fetched successfully:', machinesData);
-        setMachines(machinesData || []);
-      }
-      
       // Fetch invitations
       const { data: invitationsData, error: invitationsError } = await supabase
         .from('invitations')
@@ -114,7 +87,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
 
       console.log('Fetched data:', { 
         profiles: mappedProfiles?.length || 0, 
-        machines: machinesData?.length || 0, 
+        machines: machines?.length || 0, 
         invitations: invitationsData?.length || 0 
       });
 
@@ -130,6 +103,11 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
       });
     }
     setLoading(false);
+  };
+
+  const handleRefresh = () => {
+    fetchNonMachineData();
+    refetchMachines();
   };
 
   if (profile?.role !== 'admin') {
@@ -148,7 +126,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
           </DialogHeader>
           <div className="p-4 bg-red-50 border border-red-200 rounded">
             <p className="text-red-800">{error}</p>
-            <Button onClick={fetchData} className="mt-2">
+            <Button onClick={handleRefresh} className="mt-2">
               Try Again
             </Button>
           </div>
@@ -178,7 +156,7 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
           <TabsContent value="users" className="space-y-4">
             <UserManagement 
               profiles={profiles} 
-              onRefresh={fetchData}
+              onRefresh={handleRefresh}
             />
           </TabsContent>
 
@@ -187,8 +165,8 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
               machines={machines}
               profiles={profiles}
               profile={profile}
-              loading={loading}
-              onRefresh={fetchData}
+              loading={machinesLoading}
+              onRefresh={handleRefresh}
             />
           </TabsContent>
 
@@ -197,14 +175,14 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
               invitations={invitations}
               profile={profile}
               loading={loading}
-              onRefresh={fetchData}
+              onRefresh={handleRefresh}
             />
           </TabsContent>
 
           <TabsContent value="rawdata" className="space-y-4">
             <RawDataManagement 
               loading={loading}
-              onRefresh={fetchData}
+              onRefresh={handleRefresh}
             />
           </TabsContent>
         </Tabs>
