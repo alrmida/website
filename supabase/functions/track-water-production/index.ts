@@ -139,7 +139,7 @@ async function getActiveMachines() {
       )
     `)
     .is('machine_microcontrollers.unassigned_at', null)
-    .order('machine_microcontrollers.assigned_at', { ascending: false });
+    .order('id', { ascending: true });
 
   if (error) {
     console.error('❌ Error fetching machines with UIDs:', error);

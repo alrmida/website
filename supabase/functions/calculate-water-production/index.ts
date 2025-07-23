@@ -55,12 +55,22 @@ serve(async (req) => {
     
     console.log('✅ Database connection successful');
 
-    // Get all active machines from database
+    // Get all active machines from database using the new schema
     console.log('🔍 Fetching all active machines from database...');
-    const { data: machines, error: machinesError } = await supabase
+    const { data: machinesWithUIDs, error: machinesError } = await supabase
       .from('machines')
-      .select('machine_id, microcontroller_uid, name')
-      .not('microcontroller_uid', 'is', null);
+      .select(`
+        id,
+        machine_id,
+        name,
+        machine_microcontrollers!inner(
+          microcontroller_uid,
+          assigned_at,
+          unassigned_at
+        )
+      `)
+      .is('machine_microcontrollers.unassigned_at', null)
+      .order('id', { ascending: true });
 
     if (machinesError) {
       console.error('❌ Error fetching machines:', machinesError);
@@ -74,7 +84,7 @@ serve(async (req) => {
       });
     }
 
-    if (!machines || machines.length === 0) {
+    if (!machinesWithUIDs || machinesWithUIDs.length === 0) {
       console.log('⚠️ No machines with microcontroller UIDs found');
       return new Response(JSON.stringify({ 
         status: 'ok', 
@@ -84,6 +94,13 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
+
+    // Transform the data to a simpler format
+    const machines = machinesWithUIDs.map(machine => ({
+      machine_id: machine.machine_id,
+      name: machine.name,
+      microcontroller_uid: machine.machine_microcontrollers[0]?.microcontroller_uid || null
+    })).filter(machine => machine.microcontroller_uid);
 
     console.log(`✅ Found ${machines.length} active machines:`, machines.map(m => ({
       id: m.machine_id,
