@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -11,6 +10,7 @@
     --kumulus-dark-blue: 227 63% 15%;     /* #0e183d - Blue Zodiac */
     --kumulus-orange: 19 95% 59%;         /* #fa6f31 - Crusta */
     --kumulus-cream: 60 55% 96%;          /* #fafaee - Bianca */
+    --kumulus-chambray: 234 40% 36%;      /* #373e80 - Chambray */
 
     /* Updated Design System with Kumulus Colors */
     --background: 60 55% 96%;             /* Kumulus Cream */
@@ -119,16 +119,19 @@
   .bg-kumulus-dark-blue { background-color: hsl(var(--kumulus-dark-blue)); }
   .bg-kumulus-orange { background-color: hsl(var(--kumulus-orange)); }
   .bg-kumulus-cream { background-color: hsl(var(--kumulus-cream)); }
+  .bg-kumulus-chambray { background-color: hsl(var(--kumulus-chambray)); }
 
   .text-kumulus-blue { color: hsl(var(--kumulus-blue)); }
   .text-kumulus-yellow { color: hsl(var(--kumulus-yellow)); }
   .text-kumulus-dark-blue { color: hsl(var(--kumulus-dark-blue)); }
   .text-kumulus-orange { color: hsl(var(--kumulus-orange)); }
   .text-kumulus-cream { color: hsl(var(--kumulus-cream)); }
+  .text-kumulus-chambray { color: hsl(var(--kumulus-chambray)); }
 
   .border-kumulus-blue { border-color: hsl(var(--kumulus-blue)); }
   .border-kumulus-yellow { border-color: hsl(var(--kumulus-yellow)); }
   .border-kumulus-orange { border-color: hsl(var(--kumulus-orange)); }
+  .border-kumulus-chambray { border-color: hsl(var(--kumulus-chambray)); }
 
   /* Typography Enhancements */
   .heading-xl {
