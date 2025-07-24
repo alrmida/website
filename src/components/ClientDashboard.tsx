@@ -75,15 +75,27 @@ const ClientDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-kumulus-cream dark:bg-gray-900">
       <DashboardHeader />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Welcome Section */}
+        <div className="mb-8">
+          <h1 className="heading-xl mb-2">
+            Welcome to Your Kumulus Dashboard
+          </h1>
+          <p className="text-muted-foreground">
+            Monitor your atmospheric water generation system in real-time
+          </p>
+        </div>
+
         {/* Machine Selection */}
-        <MachineSelector 
-          onMachineSelect={handleMachineSelect} 
-          selectedMachine={selectedMachine}
-        />
+        <div className="mb-6">
+          <MachineSelector 
+            onMachineSelect={handleMachineSelect} 
+            selectedMachine={selectedMachine}
+          />
+        </div>
 
         {/* Dashboard Notifications - Show connection status and errors */}
         <DashboardNotifications
@@ -95,32 +107,37 @@ const ClientDashboard = () => {
 
         {/* Debug info for data source and analytics */}
         {selectedMachine && (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
-            <p>📊 Analytics Data Source: {totalWaterProduced > 0 ? 'Real production data available' : 'Using static/zero data (no production events found)'}</p>
-            <p>🏭 Machine: {selectedMachine.machine_id} | Status: {liveData?.status || 'Loading...'} | Data Source: {liveData?.dataSource || 'none'}</p>
-            {liveData?.dataSource === 'live' && (
-              <p>🌐 Live Data: Connected via edge function | Water Level: {liveData.waterLevel?.toFixed(3)}L</p>
-            )}
-            {liveData?.dataSource === 'fallback' && (
-              <p>⚠️ Fallback Data: Using Supabase tables (edge function unavailable)</p>
-            )}
+          <div className="mb-6 p-4 bg-kumulus-blue/5 border border-kumulus-blue/20 rounded-lg text-sm">
+            <div className="text-kumulus-blue font-medium mb-2">📊 System Information</div>
+            <div className="space-y-1 text-kumulus-dark-blue/70">
+              <p>Analytics Data: {totalWaterProduced > 0 ? 'Real production data available' : 'Using static/zero data (no production events found)'}</p>
+              <p>Machine: {selectedMachine.machine_id} | Status: {liveData?.status || 'Loading...'} | Source: {liveData?.dataSource || 'none'}</p>
+              {liveData?.dataSource === 'live' && (
+                <p>🌐 Live Connection: Active via edge function | Water Level: {liveData.waterLevel?.toFixed(3)}L</p>
+              )}
+              {liveData?.dataSource === 'fallback' && (
+                <p>⚠️ Fallback Mode: Using database tables (edge function unavailable)</p>
+              )}
+            </div>
           </div>
         )}
 
         {/* Machine Info - Show for commercial users only */}
         {selectedMachine && profile?.role === 'commercial' && (
-          <MachineInfo
-            machineId={selectedMachine.machine_id}
-            liveData={liveData ? {
-              lastUpdated: liveData.lastUpdated,
-              waterLevel: liveData.waterLevel,
-              ambient_temp_c: null,
-              current_a: null,
-              compressor_on: liveData.compressorOn,
-            } : null}
-            loading={dataLoading}
-            onRefresh={() => {}} // Will be handled by the hook
-          />
+          <div className="mb-8">
+            <MachineInfo
+              machineId={selectedMachine.machine_id}
+              liveData={liveData ? {
+                lastUpdated: liveData.lastUpdated,
+                waterLevel: liveData.waterLevel,
+                ambient_temp_c: null,
+                current_a: null,
+                compressor_on: liveData.compressorOn,
+              } : null}
+              loading={dataLoading}
+              onRefresh={() => {}} // Will be handled by the hook
+            />
+          </div>
         )}
 
         {/* Metrics Cards Grid - Now using actual production event timestamp */}

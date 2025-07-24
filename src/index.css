@@ -5,89 +5,99 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Kumulus Brand Colors */
+    --kumulus-blue: 2 61% 22%;        /* #023d6e */
+    --kumulus-yellow: 48 100% 85%;    /* #ffedae */
+    --kumulus-dark-blue: 225 66% 15%; /* #0e183d */
+    --kumulus-orange: 18 95% 58%;     /* #fa6f31 */
+    --kumulus-cream: 60 27% 97%;      /* #fafaee */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    /* Updated Design System with Kumulus Colors */
+    --background: 60 27% 97%;           /* Kumulus Cream */
+    --foreground: 225 66% 15%;          /* Kumulus Dark Blue */
+
+    --card: 0 0% 100%;                  /* Pure white for cards */
+    --card-foreground: 225 66% 15%;     /* Kumulus Dark Blue */
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 225 66% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 2 61% 22%;               /* Kumulus Blue */
+    --primary-foreground: 0 0% 100%;    /* White */
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 48 100% 85%;           /* Kumulus Yellow */
+    --secondary-foreground: 225 66% 15%; /* Kumulus Dark Blue */
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 60 27% 95%;                /* Lighter cream */
+    --muted-foreground: 2 61% 22%;      /* Kumulus Blue */
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 48 100% 85%;              /* Kumulus Yellow */
+    --accent-foreground: 225 66% 15%;   /* Kumulus Dark Blue */
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 18 95% 58%;          /* Kumulus Orange */
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --warning: 18 95% 58%;              /* Kumulus Orange */
+    --warning-foreground: 0 0% 100%;
+
+    --border: 2 30% 85%;                /* Light blue-gray */
+    --input: 2 30% 90%;                 /* Lighter input border */
+    --ring: 2 61% 22%;                  /* Kumulus Blue for focus rings */
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Sidebar colors updated */
+    --sidebar-background: 225 66% 15%;          /* Kumulus Dark Blue */
+    --sidebar-foreground: 0 0% 100%;            /* White */
+    --sidebar-primary: 2 61% 22%;               /* Kumulus Blue */
+    --sidebar-primary-foreground: 0 0% 100%;    /* White */
+    --sidebar-accent: 48 100% 85%;              /* Kumulus Yellow */
+    --sidebar-accent-foreground: 225 66% 15%;   /* Kumulus Dark Blue */
+    --sidebar-border: 2 30% 25%;                /* Darker blue border */
+    --sidebar-ring: 48 100% 85%;                /* Kumulus Yellow */
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Dark mode with Kumulus brand identity */
+    --background: 225 66% 8%;            /* Very dark blue */
+    --foreground: 0 0% 95%;              /* Light text */
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 225 66% 12%;                 /* Dark blue cards */
+    --card-foreground: 0 0% 95%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 225 66% 12%;
+    --popover-foreground: 0 0% 95%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 48 100% 85%;              /* Kumulus Yellow for dark mode primary */
+    --primary-foreground: 225 66% 15%;   /* Kumulus Dark Blue */
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 2 61% 22%;              /* Kumulus Blue */
+    --secondary-foreground: 0 0% 95%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 225 66% 15%;                /* Kumulus Dark Blue */
+    --muted-foreground: 0 0% 75%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 48 100% 85%;               /* Kumulus Yellow */
+    --accent-foreground: 225 66% 15%;    /* Kumulus Dark Blue */
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 18 95% 58%;           /* Kumulus Orange */
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --warning: 18 95% 58%;               /* Kumulus Orange */
+    --warning-foreground: 0 0% 100%;
+
+    --border: 225 66% 20%;
+    --input: 225 66% 20%;
+    --ring: 48 100% 85%;                 /* Kumulus Yellow for focus */
+
+    --sidebar-background: 225 66% 5%;    /* Even darker blue */
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 48 100% 85%;      /* Kumulus Yellow */
+    --sidebar-primary-foreground: 225 66% 15%;
+    --sidebar-accent: 2 61% 22%;         /* Kumulus Blue */
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 225 66% 15%;
+    --sidebar-ring: 48 100% 85%;
   }
 }
 
@@ -97,12 +107,47 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-poppins;
   }
 }
 
-/* === Water Fill Animation ============================= */
+/* Custom Kumulus Brand Utilities */
 @layer utilities {
+  /* Brand Color Classes */
+  .bg-kumulus-blue { background-color: hsl(var(--kumulus-blue)); }
+  .bg-kumulus-yellow { background-color: hsl(var(--kumulus-yellow)); }
+  .bg-kumulus-dark-blue { background-color: hsl(var(--kumulus-dark-blue)); }
+  .bg-kumulus-orange { background-color: hsl(var(--kumulus-orange)); }
+  .bg-kumulus-cream { background-color: hsl(var(--kumulus-cream)); }
+
+  .text-kumulus-blue { color: hsl(var(--kumulus-blue)); }
+  .text-kumulus-yellow { color: hsl(var(--kumulus-yellow)); }
+  .text-kumulus-dark-blue { color: hsl(var(--kumulus-dark-blue)); }
+  .text-kumulus-orange { color: hsl(var(--kumulus-orange)); }
+  .text-kumulus-cream { color: hsl(var(--kumulus-cream)); }
+
+  .border-kumulus-blue { border-color: hsl(var(--kumulus-blue)); }
+  .border-kumulus-yellow { border-color: hsl(var(--kumulus-yellow)); }
+  .border-kumulus-orange { border-color: hsl(var(--kumulus-orange)); }
+
+  /* Typography Enhancements */
+  .heading-xl {
+    @apply text-2xl font-bold tracking-tight text-kumulus-dark-blue dark:text-white;
+  }
+  
+  .heading-lg {
+    @apply text-xl font-semibold tracking-tight text-kumulus-dark-blue dark:text-white;
+  }
+  
+  .heading-md {
+    @apply text-lg font-medium text-kumulus-dark-blue dark:text-white;
+  }
+
+  .brand-gradient {
+    background: linear-gradient(135deg, hsl(var(--kumulus-blue)), hsl(var(--kumulus-dark-blue)));
+  }
+
+  /* Enhanced Water Tank with Kumulus Colors */
   .water-tank-container {
     position: relative;
     width: 140px;
@@ -113,13 +158,10 @@
     height: 140px;
     width: 140px;
     background: transparent;
-    border: 3px solid #e5e7eb;
+    border: 3px solid hsl(var(--kumulus-blue) / 0.3);
     border-radius: 50%;
     overflow: hidden;
     position: relative;
-    /* Anti-aliasing for smoother edges */
-    -webkit-border-radius: 50%;
-    -moz-border-radius: 50%;
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
     -webkit-backface-visibility: hidden;
@@ -128,12 +170,10 @@
     perspective: 1000;
   }
 
-  /* Dark mode border */
   .dark .water-fill-box {
-    border-color: #374151;
+    border-color: hsl(var(--kumulus-yellow) / 0.5);
   }
 
-  /* Background text (always dark) */
   .water-percent-bg {
     position: absolute;
     left: 0;
@@ -144,37 +184,33 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #1f2937;
+    color: hsl(var(--kumulus-dark-blue));
     font-size: 32px;
     font-weight: bold;
-    /* Add blue outline for better readability */
     text-shadow: 
-      -1px -1px 0 #4D6DE3,
-      1px -1px 0 #4D6DE3,
-      -1px 1px 0 #4D6DE3,
-      1px 1px 0 #4D6DE3,
-      -2px 0 0 #4D6DE3,
-      2px 0 0 #4D6DE3,
-      0 -2px 0 #4D6DE3,
-      0 2px 0 #4D6DE3;
+      -1px -1px 0 hsl(var(--kumulus-blue)),
+      1px -1px 0 hsl(var(--kumulus-blue)),
+      -1px 1px 0 hsl(var(--kumulus-blue)),
+      1px 1px 0 hsl(var(--kumulus-blue)),
+      -2px 0 0 hsl(var(--kumulus-blue)),
+      2px 0 0 hsl(var(--kumulus-blue)),
+      0 -2px 0 hsl(var(--kumulus-blue)),
+      0 2px 0 hsl(var(--kumulus-blue));
   }
 
-  /* Dark mode background text */
   .dark .water-percent-bg {
-    color: #f9fafb;
-    /* Keep the same blue outline in dark mode */
+    color: hsl(var(--kumulus-cream));
     text-shadow: 
-      -1px -1px 0 #4D6DE3,
-      1px -1px 0 #4D6DE3,
-      -1px 1px 0 #4D6DE3,
-      1px 1px 0 #4D6DE3,
-      -2px 0 0 #4D6DE3,
-      2px 0 0 #4D6DE3,
-      0 -2px 0 #4D6DE3,
-      0 2px 0 #4D6DE3;
+      -1px -1px 0 hsl(var(--kumulus-yellow)),
+      1px -1px 0 hsl(var(--kumulus-yellow)),
+      -1px 1px 0 hsl(var(--kumulus-yellow)),
+      1px 1px 0 hsl(var(--kumulus-yellow)),
+      -2px 0 0 hsl(var(--kumulus-yellow)),
+      2px 0 0 hsl(var(--kumulus-yellow)),
+      0 -2px 0 hsl(var(--kumulus-yellow)),
+      0 2px 0 hsl(var(--kumulus-yellow));
   }
 
-  /* Foreground text (white, clipped by water) */
   .water-percent-fg {
     position: absolute;
     left: 0;
@@ -188,17 +224,15 @@
     color: #ffffff;
     font-size: 32px;
     font-weight: bold;
-    /* Add blue outline for better readability */
     text-shadow: 
-      -1px -1px 0 #4D6DE3,
-      1px -1px 0 #4D6DE3,
-      -1px 1px 0 #4D6DE3,
-      1px 1px 0 #4D6DE3,
-      -2px 0 0 #4D6DE3,
-      2px 0 0 #4D6DE3,
-      0 -2px 0 #4D6DE3,
-      0 2px 0 #4D6DE3;
-    /* Clip this text to only show where water is present */
+      -1px -1px 0 hsl(var(--kumulus-blue)),
+      1px -1px 0 hsl(var(--kumulus-blue)),
+      -1px 1px 0 hsl(var(--kumulus-blue)),
+      1px 1px 0 hsl(var(--kumulus-blue)),
+      -2px 0 0 hsl(var(--kumulus-blue)),
+      2px 0 0 hsl(var(--kumulus-blue)),
+      0 -2px 0 hsl(var(--kumulus-blue)),
+      0 2px 0 hsl(var(--kumulus-blue));
     clip-path: polygon(0% 100%, 100% 100%, 100% 0%, 0% 0%);
     transition: clip-path 1s ease-out;
   }
@@ -219,9 +253,8 @@
     z-index: 2;
     width: 100%;
     height: 100%;
-    background: #4D6DE3;
+    background: hsl(var(--kumulus-blue));
     transform: translate(0, 100%);
-    /* Smoother transitions */
     -webkit-transition: transform 1s ease-out;
     transition: transform 1s ease-out;
   }
@@ -230,7 +263,6 @@
     width: 200%;
     position: absolute;
     bottom: 100%;
-    /* Smoother rendering */
     shape-rendering: auto;
     -webkit-transform: translateZ(0);
     transform: translateZ(0);
@@ -238,19 +270,15 @@
 
   .water-wave-back {
     right: 0;
-    fill: #C7EEFF;
-    /* Slowed down by 25%: was 1.4s, now 1.75s */
+    fill: hsl(var(--kumulus-blue) / 0.3);
     animation: wave-back 1.75s infinite linear;
-    /* Fix overlap issue */
     margin-bottom: -2px;
   }
 
   .water-wave-front {
     left: 0;
-    fill: #4D6DE3;
-    /* Increased negative margin to eliminate white line */
+    fill: hsl(var(--kumulus-blue));
     margin-bottom: -3px;
-    /* Slowed down by 25%: was 0.7s, now 0.875s */
     animation: wave-front 0.875s infinite linear;
   }
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -77,15 +76,15 @@ const DashboardHeader = () => {
   const displayProfile = isImpersonating ? impersonatedProfile : profile;
 
   return (
-    <header className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-700">
+    <header className="bg-kumulus-dark-blue dark:bg-gray-900 shadow-lg border-b border-kumulus-blue/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-4">
             {/* Logo with theme-specific versions */}
-            <div className="flex items-center space-x-3">
-              {/* Light mode logo (blue) */}
+            <div className="flex items-center space-x-4">
+              {/* Light mode logo (white for dark header) */}
               <img 
-                src="/lovable-uploads/9303e210-3810-462b-8736-e32b9e824785.png" 
+                src="/lovable-uploads/eeaac34d-4c12-4741-92cd-11685773ee0f.png" 
                 alt="Kumulus Logo" 
                 className="h-10 block dark:hidden"
               />
@@ -96,16 +95,16 @@ const DashboardHeader = () => {
                 className="h-10 hidden dark:block"
               />
               <div className="flex flex-col">
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                <h1 className="text-xl font-bold text-white">
                   KUMULUS
                 </h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-kumulus-yellow">
                   Your Drinking Water From Air. Mineralized, Fresh, Sustainable
                 </p>
               </div>
             </div>
             {isImpersonating && (
-              <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-300">
+              <Badge variant="secondary" className="bg-kumulus-yellow text-kumulus-dark-blue border-kumulus-yellow">
                 <Eye className="h-3 w-3 mr-1" />
                 Viewing as {impersonatedProfile?.username}
               </Badge>
@@ -122,7 +121,7 @@ const DashboardHeader = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => setAdminPanelOpen(true)}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 border-kumulus-yellow text-kumulus-yellow hover:bg-kumulus-yellow hover:text-kumulus-dark-blue"
               >
                 <Shield className="h-4 w-4" />
                 Admin Panel
@@ -131,9 +130,9 @@ const DashboardHeader = () => {
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback>
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full hover:bg-kumulus-blue">
+                  <Avatar className="h-8 w-8 bg-kumulus-yellow">
+                    <AvatarFallback className="bg-kumulus-yellow text-kumulus-dark-blue font-semibold">
                       {displayProfile ? getInitials(displayProfile.username) : 'U'}
                     </AvatarFallback>
                   </Avatar>
@@ -148,7 +147,7 @@ const DashboardHeader = () => {
                     Role: {displayProfile?.role}
                   </p>
                   {isImpersonating && (
-                    <p className="text-xs leading-none text-amber-600">
+                    <p className="text-xs leading-none text-kumulus-orange">
                       (Impersonating)
                     </p>
                   )}

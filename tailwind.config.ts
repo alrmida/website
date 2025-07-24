@@ -23,6 +23,14 @@ export default {
 				'poppins': ['Poppins', 'sans-serif'],
 			},
 			colors: {
+				// Kumulus Brand Colors
+				'kumulus-blue': 'hsl(var(--kumulus-blue))',
+				'kumulus-yellow': 'hsl(var(--kumulus-yellow))',
+				'kumulus-dark-blue': 'hsl(var(--kumulus-dark-blue))',
+				'kumulus-orange': 'hsl(var(--kumulus-orange))',
+				'kumulus-cream': 'hsl(var(--kumulus-cream))',
+				
+				// Design System Colors
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',
@@ -39,6 +47,10 @@ export default {
 				destructive: {
 					DEFAULT: 'hsl(var(--destructive))',
 					foreground: 'hsl(var(--destructive-foreground))'
+				},
+				warning: {
+					DEFAULT: 'hsl(var(--warning))',
+					foreground: 'hsl(var(--warning-foreground))'
 				},
 				muted: {
 					DEFAULT: 'hsl(var(--muted))',
