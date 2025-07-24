@@ -23,12 +23,12 @@ export default {
 				'poppins': ['Poppins', 'sans-serif'],
 			},
 			colors: {
-				// Kumulus Brand Colors
-				'kumulus-blue': 'hsl(var(--kumulus-blue))',
-				'kumulus-yellow': 'hsl(var(--kumulus-yellow))',
-				'kumulus-dark-blue': 'hsl(var(--kumulus-dark-blue))',
-				'kumulus-orange': 'hsl(var(--kumulus-orange))',
-				'kumulus-cream': 'hsl(var(--kumulus-cream))',
+				// Kumulus Brand Colors - Updated with correct HSL values
+				'kumulus-blue': 'hsl(207 96% 22%)',        /* #023d6e - Regal Blue */
+				'kumulus-yellow': 'hsl(47 100% 84%)',      /* #ffedae - Buttermilk */
+				'kumulus-dark-blue': 'hsl(227 63% 15%)',   /* #0e183d - Blue Zodiac */
+				'kumulus-orange': 'hsl(19 95% 59%)',       /* #fa6f31 - Crusta */
+				'kumulus-cream': 'hsl(60 55% 96%)',        /* #fafaee - Bianca */
 				
 				// Design System Colors
 				border: 'hsl(var(--border))',
