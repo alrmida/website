@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -100,7 +99,7 @@ const MetricsCards = ({ waterTank, machineStatus = 'Offline', totalWaterProduced
           </CardContent>
         </Card>
 
-        <Card className="bg-kumulus-yellow/10 dark:bg-kumulus-yellow/5 hover:shadow-lg transition-all duration-200 border-kumulus-yellow/30 hover:border-kumulus-yellow/50">
+        <Card className="bg-white dark:bg-card hover:shadow-lg transition-all duration-200 border-kumulus-yellow/30 hover:border-kumulus-yellow/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium text-kumulus-dark-blue">💰 Money Saved</CardTitle>
             <Activity className="h-3 w-3 text-kumulus-orange" />
@@ -110,7 +109,7 @@ const MetricsCards = ({ waterTank, machineStatus = 'Offline', totalWaterProduced
           </CardContent>
         </Card>
 
-        <Card className="bg-kumulus-blue/5 dark:bg-kumulus-blue/10 hover:shadow-lg transition-all duration-200 border-kumulus-blue/20 hover:border-kumulus-blue/40">
+        <Card className="bg-white dark:bg-card hover:shadow-lg transition-all duration-200 border-kumulus-blue/20 hover:border-kumulus-blue/40">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium text-kumulus-blue">🌱 CO₂ Saved</CardTitle>
             <Leaf className="h-3 w-3 text-kumulus-blue" />
@@ -121,7 +120,7 @@ const MetricsCards = ({ waterTank, machineStatus = 'Offline', totalWaterProduced
           </CardContent>
         </Card>
 
-        <Card className="bg-kumulus-blue/5 dark:bg-kumulus-blue/10 hover:shadow-lg transition-all duration-200 border-kumulus-blue/20 hover:border-kumulus-blue/40">
+        <Card className="bg-white dark:bg-card hover:shadow-lg transition-all duration-200 border-kumulus-blue/20 hover:border-kumulus-blue/40">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium text-kumulus-blue">♻️ Bottles Saved</CardTitle>
             <Recycle className="h-3 w-3 text-kumulus-blue" />
