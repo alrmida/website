@@ -20,7 +20,7 @@ const ESGMetrics = ({ totalWaterProduced }: ESGMetricsProps) => {
       </h2>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-white dark:bg-card border-2 border-kumulus-blue/30 dark:border-kumulus-blue/50 hover:shadow-lg transition-shadow">
+        <Card className="bg-white dark:bg-card border-2 border-kumulus-blue/70 dark:border-kumulus-blue/70 hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-kumulus-blue dark:text-kumulus-blue">
               CO₂ Emissions Saved
@@ -37,7 +37,7 @@ const ESGMetrics = ({ totalWaterProduced }: ESGMetricsProps) => {
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-card border-2 border-kumulus-orange/30 dark:border-kumulus-orange/50 hover:shadow-lg transition-shadow">
+        <Card className="bg-white dark:bg-card border-2 border-kumulus-orange/70 dark:border-kumulus-orange/70 hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-kumulus-orange dark:text-kumulus-orange">
               Plastic Bottles Saved
@@ -54,18 +54,18 @@ const ESGMetrics = ({ totalWaterProduced }: ESGMetricsProps) => {
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-card border-2 border-kumulus-yellow/50 dark:border-kumulus-yellow/60 hover:shadow-lg transition-shadow">
+        <Card className="bg-white dark:bg-card border-2 border-kumulus-yellow/70 dark:border-kumulus-yellow/70 hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-kumulus-dark-blue dark:text-kumulus-yellow">
+            <CardTitle className="text-sm font-medium text-kumulus-yellow dark:text-kumulus-yellow">
               Cost Savings
             </CardTitle>
-            <TrendingUp className="h-4 w-4 text-kumulus-dark-blue dark:text-kumulus-yellow" />
+            <TrendingUp className="h-4 w-4 text-kumulus-yellow dark:text-kumulus-yellow" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-kumulus-dark-blue dark:text-kumulus-yellow">
+            <div className="text-2xl font-bold text-kumulus-yellow dark:text-kumulus-yellow">
               €{moneySaved}
             </div>
-            <p className="text-xs text-kumulus-dark-blue/70 dark:text-kumulus-yellow/70 mt-1">
+            <p className="text-xs text-kumulus-yellow/70 dark:text-kumulus-yellow/70 mt-1">
               vs purchasing bottled water
             </p>
           </CardContent>
