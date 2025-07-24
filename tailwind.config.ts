@@ -29,6 +29,7 @@ export default {
 				'kumulus-dark-blue': 'hsl(227 63% 15%)',   /* #0e183d - Blue Zodiac */
 				'kumulus-orange': 'hsl(19 95% 59%)',       /* #fa6f31 - Crusta */
 				'kumulus-cream': 'hsl(60 55% 96%)',        /* #fafaee - Bianca */
+				'kumulus-chambray': 'hsl(234 40% 36%)',    /* #373e80 - Chambray */
 				
 				// Design System Colors
 				border: 'hsl(var(--border))',

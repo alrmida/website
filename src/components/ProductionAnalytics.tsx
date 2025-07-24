@@ -228,7 +228,7 @@ const ProductionAnalytics = ({
                 <Bar 
                   dataKey="fullWater" 
                   stackId="status" 
-                  fill="hsl(var(--kumulus-blue) / 0.7)" 
+                  fill="hsl(var(--kumulus-chambray))" 
                   name="Full Water"
                   radius={[0, 0, 0, 0]}
                 />
@@ -257,8 +257,8 @@ const ProductionAnalytics = ({
                 {statusMetrics.idle}%
               </p>
             </div>
-            <div className="bg-white dark:bg-card p-4 rounded-lg border-2 border-kumulus-blue/30">
-              <h4 className="text-sm font-medium text-kumulus-blue dark:text-kumulus-yellow">Full Water</h4>
+            <div className="bg-white dark:bg-card p-4 rounded-lg border-2 border-kumulus-chambray/30">
+              <h4 className="text-sm font-medium text-kumulus-chambray dark:text-kumulus-chambray">Full Water</h4>
               <p className="text-2xl font-bold text-kumulus-dark-blue dark:text-white">
                 {statusMetrics.fullWater}%
               </p>
