@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -166,19 +165,19 @@ const ProductionAnalytics = ({
 
           {/* Production Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-kumulus-blue/10 dark:bg-kumulus-blue/20 p-4 rounded-lg border border-kumulus-blue/20">
+            <div className="bg-white dark:bg-card p-4 rounded-lg border-2 border-kumulus-blue/30">
               <h4 className="text-sm font-medium text-kumulus-blue dark:text-kumulus-yellow">Total Production</h4>
               <p className="text-2xl font-bold text-kumulus-dark-blue dark:text-white">
                 {productionMetrics.total.toFixed(1)}L
               </p>
             </div>
-            <div className="bg-kumulus-yellow/20 dark:bg-kumulus-yellow/10 p-4 rounded-lg border border-kumulus-yellow/30">
+            <div className="bg-white dark:bg-card p-4 rounded-lg border-2 border-kumulus-yellow/50">
               <h4 className="text-sm font-medium text-kumulus-dark-blue dark:text-kumulus-yellow">Average Daily</h4>
               <p className="text-2xl font-bold text-kumulus-dark-blue dark:text-white">
                 {productionMetrics.average.toFixed(1)}L
               </p>
             </div>
-            <div className="bg-kumulus-orange/10 dark:bg-kumulus-orange/20 p-4 rounded-lg border border-kumulus-orange/30">
+            <div className="bg-white dark:bg-card p-4 rounded-lg border-2 border-kumulus-orange/30">
               <h4 className="text-sm font-medium text-kumulus-orange dark:text-kumulus-orange">Peak Day</h4>
               <p className="text-2xl font-bold text-kumulus-dark-blue dark:text-white">
                 {productionMetrics.peak.toFixed(1)}L
@@ -246,25 +245,25 @@ const ProductionAnalytics = ({
 
           {/* Status Metrics */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-kumulus-blue/10 dark:bg-kumulus-blue/20 p-4 rounded-lg border border-kumulus-blue/20">
+            <div className="bg-white dark:bg-card p-4 rounded-lg border-2 border-kumulus-blue/30">
               <h4 className="text-sm font-medium text-kumulus-blue dark:text-kumulus-yellow">Producing</h4>
               <p className="text-2xl font-bold text-kumulus-dark-blue dark:text-white">
                 {statusMetrics.producing}%
               </p>
             </div>
-            <div className="bg-kumulus-yellow/20 dark:bg-kumulus-yellow/10 p-4 rounded-lg border border-kumulus-yellow/30">
+            <div className="bg-white dark:bg-card p-4 rounded-lg border-2 border-kumulus-yellow/50">
               <h4 className="text-sm font-medium text-kumulus-dark-blue dark:text-kumulus-yellow">Idle</h4>
               <p className="text-2xl font-bold text-kumulus-dark-blue dark:text-white">
                 {statusMetrics.idle}%
               </p>
             </div>
-            <div className="bg-kumulus-blue/10 dark:bg-kumulus-blue/20 p-4 rounded-lg border border-kumulus-blue/20">
+            <div className="bg-white dark:bg-card p-4 rounded-lg border-2 border-kumulus-blue/30">
               <h4 className="text-sm font-medium text-kumulus-blue dark:text-kumulus-yellow">Full Water</h4>
               <p className="text-2xl font-bold text-kumulus-dark-blue dark:text-white">
                 {statusMetrics.fullWater}%
               </p>
             </div>
-            <div className="bg-kumulus-orange/10 dark:bg-kumulus-orange/20 p-4 rounded-lg border border-kumulus-orange/30">
+            <div className="bg-white dark:bg-card p-4 rounded-lg border-2 border-kumulus-orange/30">
               <h4 className="text-sm font-medium text-kumulus-orange dark:text-kumulus-orange">Disconnected</h4>
               <p className="text-2xl font-bold text-kumulus-dark-blue dark:text-white">
                 {statusMetrics.disconnected}%

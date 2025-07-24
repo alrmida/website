@@ -20,52 +20,52 @@ const ESGMetrics = ({ totalWaterProduced }: ESGMetricsProps) => {
       </h2>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700">
+        <Card className="bg-white dark:bg-card border-2 border-kumulus-blue/30 dark:border-kumulus-blue/50 hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-green-700 dark:text-green-300">
+            <CardTitle className="text-sm font-medium text-kumulus-blue dark:text-kumulus-blue">
               CO₂ Emissions Saved
             </CardTitle>
-            <Leaf className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <Leaf className="h-4 w-4 text-kumulus-blue dark:text-kumulus-blue" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+            <div className="text-2xl font-bold text-kumulus-blue dark:text-kumulus-blue">
               {co2Saved} kg
             </div>
-            <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+            <p className="text-xs text-kumulus-blue/70 dark:text-kumulus-blue/70 mt-1">
               vs bottled water production
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700">
+        <Card className="bg-white dark:bg-card border-2 border-kumulus-orange/30 dark:border-kumulus-orange/50 hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-300">
+            <CardTitle className="text-sm font-medium text-kumulus-orange dark:text-kumulus-orange">
               Plastic Bottles Saved
             </CardTitle>
-            <Recycle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <Recycle className="h-4 w-4 text-kumulus-orange dark:text-kumulus-orange" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+            <div className="text-2xl font-bold text-kumulus-orange dark:text-kumulus-orange">
               {plasticBottlesSaved}
             </div>
-            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+            <p className="text-xs text-kumulus-orange/70 dark:text-kumulus-orange/70 mt-1">
               500ml bottles avoided
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-700">
+        <Card className="bg-white dark:bg-card border-2 border-kumulus-yellow/50 dark:border-kumulus-yellow/60 hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-purple-700 dark:text-purple-300">
+            <CardTitle className="text-sm font-medium text-kumulus-dark-blue dark:text-kumulus-yellow">
               Cost Savings
             </CardTitle>
-            <TrendingUp className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+            <TrendingUp className="h-4 w-4 text-kumulus-dark-blue dark:text-kumulus-yellow" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+            <div className="text-2xl font-bold text-kumulus-dark-blue dark:text-kumulus-yellow">
               €{moneySaved}
             </div>
-            <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+            <p className="text-xs text-kumulus-dark-blue/70 dark:text-kumulus-yellow/70 mt-1">
               vs purchasing bottled water
             </p>
           </CardContent>
