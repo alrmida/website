@@ -95,16 +95,16 @@ const ProductionAnalytics = ({
   const StatusTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-3 shadow-lg">
-          <p className="font-medium text-gray-900 dark:text-white mb-2">{label}</p>
+        <div className="bg-white dark:bg-kumulus-dark-blue border border-kumulus-blue/20 dark:border-kumulus-yellow/30 rounded-lg p-3 shadow-lg">
+          <p className="font-medium text-kumulus-dark-blue dark:text-white mb-2">{label}</p>
           {payload.map((entry: any, index: number) => (
             <div key={index} className="flex items-center gap-2 text-sm">
               <div 
                 className="w-3 h-3 rounded-sm" 
                 style={{ backgroundColor: entry.color }}
               />
-              <span className="text-gray-600 dark:text-gray-300">{entry.name}:</span>
-              <span className="font-medium text-gray-900 dark:text-white">{entry.value}%</span>
+              <span className="text-kumulus-dark-blue/70 dark:text-kumulus-cream/70">{entry.name}:</span>
+              <span className="font-medium text-kumulus-dark-blue dark:text-white">{entry.value}%</span>
             </div>
           ))}
         </div>
@@ -116,14 +116,14 @@ const ProductionAnalytics = ({
   return (
     <div className="space-y-6">
       {/* Production Analytics */}
-      <Card className="bg-white dark:bg-gray-800">
+      <Card className="bg-white dark:bg-kumulus-dark-blue border-kumulus-blue/20 dark:border-kumulus-yellow/30">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-gray-900 dark:text-white">Production Analytics</CardTitle>
+            <CardTitle className="text-kumulus-dark-blue dark:text-white">Production Analytics</CardTitle>
             <div className="flex items-center space-x-2">
-              <Label htmlFor="period-select" className="text-sm text-gray-600 dark:text-gray-300">Period:</Label>
+              <Label htmlFor="period-select" className="text-sm text-kumulus-dark-blue/70 dark:text-kumulus-cream/70">Period:</Label>
               <Select value={selectedPeriod} onValueChange={onPeriodChange}>
-                <SelectTrigger className="w-32">
+                <SelectTrigger className="w-32 border-kumulus-blue/30">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -141,48 +141,46 @@ const ProductionAnalytics = ({
                 data={selectedPeriod === 'daily' ? dailyProductionData : monthlyProductionData} 
                 margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-600" />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--kumulus-blue) / 0.2)" />
                 <XAxis 
                   dataKey={selectedPeriod === 'daily' ? 'date' : 'month'} 
-                  stroke="#6b7280" 
-                  className="dark:stroke-gray-400"
-                  tick={{ fontSize: 12, fill: '#6b7280' }}
+                  stroke="hsl(var(--kumulus-dark-blue))"
+                  tick={{ fontSize: 12, fill: 'hsl(var(--kumulus-dark-blue))' }}
                 />
                 <YAxis 
-                  stroke="#6b7280" 
-                  className="dark:stroke-gray-400"
-                  tick={{ fontSize: 12, fill: '#6b7280' }}
+                  stroke="hsl(var(--kumulus-dark-blue))"
+                  tick={{ fontSize: 12, fill: 'hsl(var(--kumulus-dark-blue))' }}
                 />
                 <Tooltip 
                   contentStyle={{ 
                     backgroundColor: 'white', 
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid hsl(var(--kumulus-blue) / 0.2)',
                     borderRadius: '8px',
-                    color: '#1f2937'
+                    color: 'hsl(var(--kumulus-dark-blue))'
                   }}
                 />
-                <Bar dataKey="production" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="production" fill="hsl(var(--kumulus-blue))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
           {/* Production Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-4 rounded-lg">
-              <h4 className="text-sm font-medium text-blue-700 dark:text-blue-300">Total Production</h4>
-              <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+            <div className="bg-kumulus-blue/10 dark:bg-kumulus-blue/20 p-4 rounded-lg border border-kumulus-blue/20">
+              <h4 className="text-sm font-medium text-kumulus-blue dark:text-kumulus-yellow">Total Production</h4>
+              <p className="text-2xl font-bold text-kumulus-dark-blue dark:text-white">
                 {productionMetrics.total.toFixed(1)}L
               </p>
             </div>
-            <div className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 p-4 rounded-lg">
-              <h4 className="text-sm font-medium text-green-700 dark:text-green-300">Average Daily</h4>
-              <p className="text-2xl font-bold text-green-900 dark:text-green-100">
+            <div className="bg-kumulus-yellow/20 dark:bg-kumulus-yellow/10 p-4 rounded-lg border border-kumulus-yellow/30">
+              <h4 className="text-sm font-medium text-kumulus-dark-blue dark:text-kumulus-yellow">Average Daily</h4>
+              <p className="text-2xl font-bold text-kumulus-dark-blue dark:text-white">
                 {productionMetrics.average.toFixed(1)}L
               </p>
             </div>
-            <div className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 p-4 rounded-lg">
-              <h4 className="text-sm font-medium text-purple-700 dark:text-purple-300">Peak Day</h4>
-              <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">
+            <div className="bg-kumulus-orange/10 dark:bg-kumulus-orange/20 p-4 rounded-lg border border-kumulus-orange/30">
+              <h4 className="text-sm font-medium text-kumulus-orange dark:text-kumulus-orange">Peak Day</h4>
+              <p className="text-2xl font-bold text-kumulus-dark-blue dark:text-white">
                 {productionMetrics.peak.toFixed(1)}L
               </p>
             </div>
@@ -191,9 +189,9 @@ const ProductionAnalytics = ({
       </Card>
 
       {/* Status Analytics - Now with Stacked Bar Chart */}
-      <Card className="bg-white dark:bg-gray-800">
+      <Card className="bg-white dark:bg-kumulus-dark-blue border-kumulus-blue/20 dark:border-kumulus-yellow/30">
         <CardHeader>
-          <CardTitle className="text-gray-900 dark:text-white">Status Analytics</CardTitle>
+          <CardTitle className="text-kumulus-dark-blue dark:text-white">Status Analytics</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-80 mb-6">
@@ -202,45 +200,43 @@ const ProductionAnalytics = ({
                 data={selectedPeriod === 'daily' ? statusData : monthlyStatusData} 
                 margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-600" />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--kumulus-blue) / 0.2)" />
                 <XAxis 
                   dataKey={selectedPeriod === 'daily' ? 'date' : 'month'} 
-                  stroke="#6b7280" 
-                  className="dark:stroke-gray-400"
-                  tick={{ fontSize: 12, fill: '#6b7280' }}
+                  stroke="hsl(var(--kumulus-dark-blue))"
+                  tick={{ fontSize: 12, fill: 'hsl(var(--kumulus-dark-blue))' }}
                 />
                 <YAxis 
-                  stroke="#6b7280" 
-                  className="dark:stroke-gray-400"
-                  tick={{ fontSize: 12, fill: '#6b7280' }}
+                  stroke="hsl(var(--kumulus-dark-blue))"
+                  tick={{ fontSize: 12, fill: 'hsl(var(--kumulus-dark-blue))' }}
                   domain={[0, 100]}
                 />
                 <Tooltip content={<StatusTooltip />} />
                 <Bar 
                   dataKey="producing" 
                   stackId="status" 
-                  fill="#10b981" 
+                  fill="hsl(var(--kumulus-blue))" 
                   name="Producing"
                   radius={[0, 0, 0, 0]}
                 />
                 <Bar 
                   dataKey="idle" 
                   stackId="status" 
-                  fill="#f59e0b" 
+                  fill="hsl(var(--kumulus-yellow))" 
                   name="Idle"
                   radius={[0, 0, 0, 0]}
                 />
                 <Bar 
                   dataKey="fullWater" 
                   stackId="status" 
-                  fill="#3b82f6" 
+                  fill="hsl(var(--kumulus-blue) / 0.7)" 
                   name="Full Water"
                   radius={[0, 0, 0, 0]}
                 />
                 <Bar 
                   dataKey="disconnected" 
                   stackId="status" 
-                  fill="#ef4444" 
+                  fill="hsl(var(--kumulus-orange))" 
                   name="Disconnected"
                   radius={[4, 4, 0, 0]}
                 />
@@ -250,27 +246,27 @@ const ProductionAnalytics = ({
 
           {/* Status Metrics */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 p-4 rounded-lg">
-              <h4 className="text-sm font-medium text-green-700 dark:text-green-300">Producing</h4>
-              <p className="text-2xl font-bold text-green-900 dark:text-green-100">
+            <div className="bg-kumulus-blue/10 dark:bg-kumulus-blue/20 p-4 rounded-lg border border-kumulus-blue/20">
+              <h4 className="text-sm font-medium text-kumulus-blue dark:text-kumulus-yellow">Producing</h4>
+              <p className="text-2xl font-bold text-kumulus-dark-blue dark:text-white">
                 {statusMetrics.producing}%
               </p>
             </div>
-            <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 p-4 rounded-lg">
-              <h4 className="text-sm font-medium text-yellow-700 dark:text-yellow-300">Idle</h4>
-              <p className="text-2xl font-bold text-yellow-900 dark:text-yellow-100">
+            <div className="bg-kumulus-yellow/20 dark:bg-kumulus-yellow/10 p-4 rounded-lg border border-kumulus-yellow/30">
+              <h4 className="text-sm font-medium text-kumulus-dark-blue dark:text-kumulus-yellow">Idle</h4>
+              <p className="text-2xl font-bold text-kumulus-dark-blue dark:text-white">
                 {statusMetrics.idle}%
               </p>
             </div>
-            <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-4 rounded-lg">
-              <h4 className="text-sm font-medium text-blue-700 dark:text-blue-300">Full Water</h4>
-              <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+            <div className="bg-kumulus-blue/10 dark:bg-kumulus-blue/20 p-4 rounded-lg border border-kumulus-blue/20">
+              <h4 className="text-sm font-medium text-kumulus-blue dark:text-kumulus-yellow">Full Water</h4>
+              <p className="text-2xl font-bold text-kumulus-dark-blue dark:text-white">
                 {statusMetrics.fullWater}%
               </p>
             </div>
-            <div className="bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 p-4 rounded-lg">
-              <h4 className="text-sm font-medium text-red-700 dark:text-red-300">Disconnected</h4>
-              <p className="text-2xl font-bold text-red-900 dark:text-red-100">
+            <div className="bg-kumulus-orange/10 dark:bg-kumulus-orange/20 p-4 rounded-lg border border-kumulus-orange/30">
+              <h4 className="text-sm font-medium text-kumulus-orange dark:text-kumulus-orange">Disconnected</h4>
+              <p className="text-2xl font-bold text-kumulus-dark-blue dark:text-white">
                 {statusMetrics.disconnected}%
               </p>
             </div>

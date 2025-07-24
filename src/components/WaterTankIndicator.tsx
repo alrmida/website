@@ -18,21 +18,21 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
   const roundedLevel = Math.round(cappedLevel * 10) / 10;
 
   return (
-    <Card className="bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow border-gray-200 dark:border-gray-700">
+    <Card className="bg-white dark:bg-kumulus-dark-blue hover:shadow-lg transition-shadow border-kumulus-blue/20 dark:border-kumulus-yellow/30">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">💧 Current Water Level</CardTitle>
-        <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+        <CardTitle className="text-sm font-medium text-kumulus-dark-blue dark:text-kumulus-cream">💧 Current Water Level</CardTitle>
+        <Activity className="h-4 w-4 text-kumulus-blue dark:text-kumulus-yellow" />
       </CardHeader>
       <CardContent className="pb-6">
         <div className="flex items-center justify-between space-x-6">
           <div className="flex-1 min-w-0">
-            <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
+            <div className="text-3xl font-bold text-kumulus-dark-blue dark:text-white mb-1">
               {roundedLevel} L
             </div>
-            <div className="text-lg text-gray-600 dark:text-gray-400 mb-2">
+            <div className="text-lg text-kumulus-blue dark:text-kumulus-yellow mb-2">
               ({cappedPercentage}%)
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-kumulus-dark-blue/70 dark:text-kumulus-cream/70">
               Water Tank Fill • Capacity: {maxCapacity}L
             </p>
           </div>
