@@ -187,7 +187,7 @@ const ProductionAnalytics = ({
         </CardContent>
       </Card>
 
-      {/* Status Analytics - Now with Stacked Bar Chart */}
+      {/* Status Analytics - Updated with vibrant colors */}
       <Card className="bg-white dark:bg-kumulus-dark-blue border-kumulus-blue/20 dark:border-kumulus-yellow/30">
         <CardHeader>
           <CardTitle className="text-kumulus-dark-blue dark:text-white">Status Analytics</CardTitle>
@@ -214,14 +214,14 @@ const ProductionAnalytics = ({
                 <Bar 
                   dataKey="producing" 
                   stackId="status" 
-                  fill="hsl(var(--kumulus-blue))" 
+                  fill="hsl(var(--status-producing-blue))" 
                   name="Producing"
                   radius={[0, 0, 0, 0]}
                 />
                 <Bar 
                   dataKey="idle" 
                   stackId="status" 
-                  fill="hsl(var(--kumulus-yellow))" 
+                  fill="hsl(var(--kumulus-orange))" 
                   name="Idle"
                   radius={[0, 0, 0, 0]}
                 />
@@ -235,7 +235,7 @@ const ProductionAnalytics = ({
                 <Bar 
                   dataKey="disconnected" 
                   stackId="status" 
-                  fill="hsl(var(--kumulus-orange))" 
+                  fill="hsl(var(--status-disconnected-yellow))" 
                   name="Disconnected"
                   radius={[4, 4, 0, 0]}
                 />
@@ -243,16 +243,16 @@ const ProductionAnalytics = ({
             </ResponsiveContainer>
           </div>
 
-          {/* Status Metrics */}
+          {/* Status Metrics - Updated with vibrant colors */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white dark:bg-card p-4 rounded-lg border-2 border-kumulus-blue/30">
-              <h4 className="text-sm font-medium text-kumulus-blue dark:text-kumulus-yellow">Producing</h4>
+            <div className="bg-white dark:bg-card p-4 rounded-lg border-2 border-status-producing-blue/30">
+              <h4 className="text-sm font-medium text-status-producing-blue dark:text-status-producing-blue">Producing</h4>
               <p className="text-2xl font-bold text-kumulus-dark-blue dark:text-white">
                 {statusMetrics.producing}%
               </p>
             </div>
-            <div className="bg-white dark:bg-card p-4 rounded-lg border-2 border-kumulus-yellow/50">
-              <h4 className="text-sm font-medium text-kumulus-dark-blue dark:text-kumulus-yellow">Idle</h4>
+            <div className="bg-white dark:bg-card p-4 rounded-lg border-2 border-kumulus-orange/50">
+              <h4 className="text-sm font-medium text-kumulus-orange dark:text-kumulus-orange">Idle</h4>
               <p className="text-2xl font-bold text-kumulus-dark-blue dark:text-white">
                 {statusMetrics.idle}%
               </p>
@@ -263,8 +263,8 @@ const ProductionAnalytics = ({
                 {statusMetrics.fullWater}%
               </p>
             </div>
-            <div className="bg-white dark:bg-card p-4 rounded-lg border-2 border-kumulus-orange/30">
-              <h4 className="text-sm font-medium text-kumulus-orange dark:text-kumulus-orange">Disconnected</h4>
+            <div className="bg-white dark:bg-card p-4 rounded-lg border-2 border-status-disconnected-yellow/30">
+              <h4 className="text-sm font-medium text-status-disconnected-yellow dark:text-status-disconnected-yellow">Disconnected</h4>
               <p className="text-2xl font-bold text-kumulus-dark-blue dark:text-white">
                 {statusMetrics.disconnected}%
               </p>

@@ -12,6 +12,10 @@
     --kumulus-cream: 60 55% 96%;          /* #fafaee - Bianca */
     --kumulus-chambray: 234 40% 36%;      /* #373e80 - Chambray */
 
+    /* Vibrant Status Colors - Matching Status Indicators */
+    --status-producing-blue: 224 78% 45%; /* #2858C0 - Vibrant Blue */
+    --status-disconnected-yellow: 59 94% 53%; /* #F5E619 - Bright Yellow */
+
     /* Updated Design System with Kumulus Colors */
     --background: 60 55% 96%;             /* Kumulus Cream */
     --foreground: 227 63% 15%;            /* Kumulus Dark Blue */
@@ -132,6 +136,16 @@
   .border-kumulus-yellow { border-color: hsl(var(--kumulus-yellow)); }
   .border-kumulus-orange { border-color: hsl(var(--kumulus-orange)); }
   .border-kumulus-chambray { border-color: hsl(var(--kumulus-chambray)); }
+
+  /* Status Color Classes */
+  .bg-status-producing-blue { background-color: hsl(var(--status-producing-blue)); }
+  .bg-status-disconnected-yellow { background-color: hsl(var(--status-disconnected-yellow)); }
+  
+  .text-status-producing-blue { color: hsl(var(--status-producing-blue)); }
+  .text-status-disconnected-yellow { color: hsl(var(--status-disconnected-yellow)); }
+  
+  .border-status-producing-blue { border-color: hsl(var(--status-producing-blue)); }
+  .border-status-disconnected-yellow { border-color: hsl(var(--status-disconnected-yellow)); }
 
   /* Typography Enhancements */
   .heading-xl {
