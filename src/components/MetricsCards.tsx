@@ -1,7 +1,8 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Droplets, Activity, Clock, Zap } from 'lucide-react';
+import { Activity, Clock, Zap } from 'lucide-react';
+import WaterTankIndicator from './WaterTankIndicator';
 
 interface MetricsCardsProps {
   waterTank: {
@@ -54,7 +55,7 @@ const getStatusIcon = (status: string) => {
   switch (status.toLowerCase()) {
     case 'producing': return <Zap className="h-5 w-5 text-status-producing-blue" />;
     case 'idle': return <Clock className="h-5 w-5 text-kumulus-orange" />;
-    case 'full water': return <Droplets className="h-5 w-5 text-kumulus-chambray" />;
+    case 'full water': return <Activity className="h-5 w-5 text-kumulus-chambray" />;
     case 'disconnected': return <Activity className="h-5 w-5 text-status-disconnected-yellow" />;
     default: return <Activity className="h-5 w-5 text-gray-500" />;
   }
@@ -66,33 +67,14 @@ const MetricsCards = ({ waterTank, machineStatus, totalWaterProduced, lastUpdate
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-      {/* Water Level Card */}
-      <Card className="bg-white dark:bg-gray-800 border-2 hover:border-kumulus-blue/30 transition-all duration-200 hover:shadow-lg">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-3 text-lg font-semibold">
-            <div className="p-2 bg-kumulus-blue/10 rounded-lg">
-              <Droplets className="h-5 w-5 text-kumulus-blue" />
-            </div>
-            Current Water Level
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <div className="text-3xl font-bold text-kumulus-blue">
-              {formatNumber(waterTank.currentLevel, 2)}L
-            </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              {waterTank.percentage}% of {formatNumber(waterTank.maxCapacity, 0)}L capacity
-            </div>
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-              <div 
-                className="bg-kumulus-blue h-2.5 rounded-full transition-all duration-300" 
-                style={{ width: `${Math.min(waterTank.percentage, 100)}%` }}
-              ></div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Water Level Card with Animated Tank */}
+      <div className="lg:col-span-2">
+        <WaterTankIndicator
+          currentLevel={waterTank.currentLevel}
+          maxCapacity={waterTank.maxCapacity}
+          percentage={waterTank.percentage}
+        />
+      </div>
 
       {/* Machine Status Card */}
       <Card className="bg-white dark:bg-gray-800 border-2 hover:border-gray-300 transition-all duration-200 hover:shadow-lg">
@@ -121,7 +103,7 @@ const MetricsCards = ({ waterTank, machineStatus, totalWaterProduced, lastUpdate
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-3 text-lg font-semibold">
             <div className="p-2 bg-kumulus-green/10 rounded-lg">
-              <Droplets className="h-5 w-5 text-kumulus-green" />
+              <Activity className="h-5 w-5 text-kumulus-green" />
             </div>
             Total Water Produced
           </CardTitle>
