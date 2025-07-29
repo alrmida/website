@@ -78,15 +78,26 @@ const ClientDashboard = () => {
     <div className="min-h-screen bg-kumulus-cream dark:bg-gray-900">
       <DashboardHeader />
       
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="heading-xl mb-2">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-kumulus-dark-blue dark:text-white mb-3">
             Welcome to Your Kumulus Dashboard
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-lg text-gray-600 dark:text-gray-300">
             Monitor your atmospheric water generation system in real-time
           </p>
+          {profile?.role === 'client' && selectedMachine && (
+            <div className="mt-4 p-4 bg-kumulus-blue/10 border border-kumulus-blue/20 rounded-lg">
+              <div className="flex items-center gap-2 text-kumulus-blue">
+                <span className="font-medium">Client:</span>
+                <span>{profile.username}</span>
+                <span className="text-kumulus-blue/60">•</span>
+                <span className="font-medium">Machine:</span>
+                <span>{selectedMachine.machine_id}</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Machine Selection */}
@@ -109,9 +120,9 @@ const ClientDashboard = () => {
         {selectedMachine && (
           <div className="mb-6 p-4 bg-kumulus-blue/5 border border-kumulus-blue/20 rounded-lg text-sm">
             <div className="text-kumulus-blue font-medium mb-2">📊 System Information</div>
-            <div className="space-y-1 text-kumulus-dark-blue/70">
+            <div className="space-y-1 text-kumulus-dark-blue/70 text-xs sm:text-sm">
               <p>Analytics Data: {totalWaterProduced > 0 ? 'Real production data available' : 'Using static/zero data (no production events found)'}</p>
-              <p>Machine: {selectedMachine.machine_id} | Status: {liveData?.status || 'Loading...'} | Source: {liveData?.dataSource || 'none'}</p>
+              <p className="break-all">Machine: {selectedMachine.machine_id} | Status: {liveData?.status || 'Loading...'} | Source: {liveData?.dataSource || 'none'}</p>
               {liveData?.dataSource === 'live' && (
                 <p>🌐 Live Connection: Active via edge function | Water Level: {liveData.waterLevel?.toFixed(3)}L</p>
               )}
@@ -124,7 +135,7 @@ const ClientDashboard = () => {
 
         {/* Machine Info - Show for commercial users only */}
         {selectedMachine && profile?.role === 'commercial' && (
-          <div className="mb-8">
+          <div className="mb-6 sm:mb-8">
             <MachineInfo
               machineId={selectedMachine.machine_id}
               liveData={liveData ? {
@@ -141,22 +152,26 @@ const ClientDashboard = () => {
         )}
 
         {/* Metrics Cards Grid - Now using actual production event timestamp */}
-        <MetricsCards 
-          waterTank={waterTank}
-          machineStatus={liveData?.status || 'Loading...'}
-          totalWaterProduced={totalWaterProduced}
-          lastUpdate={productionData.lastProductionEvent}
-        />
+        <div className="mb-6 sm:mb-8">
+          <MetricsCards 
+            waterTank={waterTank}
+            machineStatus={liveData?.status || 'Loading...'}
+            totalWaterProduced={totalWaterProduced}
+            lastUpdate={productionData.lastProductionEvent}
+          />
+        </div>
 
         {/* Production Analytics - Charts and Visualizations */}
-        <ProductionAnalytics
-          selectedPeriod={selectedPeriod}
-          onPeriodChange={setSelectedPeriod}
-          dailyProductionData={dailyProductionData}
-          monthlyProductionData={monthlyProductionData}
-          statusData={statusData}
-          monthlyStatusData={monthlyStatusData}
-        />
+        <div className="mb-6 sm:mb-8">
+          <ProductionAnalytics
+            selectedPeriod={selectedPeriod}
+            onPeriodChange={setSelectedPeriod}
+            dailyProductionData={dailyProductionData}
+            monthlyProductionData={monthlyProductionData}
+            statusData={statusData}
+            monthlyStatusData={monthlyStatusData}
+          />
+        </div>
       </main>
       
       <DashboardFooter 

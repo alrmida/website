@@ -1,34 +1,10 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-
-interface ProductionData {
-  date: string;
-  production: number;
-}
-
-interface MonthlyProductionData {
-  month: string;
-  production: number;
-}
-
-interface StatusData {
-  date: string;
-  producing: number;
-  idle: number;
-  fullWater: number;
-  disconnected: number;
-}
-
-interface MonthlyStatusData {
-  month: string;
-  producing: number;
-  idle: number;
-  fullWater: number;
-  disconnected: number;
-}
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Calendar, TrendingUp, BarChart3 } from 'lucide-react';
+import { ProductionData, MonthlyProductionData, StatusData, MonthlyStatusData } from '@/types/productionAnalytics';
 
 interface ProductionAnalyticsProps {
   selectedPeriod: string;
@@ -39,237 +15,179 @@ interface ProductionAnalyticsProps {
   monthlyStatusData: MonthlyStatusData[];
 }
 
+const formatNumber = (value: number): string => {
+  if (value >= 1000) {
+    return (value / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+  }
+  return value.toFixed(1).replace(/\.0$/, '');
+};
+
 const ProductionAnalytics = ({
   selectedPeriod,
   onPeriodChange,
   dailyProductionData,
   monthlyProductionData,
   statusData,
-  monthlyStatusData,
+  monthlyStatusData
 }: ProductionAnalyticsProps) => {
-  // Calculate metrics for production data
-  const getProductionMetrics = (data: ProductionData[] | MonthlyProductionData[]) => {
-    if (data.length === 0) return { total: 0, average: 0, peak: 0 };
-    
-    const total = data.reduce((sum, item) => sum + item.production, 0);
-    const average = total / data.length;
-    const peak = Math.max(...data.map(item => item.production));
-    
-    return { total, average, peak };
-  };
+  // Determine which data to show based on selected period
+  const productionData = selectedPeriod === 'monthly' ? monthlyProductionData : dailyProductionData;
+  const currentStatusData = selectedPeriod === 'monthly' ? monthlyStatusData : statusData;
 
-  // Calculate status metrics as percentages
-  const getStatusMetrics = (data: StatusData[] | MonthlyStatusData[]) => {
-    if (data.length === 0) return { producing: 0, idle: 0, fullWater: 0, disconnected: 0 };
-    
-    const totals = data.reduce((acc, item) => ({
-      producing: acc.producing + item.producing,
-      idle: acc.idle + item.idle,
-      fullWater: acc.fullWater + item.fullWater,
-      disconnected: acc.disconnected + item.disconnected,
-    }), { producing: 0, idle: 0, fullWater: 0, disconnected: 0 });
-
-    const totalHours = totals.producing + totals.idle + totals.fullWater + totals.disconnected;
-    
-    if (totalHours === 0) return { producing: 0, idle: 0, fullWater: 0, disconnected: 0 };
-    
-    return {
-      producing: Math.round((totals.producing / totalHours) * 100),
-      idle: Math.round((totals.idle / totalHours) * 100),
-      fullWater: Math.round((totals.fullWater / totalHours) * 100),
-      disconnected: Math.round((totals.disconnected / totalHours) * 100),
-    };
-  };
-
-  // Use only real data - no fake historical data
-  const productionMetrics = selectedPeriod === 'daily' 
-    ? getProductionMetrics(dailyProductionData)
-    : getProductionMetrics(monthlyProductionData);
-
-  const statusMetrics = selectedPeriod === 'daily'
-    ? getStatusMetrics(statusData)
-    : getStatusMetrics(monthlyStatusData);
-
-  // Custom tooltip for status chart
-  const StatusTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white dark:bg-kumulus-dark-blue border border-kumulus-blue/20 dark:border-kumulus-yellow/30 rounded-lg p-3 shadow-lg">
-          <p className="font-medium text-kumulus-dark-blue dark:text-white mb-2">{label}</p>
-          {payload.map((entry: any, index: number) => (
-            <div key={index} className="flex items-center gap-2 text-sm">
-              <div 
-                className="w-3 h-3 rounded-sm" 
-                style={{ backgroundColor: entry.color }}
-              />
-              <span className="text-kumulus-dark-blue/70 dark:text-kumulus-cream/70">{entry.name}:</span>
-              <span className="font-medium text-kumulus-dark-blue dark:text-white">{entry.value}%</span>
-            </div>
-          ))}
-        </div>
-      );
+  // Get period labels
+  const getPeriodLabel = () => {
+    switch (selectedPeriod) {
+      case 'daily': return 'Last 7 Days';
+      case 'weekly': return 'Last 4 Weeks';
+      case 'monthly': return 'Last 3 Months';
+      case 'yearly': return 'Last 2 Years';
+      default: return 'Daily';
     }
-    return null;
+  };
+
+  const getTimeframe = () => {
+    const now = new Date();
+    switch (selectedPeriod) {
+      case 'daily': {
+        const week = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        return `${week.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+      }
+      case 'weekly': {
+        const month = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        return `${month.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+      }
+      case 'monthly': {
+        const threeMonths = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        return `${threeMonths.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} - ${now.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`;
+      }
+      case 'yearly': {
+        const twoYears = new Date(now.getTime() - 730 * 24 * 60 * 60 * 1000);
+        return `${twoYears.getFullYear()} - ${now.getFullYear()}`;
+      }
+      default: return '';
+    }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Production Analytics */}
-      <Card className="bg-white dark:bg-kumulus-dark-blue border-kumulus-blue/20 dark:border-kumulus-yellow/30">
+    <div className="space-y-8">
+      {/* Section Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-kumulus-dark-blue dark:text-white mb-2">
+            Production Analytics
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            Water production and system status over time
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <Calendar className="h-5 w-5 text-kumulus-blue" />
+          <Select value={selectedPeriod} onValueChange={onPeriodChange}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Select time period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="daily">Daily View</SelectItem>
+              <SelectItem value="weekly">Weekly View</SelectItem>
+              <SelectItem value="monthly">Monthly View</SelectItem>
+              <SelectItem value="yearly">Yearly View</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Production Chart */}
+      <Card className="bg-white dark:bg-gray-800">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-kumulus-dark-blue dark:text-white">Production Analytics</CardTitle>
-            <div className="flex items-center space-x-2">
-              <Label htmlFor="period-select" className="text-sm text-kumulus-dark-blue/70 dark:text-kumulus-cream/70">Period:</Label>
-              <Select value={selectedPeriod} onValueChange={onPeriodChange}>
-                <SelectTrigger className="w-32 border-kumulus-blue/30">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                </SelectContent>
-              </Select>
+          <CardTitle className="flex items-center gap-3 text-xl">
+            <div className="p-2 bg-kumulus-blue/10 rounded-lg">
+              <TrendingUp className="h-5 w-5 text-kumulus-blue" />
             </div>
-          </div>
+            <div>
+              <div>Water Production - {getPeriodLabel()}</div>
+              <div className="text-sm font-normal text-gray-600 dark:text-gray-400 mt-1">
+                {getTimeframe()}
+              </div>
+            </div>
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-80 mb-6">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart 
-                data={selectedPeriod === 'daily' ? dailyProductionData : monthlyProductionData} 
-                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--kumulus-blue) / 0.2)" />
-                <XAxis 
-                  dataKey={selectedPeriod === 'daily' ? 'date' : 'month'} 
-                  stroke="hsl(var(--kumulus-dark-blue))"
-                  tick={{ fontSize: 12, fill: 'hsl(var(--kumulus-dark-blue))' }}
-                />
-                <YAxis 
-                  stroke="hsl(var(--kumulus-dark-blue))"
-                  tick={{ fontSize: 12, fill: 'hsl(var(--kumulus-dark-blue))' }}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'white', 
-                    border: '1px solid hsl(var(--kumulus-blue) / 0.2)',
-                    borderRadius: '8px',
-                    color: 'hsl(var(--kumulus-dark-blue))'
-                  }}
-                />
-                <Bar dataKey="production" fill="hsl(var(--kumulus-blue))" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Production Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white dark:bg-card p-4 rounded-lg border-2 border-kumulus-blue/30">
-              <h4 className="text-sm font-medium text-kumulus-blue dark:text-kumulus-yellow">Total Production</h4>
-              <p className="text-2xl font-bold text-kumulus-dark-blue dark:text-white">
-                {productionMetrics.total.toFixed(1)}L
-              </p>
-            </div>
-            <div className="bg-white dark:bg-card p-4 rounded-lg border-2 border-kumulus-yellow/50">
-              <h4 className="text-sm font-medium text-kumulus-dark-blue dark:text-kumulus-yellow">Average Daily</h4>
-              <p className="text-2xl font-bold text-kumulus-dark-blue dark:text-white">
-                {productionMetrics.average.toFixed(1)}L
-              </p>
-            </div>
-            <div className="bg-white dark:bg-card p-4 rounded-lg border-2 border-kumulus-orange/30">
-              <h4 className="text-sm font-medium text-kumulus-orange dark:text-kumulus-orange">Peak Day</h4>
-              <p className="text-2xl font-bold text-kumulus-dark-blue dark:text-white">
-                {productionMetrics.peak.toFixed(1)}L
-              </p>
-            </div>
-          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={productionData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+              <XAxis 
+                dataKey={selectedPeriod === 'monthly' ? 'month' : 'date'} 
+                className="text-sm"
+                tick={{ fontSize: 12 }}
+              />
+              <YAxis 
+                className="text-sm"
+                tick={{ fontSize: 12 }}
+                tickFormatter={formatNumber}
+              />
+              <Tooltip 
+                formatter={(value: number) => [`${formatNumber(value)}L`, 'Production']}
+                labelStyle={{ color: '#374151' }}
+                contentStyle={{ 
+                  backgroundColor: 'white', 
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                }}
+              />
+              <Bar dataKey="production" fill="hsl(var(--kumulus-blue))" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </CardContent>
       </Card>
 
-      {/* Status Analytics - Updated with vibrant colors */}
-      <Card className="bg-white dark:bg-kumulus-dark-blue border-kumulus-blue/20 dark:border-kumulus-yellow/30">
+      {/* Status Analytics Chart */}
+      <Card className="bg-white dark:bg-gray-800">
         <CardHeader>
-          <CardTitle className="text-kumulus-dark-blue dark:text-white">Status Analytics</CardTitle>
+          <CardTitle className="flex items-center gap-3 text-xl">
+            <div className="p-2 bg-kumulus-green/10 rounded-lg">
+              <BarChart3 className="h-5 w-5 text-kumulus-green" />
+            </div>
+            <div>
+              <div>System Status Distribution - {getPeriodLabel()}</div>
+              <div className="text-sm font-normal text-gray-600 dark:text-gray-400 mt-1">
+                Time spent in each operational state
+              </div>
+            </div>
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-80 mb-6">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart 
-                data={selectedPeriod === 'daily' ? statusData : monthlyStatusData} 
-                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--kumulus-blue) / 0.2)" />
-                <XAxis 
-                  dataKey={selectedPeriod === 'daily' ? 'date' : 'month'} 
-                  stroke="hsl(var(--kumulus-dark-blue))"
-                  tick={{ fontSize: 12, fill: 'hsl(var(--kumulus-dark-blue))' }}
-                />
-                <YAxis 
-                  stroke="hsl(var(--kumulus-dark-blue))"
-                  tick={{ fontSize: 12, fill: 'hsl(var(--kumulus-dark-blue))' }}
-                  domain={[0, 100]}
-                />
-                <Tooltip content={<StatusTooltip />} />
-                <Bar 
-                  dataKey="producing" 
-                  stackId="status" 
-                  fill="hsl(var(--status-producing-blue))" 
-                  name="Producing"
-                  radius={[0, 0, 0, 0]}
-                />
-                <Bar 
-                  dataKey="idle" 
-                  stackId="status" 
-                  fill="hsl(var(--kumulus-orange))" 
-                  name="Idle"
-                  radius={[0, 0, 0, 0]}
-                />
-                <Bar 
-                  dataKey="fullWater" 
-                  stackId="status" 
-                  fill="hsl(var(--kumulus-chambray))" 
-                  name="Full Water"
-                  radius={[0, 0, 0, 0]}
-                />
-                <Bar 
-                  dataKey="disconnected" 
-                  stackId="status" 
-                  fill="hsl(var(--status-disconnected-yellow))" 
-                  name="Disconnected"
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Status Metrics - Updated with vibrant colors */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white dark:bg-card p-4 rounded-lg border-2 border-status-producing-blue/30">
-              <h4 className="text-sm font-medium text-status-producing-blue dark:text-status-producing-blue">Producing</h4>
-              <p className="text-2xl font-bold text-kumulus-dark-blue dark:text-white">
-                {statusMetrics.producing}%
-              </p>
-            </div>
-            <div className="bg-white dark:bg-card p-4 rounded-lg border-2 border-kumulus-orange/50">
-              <h4 className="text-sm font-medium text-kumulus-orange dark:text-kumulus-orange">Idle</h4>
-              <p className="text-2xl font-bold text-kumulus-dark-blue dark:text-white">
-                {statusMetrics.idle}%
-              </p>
-            </div>
-            <div className="bg-white dark:bg-card p-4 rounded-lg border-2 border-kumulus-chambray/30">
-              <h4 className="text-sm font-medium text-kumulus-chambray dark:text-kumulus-chambray">Full Water</h4>
-              <p className="text-2xl font-bold text-kumulus-dark-blue dark:text-white">
-                {statusMetrics.fullWater}%
-              </p>
-            </div>
-            <div className="bg-white dark:bg-card p-4 rounded-lg border-2 border-status-disconnected-yellow/30">
-              <h4 className="text-sm font-medium text-status-disconnected-yellow dark:text-status-disconnected-yellow">Disconnected</h4>
-              <p className="text-2xl font-bold text-kumulus-dark-blue dark:text-white">
-                {statusMetrics.disconnected}%
-              </p>
-            </div>
-          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={currentStatusData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+              <XAxis 
+                dataKey={selectedPeriod === 'monthly' ? 'month' : 'date'} 
+                className="text-sm"
+                tick={{ fontSize: 12 }}
+              />
+              <YAxis 
+                className="text-sm"
+                tick={{ fontSize: 12 }}
+                label={{ value: 'Hours', angle: -90, position: 'insideLeft' }}
+              />
+              <Tooltip 
+                formatter={(value: number, name: string) => [`${value.toFixed(1)}h`, name]}
+                labelStyle={{ color: '#374151' }}
+                contentStyle={{ 
+                  backgroundColor: 'white', 
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                }}
+              />
+              <Legend />
+              <Bar dataKey="producing" stackId="a" fill="hsl(var(--status-producing-blue))" name="Producing" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="idle" stackId="a" fill="hsl(var(--kumulus-orange))" name="Idle" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="fullWater" stackId="a" fill="hsl(var(--kumulus-chambray))" name="Full Water" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="disconnected" stackId="a" fill="hsl(var(--status-disconnected-yellow))" name="Disconnected" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </CardContent>
       </Card>
     </div>

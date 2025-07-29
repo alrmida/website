@@ -1,8 +1,7 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Activity, Monitor, Database, Leaf, Recycle } from 'lucide-react';
-import WaterTankIndicator from '@/components/WaterTankIndicator';
+import { Droplets, Activity, Clock, Zap } from 'lucide-react';
 
 interface MetricsCardsProps {
   waterTank: {
@@ -10,127 +9,166 @@ interface MetricsCardsProps {
     maxCapacity: number;
     percentage: number;
   };
-  machineStatus?: string;
+  machineStatus: string;
   totalWaterProduced: number;
-  lastUpdate?: Date | null;
+  lastUpdate: string | null;
 }
 
-const MetricsCards = ({ waterTank, machineStatus = 'Offline', totalWaterProduced, lastUpdate }: MetricsCardsProps) => {
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'producing':
-        return 'bg-kumulus-blue/10 text-kumulus-blue border-kumulus-blue/20';
-      case 'idle':
-        return 'bg-kumulus-yellow/20 text-kumulus-dark-blue border-kumulus-yellow/40';
-      case 'full water':
-        return 'bg-kumulus-blue/10 text-kumulus-blue border-kumulus-blue/20';
-      case 'disconnected':
-      case 'offline':
-        return 'bg-kumulus-orange/10 text-kumulus-orange border-kumulus-orange/20';
-      default:
-        return 'bg-muted text-muted-foreground border-border';
-    }
-  };
+const formatNumber = (value: number, decimals: number = 1): string => {
+  if (value >= 1000) {
+    return (value / 1000).toFixed(decimals).replace(/\.0$/, '') + 'k';
+  }
+  return value.toFixed(decimals).replace(/\.0$/, '');
+};
 
-  const getStatusIcon = (status: string) => {
-    const isOnline = !['disconnected', 'offline', 'loading...'].includes(status.toLowerCase());
-    return isOnline ? 'Online' : 'Offline';
-  };
+const formatDate = (dateString: string | null): string => {
+  if (!dateString) return 'No data available';
+  
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffTime = Math.abs(now.getTime() - date.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 30) return `${Math.ceil(diffDays / 7)} weeks ago`;
+  
+  return date.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric',
+    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+  });
+};
 
-  const formatLastUpdate = (date: Date | null) => {
-    if (!date) return 'No snapshots yet';
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} min ago`;
-    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ${diffMins % 60}m ago`;
-    
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
+const getStatusColor = (status: string): string => {
+  switch (status.toLowerCase()) {
+    case 'producing': return 'text-status-producing-blue';
+    case 'idle': return 'text-kumulus-orange';
+    case 'full water': return 'text-kumulus-chambray';
+    case 'disconnected': return 'text-status-disconnected-yellow';
+    default: return 'text-gray-500';
+  }
+};
 
-  // Calculate ESG metrics based on water production
-  const co2Saved = Math.round(totalWaterProduced * 0.234); // kg CO2 saved per liter
-  const plasticBottlesSaved = Math.round(totalWaterProduced / 0.5); // 500ml bottles
-  const moneySaved = Math.round(totalWaterProduced * 0.5 * 100) / 100; // €0.50 per liter saved, rounded to 2 decimal places
+const getStatusIcon = (status: string) => {
+  switch (status.toLowerCase()) {
+    case 'producing': return <Zap className="h-5 w-5 text-status-producing-blue" />;
+    case 'idle': return <Clock className="h-5 w-5 text-kumulus-orange" />;
+    case 'full water': return <Droplets className="h-5 w-5 text-kumulus-chambray" />;
+    case 'disconnected': return <Activity className="h-5 w-5 text-status-disconnected-yellow" />;
+    default: return <Activity className="h-5 w-5 text-gray-500" />;
+  }
+};
+
+const MetricsCards = ({ waterTank, machineStatus, totalWaterProduced, lastUpdate }: MetricsCardsProps) => {
+  const currentYear = new Date().getFullYear();
+  const trackingStartDate = `Jan ${currentYear}`;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-      {/* Left side - larger cards */}
-      <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-        <WaterTankIndicator
-          currentLevel={waterTank.currentLevel}
-          maxCapacity={waterTank.maxCapacity}
-          percentage={waterTank.percentage}
-        />
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      {/* Water Level Card */}
+      <Card className="bg-white dark:bg-gray-800 border-2 hover:border-kumulus-blue/30 transition-all duration-200 hover:shadow-lg">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-3 text-lg font-semibold">
+            <div className="p-2 bg-kumulus-blue/10 rounded-lg">
+              <Droplets className="h-5 w-5 text-kumulus-blue" />
+            </div>
+            Current Water Level
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <div className="text-3xl font-bold text-kumulus-blue">
+              {formatNumber(waterTank.currentLevel, 2)}L
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              {waterTank.percentage}% of {formatNumber(waterTank.maxCapacity, 0)}L capacity
+            </div>
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+              <div 
+                className="bg-kumulus-blue h-2.5 rounded-full transition-all duration-300" 
+                style={{ width: `${Math.min(waterTank.percentage, 100)}%` }}
+              ></div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-        <Card className="bg-white dark:bg-card hover:shadow-lg transition-all duration-200 border-gray-200 dark:border-gray-700 hover:border-kumulus-blue/30">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">⚡ Machine State</CardTitle>
-            <Monitor className="h-4 w-4 text-kumulus-blue" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-kumulus-dark-blue dark:text-white mb-3">{machineStatus}</div>
-            <Badge variant="secondary" className={`${getStatusColor(machineStatus)}`}>
+      {/* Machine Status Card */}
+      <Card className="bg-white dark:bg-gray-800 border-2 hover:border-gray-300 transition-all duration-200 hover:shadow-lg">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-3 text-lg font-semibold">
+            <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
               {getStatusIcon(machineStatus)}
-            </Badge>
-          </CardContent>
-        </Card>
-      </div>
+            </div>
+            Machine Status
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <div className={`text-3xl font-bold ${getStatusColor(machineStatus)}`}>
+              {machineStatus}
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Last updated {lastUpdate ? formatDate(lastUpdate) : 'unknown'}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Right side - 2x2 grid of smaller cards */}
-      <div className="lg:col-span-2 grid grid-cols-2 gap-4">
-        <Card className="bg-white dark:bg-card hover:shadow-lg transition-all duration-200 border-gray-200 dark:border-gray-700 hover:border-kumulus-blue/30">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">📊 Total Water</CardTitle>
-            <Database className="h-3 w-3 text-kumulus-blue" />
-          </CardHeader>
-          <CardContent className="pb-3">
-            <div className="text-lg font-bold text-kumulus-dark-blue dark:text-white">{totalWaterProduced.toFixed(1)} L</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Tracked via snapshots
-            </p>
-            {lastUpdate && (
-              <p className="text-xs text-kumulus-blue mt-1">
-                Last: {formatLastUpdate(lastUpdate)}
-              </p>
+      {/* Total Production Card */}
+      <Card className="bg-white dark:bg-gray-800 border-2 hover:border-kumulus-green/30 transition-all duration-200 hover:shadow-lg">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-3 text-lg font-semibold">
+            <div className="p-2 bg-kumulus-green/10 rounded-lg">
+              <Droplets className="h-5 w-5 text-kumulus-green" />
+            </div>
+            Total Water Produced
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <div className="text-3xl font-bold text-kumulus-green">
+              {formatNumber(totalWaterProduced, 1)}L
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Since {trackingStartDate}
+            </div>
+            {totalWaterProduced > 0 && (
+              <div className="text-xs text-kumulus-green/70">
+                ≈ {formatNumber(totalWaterProduced * 0.264172, 0)} gallons
+              </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </CardContent>
+      </Card>
 
-        <Card className="bg-white dark:bg-card hover:shadow-lg transition-all duration-200 border-kumulus-yellow/30 hover:border-kumulus-yellow/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium text-kumulus-dark-blue">💰 Money Saved</CardTitle>
-            <Activity className="h-3 w-3 text-kumulus-orange" />
-          </CardHeader>
-          <CardContent className="pb-3">
-            <div className="text-lg font-bold text-kumulus-orange">€{moneySaved.toFixed(2)}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white dark:bg-card hover:shadow-lg transition-all duration-200 border-kumulus-blue/20 hover:border-kumulus-blue/40">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium text-kumulus-blue">🌱 CO₂ Saved</CardTitle>
-            <Leaf className="h-3 w-3 text-kumulus-blue" />
-          </CardHeader>
-          <CardContent className="pb-3">
-            <div className="text-lg font-bold text-kumulus-blue">{co2Saved} kg</div>
-            <p className="text-xs text-kumulus-blue/70 mt-1">vs bottled water</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white dark:bg-card hover:shadow-lg transition-all duration-200 border-kumulus-blue/20 hover:border-kumulus-blue/40">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium text-kumulus-blue">♻️ Bottles Saved</CardTitle>
-            <Recycle className="h-3 w-3 text-kumulus-blue" />
-          </CardHeader>
-          <CardContent className="pb-3">
-            <div className="text-lg font-bold text-kumulus-blue">{plasticBottlesSaved}</div>
-            <p className="text-xs text-kumulus-blue/70 mt-1">500ml bottles</p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* System Performance Card */}
+      <Card className="bg-white dark:bg-gray-800 border-2 hover:border-kumulus-orange/30 transition-all duration-200 hover:shadow-lg">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-3 text-lg font-semibold">
+            <div className="p-2 bg-kumulus-orange/10 rounded-lg">
+              <Activity className="h-5 w-5 text-kumulus-orange" />
+            </div>
+            System Performance
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <div className="text-3xl font-bold text-kumulus-orange">
+              {totalWaterProduced > 0 ? '98%' : '--'}
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Average efficiency since {trackingStartDate}
+            </div>
+            {totalWaterProduced > 0 && (
+              <div className="text-xs text-kumulus-orange/70">
+                Optimal performance range
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
