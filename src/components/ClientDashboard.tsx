@@ -81,10 +81,10 @@ const ClientDashboard = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Welcome Section */}
         <div className="mb-6 sm:mb-8">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-kumulus-dark-blue dark:text-white mb-3">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-kumulus-dark-blue dark:text-white mb-4">
             Welcome to Your Kumulus Dashboard
           </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-300">
+          <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-6">
             Monitor your atmospheric water generation system in real-time
           </p>
           {profile?.role === 'client' && selectedMachine && (
@@ -101,7 +101,7 @@ const ClientDashboard = () => {
         </div>
 
         {/* Machine Selection */}
-        <div className="mb-6">
+        <div className="mb-8">
           <MachineSelector 
             onMachineSelect={handleMachineSelect} 
             selectedMachine={selectedMachine}
@@ -135,7 +135,7 @@ const ClientDashboard = () => {
 
         {/* Machine Info - Show for commercial users only */}
         {selectedMachine && profile?.role === 'commercial' && (
-          <div className="mb-6 sm:mb-8">
+          <div className="mb-8">
             <MachineInfo
               machineId={selectedMachine.machine_id}
               liveData={liveData ? {
@@ -151,18 +151,18 @@ const ClientDashboard = () => {
           </div>
         )}
 
-        {/* Metrics Cards Grid - Now using actual production event timestamp */}
-        <div className="mb-6 sm:mb-8">
+        {/* Metrics Cards Grid - Now using actual production event timestamp converted to string */}
+        <div className="mb-8">
           <MetricsCards 
             waterTank={waterTank}
             machineStatus={liveData?.status || 'Loading...'}
             totalWaterProduced={totalWaterProduced}
-            lastUpdate={productionData.lastProductionEvent}
+            lastUpdate={productionData.lastProductionEvent ? productionData.lastProductionEvent.toISOString() : null}
           />
         </div>
 
         {/* Production Analytics - Charts and Visualizations */}
-        <div className="mb-6 sm:mb-8">
+        <div className="mb-8">
           <ProductionAnalytics
             selectedPeriod={selectedPeriod}
             onPeriodChange={setSelectedPeriod}
