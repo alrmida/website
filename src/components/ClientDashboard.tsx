@@ -116,23 +116,6 @@ const ClientDashboard = () => {
           liveData={liveData}
         />
 
-        {/* Debug info for data source and analytics */}
-        {selectedMachine && (
-          <div className="mb-6 p-4 bg-kumulus-blue/5 border border-kumulus-blue/20 rounded-lg text-sm">
-            <div className="text-kumulus-blue font-medium mb-2">📊 System Information</div>
-            <div className="space-y-1 text-kumulus-dark-blue/70 text-xs sm:text-sm">
-              <p>Analytics Data: {totalWaterProduced > 0 ? 'Real production data available' : 'Using static/zero data (no production events found)'}</p>
-              <p className="break-all">Machine: {selectedMachine.machine_id} | Status: {liveData?.status || 'Loading...'} | Source: {liveData?.dataSource || 'none'}</p>
-              {liveData?.dataSource === 'live' && (
-                <p>🌐 Live Connection: Active via edge function | Water Level: {liveData.waterLevel?.toFixed(3)}L</p>
-              )}
-              {liveData?.dataSource === 'fallback' && (
-                <p>⚠️ Fallback Mode: Using database tables (edge function unavailable)</p>
-              )}
-            </div>
-          </div>
-        )}
-
         {/* Machine Info - Show for commercial users only */}
         {selectedMachine && profile?.role === 'commercial' && (
           <div className="mb-8">
