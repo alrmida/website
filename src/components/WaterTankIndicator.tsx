@@ -37,35 +37,33 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
             </p>
           </div>
           
-          {/* Simplified Water Tank Animation */}
+          {/* Hidden SVG Wave Symbol */}
+          <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink" x="0px" y="0px" style={{ display: 'none' }}>
+            <symbol id="wave">
+              <path d="M420,20c21.5-0.4,38.8-2.5,51.1-4.5c13.4-2.2,26.5-5.2,27.3-5.4C514,6.5,518,4.7,528.5,2.7c7.1-1.3,17.9-2.8,31.5-2.7c0,0,0,0,0,0v20H420z" />
+              <path d="M420,20c-21.5-0.4-38.8-2.5-51.1-4.5c-13.4-2.2-26.5-5.2-27.3-5.4C326,6.5,322,4.7,311.5,2.7C304.3,1.4,293.6-0.1,280,0c0,0,0,0,0,0v20H420z" />
+              <path d="M140,20c21.5-0.4,38.8-2.5,51.1-4.5c13.4-2.2-26.5-5.2,27.3-5.4C234,6.5,238,4.7,248.5,2.7c7.1-1.3,17.9-2.8,31.5-2.7c0,0,0,0,0,0v20H140z" />
+              <path d="M140,20c-21.5-0.4-38.8-2.5-51.1-4.5c-13.4-2.2-26.5-5.2-27.3-5.4C46,6.5,42,4.7,31.5,2.7C24.3,1.4,13.6-0.1,0,0c0,0,0,0,0,0l0,20H140z" />
+            </symbol>
+          </svg>
+
+          {/* Water Tank Animation - Exact CodePen Structure */}
           <div className="water-tank-box">
-            {/* Percentage text */}
             <div className="water-tank-percent">
-              <span className="water-tank-percent-num">{Math.round(cappedPercentage)}</span>
-              <span className="water-tank-percent-symbol">%</span>
+              <div className="water-tank-percent-num">{Math.round(cappedPercentage)}</div>
+              <div className="water-tank-percent-symbol">%</div>
             </div>
-            
-            {/* Water fill with waves */}
             <div 
-              className="water-tank-fill" 
+              className="water-tank-water" 
               style={{ 
-                transform: `translateY(${100 - cappedPercentage}%)`,
+                transform: `translate(0, ${100 - cappedPercentage}%)`,
               }}
             >
-              {/* Back wave */}
-              <svg className="water-tank-wave water-tank-wave-back" viewBox="0 0 560 20">
-                <path d="M420,20c21.5-0.4,38.8-2.5,51.1-4.5c13.4-2.2,26.5-5.2,27.3-5.4C514,6.5,518,4.7,528.5,2.7c7.1-1.3,17.9-2.8,31.5-2.7c0,0,0,0,0,0v20H420z" />
-                <path d="M420,20c-21.5-0.4-38.8-2.5-51.1-4.5c-13.4-2.2-26.5-5.2-27.3-5.4C326,6.5,322,4.7,311.5,2.7C304.3,1.4,293.6-0.1,280,0c0,0,0,0,0,0v20H420z" />
-                <path d="M140,20c21.5-0.4,38.8-2.5,51.1-4.5c13.4-2.2,26.5-5.2,27.3-5.4C234,6.5,238,4.7,248.5,2.7c7.1-1.3,17.9-2.8,31.5-2.7c0,0,0,0,0,0v20H140z" />
-                <path d="M140,20c-21.5-0.4-38.8-2.5-51.1-4.5c-13.4-2.2-26.5-5.2-27.3-5.4C46,6.5,42,4.7,31.5,2.7C24.3,1.4,13.6-0.1,0,0c0,0,0,0,0,0l0,20H140z" />
+              <svg viewBox="0 0 560 20" className="water-tank-wave water-tank-wave-back">
+                <use xlinkHref="#wave" />
               </svg>
-              
-              {/* Front wave */}
-              <svg className="water-tank-wave water-tank-wave-front" viewBox="0 0 560 20">
-                <path d="M420,20c21.5-0.4,38.8-2.5,51.1-4.5c13.4-2.2,26.5-5.2,27.3-5.4C514,6.5,518,4.7,528.5,2.7c7.1-1.3,17.9-2.8,31.5-2.7c0,0,0,0,0,0v20H420z" />
-                <path d="M420,20c-21.5-0.4-38.8-2.5-51.1-4.5c-13.4-2.2-26.5-5.2-27.3-5.4C326,6.5,322,4.7,311.5,2.7C304.3,1.4,293.6-0.1,280,0c0,0,0,0,0,0v20H420z" />
-                <path d="M140,20c21.5-0.4,38.8-2.5,51.1-4.5c13.4-2.2,26.5-5.2,27.3-5.4C234,6.5,238,4.7,248.5,2.7c7.1-1.3,17.9-2.8,31.5-2.7c0,0,0,0,0,0v20H140z" />
-                <path d="M140,20c-21.5-0.4-38.8-2.5-51.1-4.5c-13.4-2.2-26.5-5.2-27.3-5.4C46,6.5,42,4.7,31.5,2.7C24.3,1.4,13.6-0.1,0,0c0,0,0,0,0,0l0,20H140z" />
+              <svg viewBox="0 0 560 20" className="water-tank-wave water-tank-wave-front">
+                <use xlinkHref="#wave" />
               </svg>
             </div>
           </div>
