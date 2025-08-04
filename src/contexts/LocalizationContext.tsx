@@ -17,7 +17,7 @@ const translations = {
   en: {
     // Header
     'header.welcome': 'Welcome to Your Kumulus Dashboard',
-    'header.tagline': 'Fresh, Mineralized, Sustainable',
+    'header.tagline': 'Your Drinking Water From Air. Fresh, Mineralized, Sustainable.',
     'header.tagline.mobile': 'Water From Air',
     'header.admin.panel': 'Admin Panel',
     'header.settings': 'Settings',
@@ -92,7 +92,7 @@ const translations = {
   fr: {
     // Header
     'header.welcome': 'Bienvenue sur votre tableau de bord Kumulus',
-    'header.tagline': 'Fraîche, minéralisée, durable',
+    'header.tagline': 'Votre eau potable de l\'air. Fraîche, minéralisée, durable.',
     'header.tagline.mobile': 'Eau de l\'air',
     'header.admin.panel': 'Panneau d\'administration',
     'header.settings': 'Paramètres',
@@ -167,7 +167,7 @@ const translations = {
   es: {
     // Header
     'header.welcome': 'Bienvenido a tu Panel Kumulus',
-    'header.tagline': 'Fresca, mineralizada, sostenible',
+    'header.tagline': 'Tu agua potable del aire. Fresca, mineralizada, sostenible.',
     'header.tagline.mobile': 'Agua del aire',
     'header.admin.panel': 'Panel de administración',
     'header.settings': 'Configuración',
