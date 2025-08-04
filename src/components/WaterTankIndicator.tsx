@@ -2,6 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity } from 'lucide-react';
+import { useLocalization } from '@/contexts/LocalizationContext';
 
 interface WaterTankIndicatorProps {
   currentLevel: number;
@@ -10,6 +11,8 @@ interface WaterTankIndicatorProps {
 }
 
 const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTankIndicatorProps) => {
+  const { t } = useLocalization();
+  
   // Cap the values to avoid noise above limits
   const cappedLevel = Math.min(currentLevel, maxCapacity);
   const cappedPercentage = Math.min(percentage, 100);
@@ -20,7 +23,7 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
   return (
     <Card className="bg-white dark:bg-kumulus-dark-blue hover:shadow-lg transition-shadow border-kumulus-blue/20 dark:border-kumulus-yellow/30">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <CardTitle className="text-sm font-medium text-kumulus-dark-blue dark:text-kumulus-cream">💧 Current Water Level</CardTitle>
+        <CardTitle className="text-sm font-medium text-kumulus-dark-blue dark:text-kumulus-cream">💧 {t('metrics.water.level')}</CardTitle>
         <Activity className="h-4 w-4 text-kumulus-blue dark:text-kumulus-yellow" />
       </CardHeader>
       <CardContent className="pb-6">
@@ -33,7 +36,7 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
               ({cappedPercentage}%)
             </div>
             <p className="text-sm text-kumulus-dark-blue/70 dark:text-kumulus-cream/70">
-              Water Tank Fill • Capacity: {maxCapacity}L
+              {t('metrics.water.tank.fill')} • {t('metrics.capacity')}: {maxCapacity}L
             </p>
           </div>
           

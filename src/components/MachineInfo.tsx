@@ -3,6 +3,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { MapPin, Calendar, User, Cpu } from 'lucide-react';
 import { MachineWithClient, getDisplayModelName, getOperatingSince } from '@/types/machine';
+import { useLocalization } from '@/contexts/LocalizationContext';
 import AmphoreIcon from './icons/AmphoreIcon';
 import BoKsIcon from './icons/BoKsIcon';
 import WaterDispenserIcon from './icons/WaterDispenserIcon';
@@ -30,6 +31,7 @@ const getModelIcon = (modelName: string, isMobile: boolean) => {
 };
 
 const MachineInfo = ({ machine, showOwner = false }: MachineInfoProps) => {
+  const { t } = useLocalization();
   const modelName = getDisplayModelName(machine);
   const operatingSince = getOperatingSince(machine);
   const isMobile = useIsMobile();
@@ -59,7 +61,7 @@ const MachineInfo = ({ machine, showOwner = false }: MachineInfoProps) => {
               <div className="flex items-center gap-2 mb-1">
                 <Cpu className="h-4 w-4 text-gray-400 flex-shrink-0" />
                 <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                  Machine ID
+                  {t('machine.id')}
                 </span>
               </div>
               <p className="font-mono text-sm font-medium text-gray-900 dark:text-white break-all">
@@ -72,11 +74,11 @@ const MachineInfo = ({ machine, showOwner = false }: MachineInfoProps) => {
               <div className="flex items-center gap-2 mb-1">
                 <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
                 <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                  Location
+                  {t('machine.location')}
                 </span>
               </div>
               <p className="font-medium text-gray-900 dark:text-white break-words">
-                {machine.location || 'Not specified'}
+                {machine.location || t('machine.not.specified')}
               </p>
             </div>
 
@@ -85,7 +87,7 @@ const MachineInfo = ({ machine, showOwner = false }: MachineInfoProps) => {
               <div className="flex items-center gap-2 mb-1">
                 <Calendar className="h-4 w-4 text-gray-400 flex-shrink-0" />
                 <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                  Operating Since
+                  {t('machine.operating.since')}
                 </span>
               </div>
               <p className="font-medium text-gray-900 dark:text-white whitespace-nowrap">
@@ -99,7 +101,7 @@ const MachineInfo = ({ machine, showOwner = false }: MachineInfoProps) => {
                 <div className="flex items-center gap-2 mb-1">
                   <User className="h-4 w-4 text-blue-500 flex-shrink-0" />
                   <span className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide">
-                    Client Owner
+                    {t('machine.client.owner')}
                   </span>
                 </div>
                 <p className="font-medium text-blue-900 dark:text-blue-100 break-words">

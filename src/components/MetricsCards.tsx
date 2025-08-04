@@ -1,6 +1,8 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, Clock, Zap, Leaf, Recycle, TrendingUp } from 'lucide-react';
+import { useLocalization } from '@/contexts/LocalizationContext';
 import WaterTankIndicator from './WaterTankIndicator';
 
 interface MetricsCardsProps {
@@ -21,8 +23,8 @@ const formatNumber = (value: number, decimals: number = 1): string => {
   return value.toFixed(decimals).replace(/\.0$/, '');
 };
 
-const formatDate = (dateString: string | null): string => {
-  if (!dateString) return 'No data available';
+const formatDate = (dateString: string | null, t: (key: string) => string): string => {
+  if (!dateString) return t('metrics.unknown');
   
   const date = new Date(dateString);
   const now = new Date();
@@ -60,14 +62,25 @@ const getStatusIcon = (status: string) => {
   }
 };
 
+const getLocalizedStatus = (status: string, t: (key: string) => string): string => {
+  switch (status.toLowerCase()) {
+    case 'producing': return t('metrics.producing');
+    case 'idle': return t('metrics.idle');
+    case 'full water': return t('metrics.full.water');
+    case 'disconnected': return t('metrics.disconnected');
+    default: return status;
+  }
+};
+
 const MetricsCards = ({ waterTank, machineStatus, totalWaterProduced, lastUpdate }: MetricsCardsProps) => {
+  const { t, formatCurrency } = useLocalization();
   const currentYear = new Date().getFullYear();
-  const trackingStartDate = `Jan ${currentYear}`;
+  const trackingStartDate = `${t('metrics.since.date')} Jan ${currentYear}`;
 
   // Calculate ESG metrics based on water production
   const co2Saved = Math.round(totalWaterProduced * 0.234); // kg CO2 saved per liter
   const plasticBottlesSaved = Math.round(totalWaterProduced / 0.5); // 500ml bottles
-  const moneySaved = Math.round(totalWaterProduced * 0.5); // €0.50 per liter saved
+  const moneySaved = totalWaterProduced * 0.5; // €0.50 per liter saved
 
   return (
     <div className="space-y-6">
@@ -87,16 +100,16 @@ const MetricsCards = ({ waterTank, machineStatus, totalWaterProduced, lastUpdate
               <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
                 {getStatusIcon(machineStatus)}
               </div>
-              Machine Status
+              {t('metrics.status')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               <div className={`text-3xl font-bold ${getStatusColor(machineStatus)}`}>
-                {machineStatus}
+                {getLocalizedStatus(machineStatus, t)}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                Last updated {lastUpdate ? formatDate(lastUpdate) : 'unknown'}
+                {t('metrics.last.update')} {lastUpdate ? formatDate(lastUpdate, t) : t('metrics.unknown')}
               </div>
             </div>
           </CardContent>
@@ -109,7 +122,7 @@ const MetricsCards = ({ waterTank, machineStatus, totalWaterProduced, lastUpdate
               <div className="p-2 bg-kumulus-green/10 rounded-lg">
                 <Activity className="h-5 w-5 text-kumulus-green" />
               </div>
-              Total Water Produced
+              {t('metrics.total.production')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -118,11 +131,11 @@ const MetricsCards = ({ waterTank, machineStatus, totalWaterProduced, lastUpdate
                 {formatNumber(totalWaterProduced, 1)}L
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                Since {trackingStartDate}
+                {trackingStartDate}
               </div>
               {totalWaterProduced > 0 && (
                 <div className="text-xs text-kumulus-green/70">
-                  ≈ {formatNumber(totalWaterProduced * 0.264172, 0)} gallons
+                  ≈ {formatNumber(totalWaterProduced * 0.264172, 0)} {t('metrics.gallons')}
                 </div>
               )}
             </div>
@@ -136,20 +149,20 @@ const MetricsCards = ({ waterTank, machineStatus, totalWaterProduced, lastUpdate
               <div className="p-2 bg-kumulus-yellow/10 rounded-lg">
                 <TrendingUp className="h-5 w-5 text-kumulus-yellow" />
               </div>
-              Money Saved
+              {t('metrics.money.saved')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               <div className="text-3xl font-bold text-kumulus-yellow">
-                €{formatNumber(moneySaved, 0)}
+                {formatCurrency(moneySaved)}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                vs bottled water
+                {t('metrics.vs.bottled.water')}
               </div>
               {totalWaterProduced > 0 && (
                 <div className="text-xs text-kumulus-yellow/70">
-                  Based on €0.50/L savings
+                  {t('metrics.savings.rate')}
                 </div>
               )}
             </div>
@@ -166,7 +179,7 @@ const MetricsCards = ({ waterTank, machineStatus, totalWaterProduced, lastUpdate
               <div className="p-2 bg-kumulus-blue/10 rounded-lg">
                 <Leaf className="h-5 w-5 text-kumulus-blue" />
               </div>
-              CO₂ Saved
+              {t('metrics.co2.saved')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -175,11 +188,11 @@ const MetricsCards = ({ waterTank, machineStatus, totalWaterProduced, lastUpdate
                 {formatNumber(co2Saved, 0)} kg
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                vs bottled water production
+                {t('metrics.vs.bottled.production')}
               </div>
               {totalWaterProduced > 0 && (
                 <div className="text-xs text-kumulus-blue/70">
-                  Environmental impact reduction
+                  {t('metrics.environmental.impact')}
                 </div>
               )}
             </div>
@@ -193,7 +206,7 @@ const MetricsCards = ({ waterTank, machineStatus, totalWaterProduced, lastUpdate
               <div className="p-2 bg-kumulus-orange/10 rounded-lg">
                 <Recycle className="h-5 w-5 text-kumulus-orange" />
               </div>
-              Bottles Saved
+              {t('metrics.bottles.saved')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -202,11 +215,11 @@ const MetricsCards = ({ waterTank, machineStatus, totalWaterProduced, lastUpdate
                 {formatNumber(plasticBottlesSaved, 0)}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                500ml bottles avoided
+                {t('metrics.bottles.avoided')}
               </div>
               {totalWaterProduced > 0 && (
                 <div className="text-xs text-kumulus-orange/70">
-                  Plastic waste reduction
+                  {t('metrics.plastic.waste')}
                 </div>
               )}
             </div>
