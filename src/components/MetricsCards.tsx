@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, Clock, Zap, Leaf, Recycle, TrendingUp } from 'lucide-react';
@@ -71,16 +70,15 @@ const MetricsCards = ({ waterTank, machineStatus, totalWaterProduced, lastUpdate
   const moneySaved = Math.round(totalWaterProduced * 0.5); // €0.50 per liter saved
 
   return (
-    <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-        {/* Water Level Card with Animated Tank - spans 2 columns */}
-        <div className="lg:col-span-2">
-          <WaterTankIndicator
-            currentLevel={waterTank.currentLevel}
-            maxCapacity={waterTank.maxCapacity}
-            percentage={waterTank.percentage}
-          />
-        </div>
+    <div className="space-y-6">
+      {/* Main metrics row - 4 equal columns */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Water Level Card */}
+        <WaterTankIndicator
+          currentLevel={waterTank.currentLevel}
+          maxCapacity={waterTank.maxCapacity}
+          percentage={waterTank.percentage}
+        />
 
         {/* Machine Status Card */}
         <Card className="bg-white dark:bg-gray-800 border-2 hover:border-gray-300 transition-all duration-200 hover:shadow-lg">
@@ -159,8 +157,8 @@ const MetricsCards = ({ waterTank, machineStatus, totalWaterProduced, lastUpdate
         </Card>
       </div>
 
-      {/* Second row for ESG metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 mb-8">
+      {/* ESG metrics row - 2 equal columns */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* CO₂ Saved Card */}
         <Card className="bg-white dark:bg-gray-800 border-2 hover:border-kumulus-blue/30 transition-all duration-200 hover:shadow-lg">
           <CardHeader className="pb-3">
@@ -215,7 +213,7 @@ const MetricsCards = ({ waterTank, machineStatus, totalWaterProduced, lastUpdate
           </CardContent>
         </Card>
       </div>
-    </>
+    </div>
   );
 };
 
