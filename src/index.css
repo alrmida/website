@@ -1,4 +1,3 @@
-
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @tailwind base;
 @tailwind components;
@@ -242,7 +241,7 @@
   }
 }
 
-/* Water Tank Animation Styles - Exact CodePen Implementation */
+/* Water Tank Animation Styles - Slower Animations with Dynamic Text */
 .water-tank-box {
   position: relative;
   width: 120px;
@@ -265,9 +264,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: hsl(var(--kumulus-dark-blue));
   font-weight: 700;
   font-size: 24px;
+  pointer-events: none;
+}
+
+.water-tank-percent-above {
+  color: hsl(var(--kumulus-blue));
+  z-index: 4;
+}
+
+.water-tank-percent-below {
+  color: hsl(var(--kumulus-cream));
+  z-index: 2;
 }
 
 .water-tank-percent-num {
@@ -283,7 +292,7 @@
   position: absolute;
   left: 0;
   top: 0;
-  z-index: 2;
+  z-index: 3;
   width: 100%;
   height: 100%;
   background: hsl(var(--kumulus-blue));
@@ -299,17 +308,17 @@
 .water-tank-wave-back {
   right: 0;
   fill: hsl(var(--kumulus-light-blue));
-  animation: wave-back 1.4s infinite linear;
+  animation: wave-back 2.8s infinite linear;
 }
 
 .water-tank-wave-front {
   left: 0;
   fill: hsl(var(--kumulus-blue));
   margin-bottom: -1px;
-  animation: wave-front 0.7s infinite linear;
+  animation: wave-front 1.4s infinite linear;
 }
 
-/* Wave animation keyframes - Exact CodePen Implementation */
+/* Wave animation keyframes - Half Speed */
 @keyframes wave-front {
   100% {
     transform: translate(-50%, 0);
@@ -328,8 +337,12 @@
   border-color: hsl(var(--kumulus-yellow));
 }
 
-.dark .water-tank-percent {
-  color: hsl(var(--kumulus-cream));
+.dark .water-tank-percent-above {
+  color: hsl(var(--kumulus-yellow));
+}
+
+.dark .water-tank-percent-below {
+  color: hsl(var(--kumulus-dark-blue));
 }
 
 .dark .water-tank-water {
