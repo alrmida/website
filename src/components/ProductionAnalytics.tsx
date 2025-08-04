@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Calendar, TrendingUp, BarChart3 } from 'lucide-react';
 import { ProductionData, MonthlyProductionData, StatusData, MonthlyStatusData } from '@/types/productionAnalytics';
-import AnalyticsSummaryCards from './AnalyticsSummaryCards';
+import { ProductionSummaryCards, StatusSummaryCards } from './AnalyticsSummaryCards';
 
 interface ProductionAnalyticsProps {
   selectedPeriod: string;
@@ -143,6 +143,13 @@ const ProductionAnalytics = ({
         </CardContent>
       </Card>
 
+      {/* Production Summary Cards */}
+      <ProductionSummaryCards
+        selectedPeriod={selectedPeriod}
+        dailyProductionData={dailyProductionData}
+        monthlyProductionData={monthlyProductionData}
+      />
+
       {/* Status Analytics Chart */}
       <Card className="bg-white dark:bg-gray-800">
         <CardHeader>
@@ -192,11 +199,9 @@ const ProductionAnalytics = ({
         </CardContent>
       </Card>
 
-      {/* Analytics Summary Cards */}
-      <AnalyticsSummaryCards
+      {/* Status Summary Cards */}
+      <StatusSummaryCards
         selectedPeriod={selectedPeriod}
-        dailyProductionData={dailyProductionData}
-        monthlyProductionData={monthlyProductionData}
         statusData={statusData}
         monthlyStatusData={monthlyStatusData}
       />
