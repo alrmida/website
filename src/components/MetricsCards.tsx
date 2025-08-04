@@ -1,9 +1,9 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, Clock, Zap, Leaf, Recycle, TrendingUp } from 'lucide-react';
 import { useLocalization } from '@/contexts/LocalizationContext';
 import WaterTankIndicator from './WaterTankIndicator';
+import StatusTooltip from './StatusTooltip';
 
 interface MetricsCardsProps {
   waterTank: {
@@ -100,7 +100,10 @@ const MetricsCards = ({ waterTank, machineStatus, totalWaterProduced, lastUpdate
               <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
                 {getStatusIcon(machineStatus)}
               </div>
-              {t('metrics.status')}
+              <div className="flex items-center">
+                {t('metrics.status')}
+                <StatusTooltip status={machineStatus} />
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent>

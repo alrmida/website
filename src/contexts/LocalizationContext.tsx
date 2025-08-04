@@ -17,7 +17,7 @@ const translations = {
   en: {
     // Header
     'header.welcome': 'Welcome to Your Kumulus Dashboard',
-    'header.tagline': 'Your Drinking Water From Air. Mineralized, Fresh, Sustainable',
+    'header.tagline': 'Fresh, Mineralized, Sustainable',
     'header.tagline.mobile': 'Water From Air',
     'header.admin.panel': 'Admin Panel',
     'header.settings': 'Settings',
@@ -76,6 +76,13 @@ const translations = {
     'metrics.vs.bottled.production': 'vs bottled water production',
     'metrics.unknown': 'unknown',
     
+    // Status Descriptions
+    'status.producing.description': 'Machine is actively generating water from air',
+    'status.idle.description': 'Machine is powered on but not producing water',
+    'status.full.water.description': 'Water tank is full and production has stopped',
+    'status.disconnected.description': 'No recent data received from machine (15+ minutes)',
+    'status.defrosting.description': 'Machine is in defrost cycle to maintain efficiency',
+    
     // Settings
     'settings.language': 'Language',
     'settings.currency': 'Currency',
@@ -85,7 +92,7 @@ const translations = {
   fr: {
     // Header
     'header.welcome': 'Bienvenue sur votre tableau de bord Kumulus',
-    'header.tagline': 'Votre eau potable à partir de l\'air. Minéralisée, fraîche, durable',
+    'header.tagline': 'Fraîche, minéralisée, durable',
     'header.tagline.mobile': 'Eau de l\'air',
     'header.admin.panel': 'Panneau d\'administration',
     'header.settings': 'Paramètres',
@@ -144,6 +151,13 @@ const translations = {
     'metrics.vs.bottled.production': 'vs production d\'eau en bouteille',
     'metrics.unknown': 'inconnu',
     
+    // Status Descriptions
+    'status.producing.description': 'La machine produit activement de l\'eau à partir de l\'air',
+    'status.idle.description': 'La machine est allumée mais ne produit pas d\'eau',
+    'status.full.water.description': 'Le réservoir d\'eau est plein et la production s\'est arrêtée',
+    'status.disconnected.description': 'Aucune donnée récente reçue de la machine (15+ minutes)',
+    'status.defrosting.description': 'La machine est en cycle de dégivrage pour maintenir l\'efficacité',
+    
     // Settings
     'settings.language': 'Langue',
     'settings.currency': 'Devise',
@@ -153,7 +167,7 @@ const translations = {
   es: {
     // Header
     'header.welcome': 'Bienvenido a tu Panel Kumulus',
-    'header.tagline': 'Tu agua potable del aire. Mineralizada, fresca, sostenible',
+    'header.tagline': 'Fresca, mineralizada, sostenible',
     'header.tagline.mobile': 'Agua del aire',
     'header.admin.panel': 'Panel de administración',
     'header.settings': 'Configuración',
@@ -211,6 +225,13 @@ const translations = {
     'metrics.bottles.avoided': 'botellas de 500ml evitadas',
     'metrics.vs.bottled.production': 'vs producción de agua embotellada',
     'metrics.unknown': 'desconocido',
+    
+    // Status Descriptions
+    'status.producing.description': 'La máquina está generando activamente agua del aire',
+    'status.idle.description': 'La máquina está encendida pero no produce agua',
+    'status.full.water.description': 'El tanque de agua está lleno y la producción se ha detenido',
+    'status.disconnected.description': 'No se han recibido datos recientes de la máquina (15+ minutos)',
+    'status.defrosting.description': 'La máquina está en ciclo de descongelación para mantener la eficiencia',
     
     // Settings
     'settings.language': 'Idioma',

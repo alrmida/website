@@ -27,38 +27,58 @@ function calculateMachineStatus(
   dataAge: number, 
   statusFlags?: StatusFlags
 ): { status: string, isOnline: boolean } {
-  // Check for offline status first - changed to 5 minutes threshold
-  if (dataAge > 300000) { // 5 minutes in milliseconds
+  // Check for offline status first - changed to 15 minutes threshold (more lenient)
+  if (dataAge > 900000) { // 15 minutes in milliseconds
+    console.log('🔴 Machine marked as disconnected - data age:', Math.round(dataAge / 60000), 'minutes');
     return { status: 'Disconnected', isOnline: false };
   }
   
   // Machine is online if we have recent data
   const isOnline = true;
+  console.log('🟢 Machine is online - data age:', Math.round(dataAge / 60000), 'minutes');
   
-  // Use status flags with new precise conditions
+  // Use status flags with improved logic and fallbacks
   if (statusFlags) {
+    console.log('📊 Status flags:', statusFlags);
+    
     // Priority 1: Defrosting (can override other states)
     if (statusFlags.defrosting) {
+      console.log('❄️ Status: Defrosting');
       return { status: 'Defrosting', isOnline };
     }
     
-    // Priority 2: Producing (compressor is 1 AND producing water is 1)
-    if (statusFlags.compressor_on === 1 && statusFlags.producing_water) {
-      return { status: 'Producing', isOnline };
-    }
-    
-    // Priority 3: Full Water (full water flag is 1 and compressor is 0)
-    if (statusFlags.full_tank && statusFlags.compressor_on !== 1) {
+    // Priority 2: Full Water (check this before producing to avoid conflicts)
+    if (statusFlags.full_tank === true) {
+      console.log('💧 Status: Full Water');
       return { status: 'Full Water', isOnline };
     }
     
-    // Priority 4: Idle (machine is online AND compressor is 0 and defrosting is 0)
-    if (statusFlags.compressor_on !== 1 && !statusFlags.defrosting) {
-      return { status: 'Idle', isOnline };
+    // Priority 3: Producing (compressor is 1 OR producing water is true)
+    if (statusFlags.compressor_on === 1 || statusFlags.producing_water === true) {
+      console.log('⚡ Status: Producing (compressor:', statusFlags.compressor_on, 'producing_water:', statusFlags.producing_water, ')');
+      return { status: 'Producing', isOnline };
     }
+    
+    // Priority 4: Idle (machine is online but not producing)
+    console.log('💤 Status: Idle');
+    return { status: 'Idle', isOnline };
   }
   
-  // If we don't have status flags, default to Idle since machine is online
+  // Fallback logic when no status flags are available
+  console.log('🔄 No status flags available, using fallback logic');
+  // If water level is very low, likely producing
+  if (waterLevel < 5) {
+    console.log('🔄 Fallback: Producing (low water level)');
+    return { status: 'Producing', isOnline };
+  }
+  // If water level is very high, likely full or idle
+  if (waterLevel > 25) {
+    console.log('🔄 Fallback: Full Water (high water level)');
+    return { status: 'Full Water', isOnline };
+  }
+  
+  // Default to Idle since machine is online
+  console.log('🔄 Fallback: Idle (default)');
   return { status: 'Idle', isOnline };
 }
 
@@ -149,15 +169,16 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
           // Get water level from edge function data
           const waterLevel = liveData.water_level_L || 0;
           
-          // Prepare status flags from edge function data
+          // Prepare status flags from edge function data with better validation
           const statusFlags: StatusFlags = {
-            full_tank: liveData.full_tank,
-            producing_water: liveData.producing_water,
-            defrosting: liveData.defrosting,
-            compressor_on: liveData.compressor_on
+            full_tank: liveData.full_tank === true || liveData.full_tank === 1,
+            producing_water: liveData.producing_water === true || liveData.producing_water === 1,
+            defrosting: liveData.defrosting === true || liveData.defrosting === 1,
+            compressor_on: typeof liveData.compressor_on === 'number' ? liveData.compressor_on : 
+                           (liveData.compressor_on === true ? 1 : 0)
           };
           
-          // Calculate machine status
+          // Calculate machine status with improved logic
           const { status, isOnline } = calculateMachineStatus(waterLevel, dataAge, statusFlags);
 
           const processedData = {
@@ -165,7 +186,7 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
             status: status,
             lastUpdated: liveData._time,
             dataAge: dataAge,
-            compressorOn: liveData.compressor_on || 0,
+            compressorOn: statusFlags.compressor_on || 0,
             isOnline: isOnline,
             lastConnection: isOnline ? liveData._time : data.lastConnection || liveData._time,
             dataSource: 'live' as const
@@ -175,7 +196,8 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
             waterLevel: processedData.waterLevel,
             status: processedData.status,
             isOnline: processedData.isOnline,
-            dataAge: Math.round(processedData.dataAge / 1000) + 's'
+            dataAge: Math.round(processedData.dataAge / 1000) + 's',
+            statusFlags
           });
           
           setData(processedData);
@@ -191,7 +213,7 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
       // Fallback to Supabase data if edge function fails
       console.log('📊 Falling back to Supabase data query');
       
-      // Query both tables simultaneously as fallback
+      // Query both tables simultaneously as fallback with longer time range
       const [snapshotResult, rawDataResult] = await Promise.all([
         supabase
           .from('simple_water_snapshots')
@@ -206,7 +228,7 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
           .from('raw_machine_data')
           .select('*')
           .eq('machine_id', selectedMachine.machine_id)
-          .gte('timestamp_utc', new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString())
+          .gte('timestamp_utc', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
           .order('timestamp_utc', { ascending: false })
           .limit(1)
           .maybeSingle()
@@ -219,6 +241,8 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
 
       const snapshotData = snapshotResult.data;
       const rawData = rawDataResult.data;
+
+      console.log('📊 Fallback data - snapshot:', !!snapshotData, 'raw:', !!rawData);
 
       if (!snapshotData) {
         console.log('⚠️ No recent data found - machine appears disconnected');
@@ -237,20 +261,21 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
         return;
       }
 
-      // Process fallback data
+      // Process fallback data with improved status flags handling
       const dataTime = new Date(snapshotData.timestamp_utc);
       const now = new Date();
       const dataAge = now.getTime() - dataTime.getTime();
       const waterLevel = snapshotData.water_level_l || 0;
       
       const statusFlags: StatusFlags | undefined = rawData ? {
-        full_tank: rawData.full_tank,
-        producing_water: rawData.producing_water,
-        defrosting: rawData.defrosting,
-        compressor_on: rawData.compressor_on
+        full_tank: rawData.full_tank === true || rawData.full_tank === 1,
+        producing_water: rawData.producing_water === true || rawData.producing_water === 1,
+        defrosting: rawData.defrosting === true || rawData.defrosting === 1,
+        compressor_on: typeof rawData.compressor_on === 'number' ? rawData.compressor_on : 
+                       (rawData.compressor_on === true ? 1 : 0)
       } : undefined;
       
-      // Use more lenient threshold for fallback data (45 minutes)
+      // Use improved status calculation with fallback data
       const { status, isOnline } = calculateMachineStatus(waterLevel, dataAge, statusFlags);
       
       const processedData = {
@@ -268,6 +293,7 @@ export const useLiveMachineData = (selectedMachine?: MachineWithClient) => {
         waterLevel: processedData.waterLevel,
         status: processedData.status,
         isOnline: processedData.isOnline,
+        dataAge: Math.round(processedData.dataAge / 60000) + ' minutes',
         dataSource: processedData.dataSource
       });
       
