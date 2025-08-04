@@ -4,45 +4,122 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Calendar, TrendingUp, BarChart3 } from 'lucide-react';
-import { ProductionData, MonthlyProductionData, StatusData, MonthlyStatusData } from '@/types/productionAnalytics';
+import { 
+  ProductionData, 
+  WeeklyProductionData,
+  MonthlyProductionData, 
+  YearlyProductionData,
+  StatusData, 
+  WeeklyStatusData,
+  MonthlyStatusData,
+  YearlyStatusData
+} from '@/types/productionAnalytics';
 import { ProductionSummaryCards, StatusSummaryCards } from './AnalyticsSummaryCards';
+import { useLocalization } from '@/contexts/LocalizationContext';
 
 interface ProductionAnalyticsProps {
   selectedPeriod: string;
   onPeriodChange: (period: string) => void;
   dailyProductionData: ProductionData[];
+  weeklyProductionData?: WeeklyProductionData[];
   monthlyProductionData: MonthlyProductionData[];
+  yearlyProductionData?: YearlyProductionData[];
   statusData: StatusData[];
+  weeklyStatusData?: WeeklyStatusData[];
   monthlyStatusData: MonthlyStatusData[];
+  yearlyStatusData?: YearlyStatusData[];
 }
-
-const formatNumber = (value: number): string => {
-  if (value >= 1000) {
-    return (value / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
-  }
-  return value.toFixed(1).replace(/\.0$/, '');
-};
 
 const ProductionAnalytics = ({
   selectedPeriod,
   onPeriodChange,
   dailyProductionData,
+  weeklyProductionData = [],
   monthlyProductionData,
+  yearlyProductionData = [],
   statusData,
-  monthlyStatusData
+  weeklyStatusData = [],
+  monthlyStatusData,
+  yearlyStatusData = []
 }: ProductionAnalyticsProps) => {
+  const { t, formatNumber } = useLocalization();
+
+  const formatNumberShort = (value: number): string => {
+    if (value >= 1000) {
+      return (value / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+    }
+    return value.toFixed(1).replace(/\.0$/, '');
+  };
+
   // Determine which data to show based on selected period
-  const productionData = selectedPeriod === 'monthly' ? monthlyProductionData : dailyProductionData;
-  const currentStatusData = selectedPeriod === 'monthly' ? monthlyStatusData : statusData;
+  const getProductionData = () => {
+    switch (selectedPeriod) {
+      case 'daily':
+        return dailyProductionData;
+      case 'weekly':
+        return weeklyProductionData.map(item => ({ 
+          date: item.week, 
+          production: item.production 
+        }));
+      case 'monthly':
+        return monthlyProductionData.map(item => ({ 
+          date: item.month, 
+          production: item.production 
+        }));
+      case 'yearly':
+        return yearlyProductionData.map(item => ({ 
+          date: item.year, 
+          production: item.production 
+        }));
+      default:
+        return dailyProductionData;
+    }
+  };
+
+  const getStatusData = () => {
+    switch (selectedPeriod) {
+      case 'daily':
+        return statusData;
+      case 'weekly':
+        return weeklyStatusData.map(item => ({ 
+          date: item.week, 
+          producing: item.producing,
+          idle: item.idle,
+          fullWater: item.fullWater,
+          disconnected: item.disconnected
+        }));
+      case 'monthly':
+        return monthlyStatusData.map(item => ({ 
+          date: item.month, 
+          producing: item.producing,
+          idle: item.idle,
+          fullWater: item.fullWater,
+          disconnected: item.disconnected
+        }));
+      case 'yearly':
+        return yearlyStatusData.map(item => ({ 
+          date: item.year, 
+          producing: item.producing,
+          idle: item.idle,
+          fullWater: item.fullWater,
+          disconnected: item.disconnected
+        }));
+      default:
+        return statusData;
+    }
+  };
+
+  const productionData = getProductionData();
+  const currentStatusData = getStatusData();
 
   // Get period labels
   const getPeriodLabel = () => {
     switch (selectedPeriod) {
-      case 'daily': return 'Last 7 Days';
-      case 'weekly': return 'Last 4 Weeks';
-      case 'monthly': return 'Last 3 Months';
-      case 'yearly': return 'Last 2 Years';
-      default: return 'Daily';
+      case 'daily': return t('analytics.last.7.days');
+      case 'weekly': return t('analytics.last.4.weeks');
+      case 'monthly': return t('analytics.last.3.months');
+      case 'yearly': return t('analytics.last.2.years');
+      default: return t('analytics.last.7.days');
     }
   };
 
@@ -75,10 +152,10 @@ const ProductionAnalytics = ({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-kumulus-dark-blue dark:text-white mb-2">
-            Production Analytics
+            {t('analytics.title')}
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            Water production and system status over time
+            {t('analytics.subtitle')}
           </p>
         </div>
         
@@ -89,10 +166,10 @@ const ProductionAnalytics = ({
               <SelectValue placeholder="Select time period" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="daily">Daily View</SelectItem>
-              <SelectItem value="weekly">Weekly View</SelectItem>
-              <SelectItem value="monthly">Monthly View</SelectItem>
-              <SelectItem value="yearly">Yearly View</SelectItem>
+              <SelectItem value="daily">{t('analytics.period.daily')}</SelectItem>
+              <SelectItem value="weekly">{t('analytics.period.weekly')}</SelectItem>
+              <SelectItem value="monthly">{t('analytics.period.monthly')}</SelectItem>
+              <SelectItem value="yearly">{t('analytics.period.yearly')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -106,7 +183,7 @@ const ProductionAnalytics = ({
               <TrendingUp className="h-5 w-5 text-kumulus-blue" />
             </div>
             <div>
-              <div>Water Production - {getPeriodLabel()}</div>
+              <div>{t('analytics.production.title')} - {getPeriodLabel()}</div>
               <div className="text-sm font-normal text-gray-600 dark:text-gray-400 mt-1">
                 {getTimeframe()}
               </div>
@@ -118,17 +195,17 @@ const ProductionAnalytics = ({
             <BarChart data={productionData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
-                dataKey={selectedPeriod === 'monthly' ? 'month' : 'date'} 
+                dataKey="date"
                 className="text-sm"
                 tick={{ fontSize: 12 }}
               />
               <YAxis 
                 className="text-sm"
                 tick={{ fontSize: 12 }}
-                tickFormatter={formatNumber}
+                tickFormatter={formatNumberShort}
               />
               <Tooltip 
-                formatter={(value: number) => [`${formatNumber(value)}L`, 'Production']}
+                formatter={(value: number) => [`${formatNumberShort(value)}L`, t('analytics.production.title')]}
                 labelStyle={{ color: '#374151' }}
                 contentStyle={{ 
                   backgroundColor: 'white', 
@@ -158,9 +235,9 @@ const ProductionAnalytics = ({
               <BarChart3 className="h-5 w-5 text-kumulus-green" />
             </div>
             <div>
-              <div>System Status Distribution - {getPeriodLabel()}</div>
+              <div>{t('analytics.status.title')} - {getPeriodLabel()}</div>
               <div className="text-sm font-normal text-gray-600 dark:text-gray-400 mt-1">
-                Time spent in each operational state
+                {t('analytics.status.subtitle')}
               </div>
             </div>
           </CardTitle>
@@ -170,7 +247,7 @@ const ProductionAnalytics = ({
             <BarChart data={currentStatusData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
-                dataKey={selectedPeriod === 'monthly' ? 'month' : 'date'} 
+                dataKey="date"
                 className="text-sm"
                 tick={{ fontSize: 12 }}
               />
@@ -180,7 +257,7 @@ const ProductionAnalytics = ({
                 label={{ value: 'Hours', angle: -90, position: 'insideLeft' }}
               />
               <Tooltip 
-                formatter={(value: number, name: string) => [`${value.toFixed(1)}h`, name]}
+                formatter={(value: number, name: string) => [`${value.toFixed(1)}h`, t(`metrics.${name.toLowerCase().replace(' ', '.')}`) || name]}
                 labelStyle={{ color: '#374151' }}
                 contentStyle={{ 
                   backgroundColor: 'white', 
@@ -190,10 +267,10 @@ const ProductionAnalytics = ({
                 }}
               />
               <Legend />
-              <Bar dataKey="producing" stackId="a" fill="hsl(var(--status-producing-blue))" name="Producing" radius={[0, 0, 0, 0]} />
-              <Bar dataKey="idle" stackId="a" fill="hsl(var(--kumulus-orange))" name="Idle" radius={[0, 0, 0, 0]} />
-              <Bar dataKey="fullWater" stackId="a" fill="hsl(var(--kumulus-chambray))" name="Full Water" radius={[0, 0, 0, 0]} />
-              <Bar dataKey="disconnected" stackId="a" fill="hsl(var(--status-disconnected-yellow))" name="Disconnected" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="producing" stackId="a" fill="hsl(var(--status-producing-blue))" name={t('metrics.producing')} radius={[0, 0, 0, 0]} />
+              <Bar dataKey="idle" stackId="a" fill="hsl(var(--kumulus-orange))" name={t('metrics.idle')} radius={[0, 0, 0, 0]} />
+              <Bar dataKey="fullWater" stackId="a" fill="hsl(var(--kumulus-chambray))" name={t('metrics.full.water')} radius={[0, 0, 0, 0]} />
+              <Bar dataKey="disconnected" stackId="a" fill="hsl(var(--status-disconnected-yellow))" name={t('metrics.disconnected')} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>

@@ -7,9 +7,13 @@ import { fetchStatusData } from '@/services/statusDataService';
 export const useProductionAnalytics = (machineId?: string) => {
   const [data, setData] = useState<ProductionAnalyticsData>({
     dailyProductionData: [],
+    weeklyProductionData: [],
     monthlyProductionData: [],
+    yearlyProductionData: [],
     statusData: [],
+    weeklyStatusData: [],
     monthlyStatusData: [],
+    yearlyStatusData: [],
     totalAllTimeProduction: 0
   });
   const [isLoading, setIsLoading] = useState(true);

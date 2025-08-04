@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocalization } from '@/contexts/LocalizationContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Settings, LogOut, Shield, Eye, EyeOff, User } from 'lucide-react';
@@ -23,6 +24,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 const DashboardHeader = () => {
   const { profile, signOut, isImpersonating, impersonatedProfile, startImpersonation, stopImpersonation } = useAuth();
+  const { t } = useLocalization();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
@@ -79,39 +81,43 @@ const DashboardHeader = () => {
   const displayProfile = isImpersonating ? impersonatedProfile : profile;
 
   return (
-    <header className="bg-kumulus-dark-blue dark:bg-gray-900 shadow-lg border-b border-kumulus-blue/20">
+    <header className="sticky top-0 z-50 bg-kumulus-dark-blue dark:bg-gray-900 shadow-lg border-b border-kumulus-blue/20">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
         <div className="flex justify-between items-center min-h-16 py-2">
           <div className="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-1">
             {/* Logo with theme-specific versions */}
-            <div className="flex items-center space-x-2 sm:space-x-4 min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-2 md:space-x-4 min-w-0">
               {/* Light mode logo (white for dark header) */}
-              <img 
-                src="/lovable-uploads/eeaac34d-4c12-4741-92cd-11685773ee0f.png" 
-                alt="Kumulus Logo" 
-                className="h-8 sm:h-10 block dark:hidden flex-shrink-0"
-              />
-              {/* Dark mode logo (white) */}
-              <img 
-                src="/lovable-uploads/eeaac34d-4c12-4741-92cd-11685773ee0f.png" 
-                alt="Kumulus Logo" 
-                className="h-8 sm:h-10 hidden dark:block flex-shrink-0"
-              />
-              <div className="flex flex-col min-w-0">
+              <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
+                <img 
+                  src="/lovable-uploads/eeaac34d-4c12-4741-92cd-11685773ee0f.png" 
+                  alt="Kumulus Logo" 
+                  className="h-8 sm:h-10 block dark:hidden flex-shrink-0"
+                />
+                {/* Dark mode logo (white) */}
+                <img 
+                  src="/lovable-uploads/eeaac34d-4c12-4741-92cd-11685773ee0f.png" 
+                  alt="Kumulus Logo" 
+                  className="h-8 sm:h-10 hidden dark:block flex-shrink-0"
+                />
                 <h1 className="text-lg sm:text-xl font-bold text-white">
                   KUMULUS
                 </h1>
+              </div>
+              
+              <div className="flex flex-col min-w-0">
                 {/* Hide tagline on mobile, show abbreviated version on small screens */}
                 <p className="text-xs text-kumulus-yellow hidden sm:block lg:block">
-                  {isMobile ? "Water From Air" : "Your Drinking Water From Air. Mineralized, Fresh, Sustainable"}
+                  {isMobile ? t('header.tagline.mobile') : t('header.tagline')}
                 </p>
               </div>
             </div>
+            
             {/* Impersonation badge - more compact on mobile */}
             {isImpersonating && (
-              <Badge variant="secondary" className="bg-kumulus-yellow text-kumulus-dark-blue border-kumulus-yellow text-xs">
+              <Badge variant="secondary" className="bg-kumulus-yellow text-kumulus-dark-blue border-kumulus-yellow text-xs ml-2 sm:ml-0">
                 <Eye className="h-3 w-3 mr-1" />
-                <span className="hidden sm:inline">Viewing as </span>
+                <span className="hidden sm:inline">{t('header.impersonating')} </span>
                 <span className="truncate max-w-20 sm:max-w-none">{impersonatedProfile?.username}</span>
               </Badge>
             )}
@@ -130,7 +136,7 @@ const DashboardHeader = () => {
                 className="flex items-center gap-1 sm:gap-2 border-kumulus-yellow text-kumulus-yellow hover:bg-kumulus-yellow hover:text-kumulus-dark-blue px-2 sm:px-3"
               >
                 <Shield className="h-4 w-4" />
-                <span className="hidden sm:inline">Admin Panel</span>
+                <span className="hidden sm:inline">{t('header.admin.panel')}</span>
               </Button>
             )}
             
@@ -166,13 +172,13 @@ const DashboardHeader = () => {
                     {isImpersonating ? (
                       <DropdownMenuItem onClick={stopImpersonation}>
                         <EyeOff className="mr-2 h-4 w-4" />
-                        Stop Impersonation
+                        {t('header.stop.impersonation')}
                       </DropdownMenuItem>
                     ) : (
                       <div className="p-2">
                         <div className="flex items-center gap-2 mb-2">
                           <User className="h-4 w-4" />
-                          <span className="text-sm font-medium">View as User</span>
+                          <span className="text-sm font-medium">{t('header.impersonating')}</span>
                         </div>
                         <Select onValueChange={handleImpersonation} disabled={profilesLoading}>
                           <SelectTrigger className="w-full">
@@ -199,11 +205,11 @@ const DashboardHeader = () => {
                 
                 <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
                   <Settings className="mr-2 h-4 w-4" />
-                  Settings
+                  {t('header.settings')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleSignOut}>
                   <LogOut className="mr-2 h-4 w-4" />
-                  Sign out
+                  {t('header.signout')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

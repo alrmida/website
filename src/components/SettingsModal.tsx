@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocalization } from '@/contexts/LocalizationContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
@@ -24,6 +25,7 @@ interface SettingsModalProps {
 
 const SettingsModal = ({ open, onOpenChange }: SettingsModalProps) => {
   const { profile } = useAuth();
+  const { t, language, currency, setLanguage, setCurrency } = useLocalization();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
@@ -114,20 +116,38 @@ const SettingsModal = ({ open, onOpenChange }: SettingsModalProps) => {
     setLoading(false);
   };
 
+  const handleLanguageChange = (newLanguage: string) => {
+    setLanguage(newLanguage);
+    toast({
+      title: 'Success',
+      description: 'Language updated successfully',
+    });
+  };
+
+  const handleCurrencyChange = (newCurrency: string) => {
+    setCurrency(newCurrency);
+    setPreferredCurrency(newCurrency);
+    toast({
+      title: 'Success',
+      description: 'Currency updated successfully',
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Settings</DialogTitle>
+          <DialogTitle>{t('header.settings')}</DialogTitle>
           <DialogDescription>
             Manage your account settings and preferences
           </DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="security">Security</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="profile">{t('settings.profile')}</TabsTrigger>
+            <TabsTrigger value="preferences">Preferences</TabsTrigger>
+            <TabsTrigger value="security">{t('settings.security')}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile" className="space-y-4">
@@ -179,22 +199,48 @@ const SettingsModal = ({ open, onOpenChange }: SettingsModalProps) => {
                   </div>
                 </div>
 
+                <Button onClick={handleProfileUpdate} disabled={loading}>
+                  {loading ? 'Updating...' : 'Update Profile'}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="preferences" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Language & Currency</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="currency">Preferred Currency</Label>
-                    <Select value={preferredCurrency} onValueChange={setPreferredCurrency}>
+                    <Label htmlFor="language">{t('settings.language')}</Label>
+                    <Select value={language} onValueChange={handleLanguageChange}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="en">English</SelectItem>
+                        <SelectItem value="fr">Français</SelectItem>
+                        <SelectItem value="es">Español</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="currency">{t('settings.currency')}</Label>
+                    <Select value={currency} onValueChange={handleCurrencyChange}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="USD">USD - US Dollar</SelectItem>
                         <SelectItem value="EUR">EUR - Euro</SelectItem>
-                        <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                        <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
-                        <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="timezone">Preferred Timezone</Label>
                     <Select value={preferredTimezone} onValueChange={setPreferredTimezone}>
@@ -216,7 +262,7 @@ const SettingsModal = ({ open, onOpenChange }: SettingsModalProps) => {
                 </div>
 
                 <Button onClick={handleProfileUpdate} disabled={loading}>
-                  {loading ? 'Updating...' : 'Update Profile'}
+                  {loading ? 'Updating...' : 'Update Preferences'}
                 </Button>
               </CardContent>
             </Card>
