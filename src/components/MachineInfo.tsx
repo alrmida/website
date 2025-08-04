@@ -1,23 +1,25 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { MapPin, Calendar, User, Cpu, Droplets, Wrench } from 'lucide-react';
+import { MapPin, Calendar, User, Cpu } from 'lucide-react';
 import { MachineWithClient, getDisplayModelName, getOperatingSince } from '@/types/machine';
+import AmphoreIcon from './icons/AmphoreIcon';
+import BoKsIcon from './icons/BoKsIcon';
+import WaterDispenserIcon from './icons/WaterDispenserIcon';
 
 interface MachineInfoProps {
   machine: MachineWithClient;
   showOwner?: boolean;
 }
 
-// Model icon mapping - ready for custom icons
+// Model icon mapping - now using dedicated components for easy swapping
 const getModelIcon = (modelName: string) => {
   switch (modelName.toLowerCase()) {
     case 'amphore':
-      return <Droplets className="h-6 w-6 text-blue-500" />;
+      return <AmphoreIcon />;
     case 'boks':
-      return <Cpu className="h-6 w-6 text-green-500" />;
+      return <BoKsIcon />;
     case 'water dispenser':
-      return <Wrench className="h-6 w-6 text-purple-500" />;
+      return <WaterDispenserIcon />;
     default:
       return <Cpu className="h-6 w-6 text-gray-500" />;
   }
