@@ -86,8 +86,8 @@ const ClientDashboard = () => {
     <div className="min-h-screen bg-kumulus-cream dark:bg-gray-900 overflow-x-hidden">
       <DashboardHeader />
       
-      {/* Main content with top padding to account for sticky header */}
-      <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8 pt-20 sm:pt-24">
+      {/* Main content with proper top spacing to account for sticky header */}
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8 pt-6 sm:pt-8">
         {/* Welcome Section - improved mobile spacing */}
         <div className="mb-4 sm:mb-6 lg:mb-8">
           <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-kumulus-dark-blue dark:text-white mb-3 sm:mb-4 leading-tight">
