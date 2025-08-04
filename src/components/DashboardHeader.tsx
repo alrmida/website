@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocalization } from '@/contexts/LocalizationContext';
@@ -81,9 +80,9 @@ const DashboardHeader = () => {
   const displayProfile = isImpersonating ? impersonatedProfile : profile;
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-kumulus-dark-blue dark:bg-gray-900 shadow-lg border-b border-kumulus-blue/20">
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
-        <div className="flex justify-between items-center min-h-16 py-2">
+    <header className="sticky top-0 z-50 w-full bg-kumulus-dark-blue dark:bg-gray-900 shadow-lg border-b border-kumulus-blue/20 h-16">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 h-full">
+        <div className="flex justify-between items-center h-full py-2">
           <div className="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-1">
             {/* Logo with theme-specific versions */}
             <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-2 md:space-x-4 min-w-0">
