@@ -272,11 +272,13 @@
 .water-tank-percent-above {
   color: hsl(var(--kumulus-blue));
   z-index: 4;
+  clip-path: inset(0 0 var(--water-fill-percent, 0%) 0);
 }
 
 .water-tank-percent-below {
   color: hsl(var(--kumulus-cream));
   z-index: 2;
+  clip-path: inset(var(--water-empty-percent, 100%) 0 0 0);
 }
 
 .water-tank-percent-num {

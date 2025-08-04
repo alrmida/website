@@ -47,9 +47,15 @@ const WaterTankIndicator = ({ currentLevel, maxCapacity, percentage }: WaterTank
             </symbol>
           </svg>
 
-          {/* Water Tank Animation - Exact CodePen Structure with Dynamic Text */}
-          <div className="water-tank-box">
-            {/* Text Above Water - Blue Color */}
+          {/* Water Tank Animation with Dynamic Text Clipping */}
+          <div 
+            className="water-tank-box"
+            style={{
+              '--water-fill-percent': `${cappedPercentage}%`,
+              '--water-empty-percent': `${100 - cappedPercentage}%`
+            } as React.CSSProperties}
+          >
+            {/* Text Above Water - Blue/Yellow Color */}
             <div className="water-tank-percent water-tank-percent-above">
               <div className="water-tank-percent-num">{Math.round(cappedPercentage)}</div>
               <div className="water-tank-percent-symbol">%</div>
