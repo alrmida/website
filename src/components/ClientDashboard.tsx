@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardHeader from './DashboardHeader';
@@ -74,33 +75,37 @@ const ClientDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-kumulus-cream dark:bg-gray-900">
+    <div className="min-h-screen bg-kumulus-cream dark:bg-gray-900 overflow-x-hidden">
       <DashboardHeader />
       
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* Welcome Section */}
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-kumulus-dark-blue dark:text-white mb-4">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
+        {/* Welcome Section - improved mobile spacing */}
+        <div className="mb-4 sm:mb-6 lg:mb-8">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-kumulus-dark-blue dark:text-white mb-3 sm:mb-4 leading-tight">
             Welcome to Your Kumulus Dashboard
           </h1>
-          <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-6">
+          <p className="text-base sm:text-lg lg:text-xl text-gray-600 dark:text-gray-300 mb-4 sm:mb-6">
             Monitor your atmospheric water generation system in real-time
           </p>
           {profile?.role === 'client' && selectedMachine && (
-            <div className="mt-4 p-4 bg-kumulus-blue/10 border border-kumulus-blue/20 rounded-lg">
-              <div className="flex items-center gap-2 text-kumulus-blue">
-                <span className="font-medium">Client:</span>
-                <span>{profile.username}</span>
-                <span className="text-kumulus-blue/60">•</span>
-                <span className="font-medium">Machine:</span>
-                <span>{selectedMachine.machine_id}</span>
+            <div className="mt-4 p-3 sm:p-4 bg-kumulus-blue/10 border border-kumulus-blue/20 rounded-lg overflow-hidden">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-kumulus-blue text-sm sm:text-base">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Client:</span>
+                  <span className="break-words">{profile.username}</span>
+                </div>
+                <span className="text-kumulus-blue/60 hidden sm:inline">•</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Machine:</span>
+                  <span className="font-mono break-all">{selectedMachine.machine_id}</span>
+                </div>
               </div>
             </div>
           )}
         </div>
 
         {/* Machine Selection */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <MachineSelector 
             onMachineSelect={handleMachineSelect} 
             selectedMachine={selectedMachine}
@@ -117,7 +122,7 @@ const ClientDashboard = () => {
 
         {/* Machine Info - Show basic machine information */}
         {selectedMachine && (
-          <div className="mb-8">
+          <div className="mb-6 sm:mb-8">
             <MachineInfo
               machine={selectedMachine}
               showOwner={profile?.role === 'commercial'}
@@ -125,8 +130,8 @@ const ClientDashboard = () => {
           </div>
         )}
 
-        {/* Metrics Cards Grid - Now using actual production event timestamp converted to string */}
-        <div className="mb-8">
+        {/* Metrics Cards Grid - mobile optimized spacing */}
+        <div className="mb-6 sm:mb-8">
           <MetricsCards 
             waterTank={waterTank}
             machineStatus={liveData?.status || 'Loading...'}
@@ -136,7 +141,7 @@ const ClientDashboard = () => {
         </div>
 
         {/* Production Analytics - Charts and Visualizations */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <ProductionAnalytics
             selectedPeriod={selectedPeriod}
             onPeriodChange={setSelectedPeriod}

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,6 +19,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Profile } from './admin/types';
 import { mapDatabaseRoleToFrontend } from './admin/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const DashboardHeader = () => {
   const { profile, signOut, isImpersonating, impersonatedProfile, startImpersonation, stopImpersonation } = useAuth();
@@ -25,6 +27,7 @@ const DashboardHeader = () => {
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (profile?.role === 'admin') {
@@ -77,54 +80,57 @@ const DashboardHeader = () => {
 
   return (
     <header className="bg-kumulus-dark-blue dark:bg-gray-900 shadow-lg border-b border-kumulus-blue/20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <div className="flex items-center space-x-4">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+        <div className="flex justify-between items-center min-h-16 py-2">
+          <div className="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-1">
             {/* Logo with theme-specific versions */}
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4 min-w-0">
               {/* Light mode logo (white for dark header) */}
               <img 
                 src="/lovable-uploads/eeaac34d-4c12-4741-92cd-11685773ee0f.png" 
                 alt="Kumulus Logo" 
-                className="h-10 block dark:hidden"
+                className="h-8 sm:h-10 block dark:hidden flex-shrink-0"
               />
               {/* Dark mode logo (white) */}
               <img 
                 src="/lovable-uploads/eeaac34d-4c12-4741-92cd-11685773ee0f.png" 
                 alt="Kumulus Logo" 
-                className="h-10 hidden dark:block"
+                className="h-8 sm:h-10 hidden dark:block flex-shrink-0"
               />
-              <div className="flex flex-col">
-                <h1 className="text-xl font-bold text-white">
+              <div className="flex flex-col min-w-0">
+                <h1 className="text-lg sm:text-xl font-bold text-white">
                   KUMULUS
                 </h1>
-                <p className="text-xs text-kumulus-yellow">
-                  Your Drinking Water From Air. Mineralized, Fresh, Sustainable
+                {/* Hide tagline on mobile, show abbreviated version on small screens */}
+                <p className="text-xs text-kumulus-yellow hidden sm:block lg:block">
+                  {isMobile ? "Water From Air" : "Your Drinking Water From Air. Mineralized, Fresh, Sustainable"}
                 </p>
               </div>
             </div>
+            {/* Impersonation badge - more compact on mobile */}
             {isImpersonating && (
-              <Badge variant="secondary" className="bg-kumulus-yellow text-kumulus-dark-blue border-kumulus-yellow">
+              <Badge variant="secondary" className="bg-kumulus-yellow text-kumulus-dark-blue border-kumulus-yellow text-xs">
                 <Eye className="h-3 w-3 mr-1" />
-                Viewing as {impersonatedProfile?.username}
+                <span className="hidden sm:inline">Viewing as </span>
+                <span className="truncate max-w-20 sm:max-w-none">{impersonatedProfile?.username}</span>
               </Badge>
             )}
           </div>
           
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
             {/* Theme Toggle */}
             <ThemeToggle />
             
-            {/* Only true admins should see the admin panel button */}
+            {/* Admin panel button - hide text on mobile */}
             {profile?.role === 'admin' && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setAdminPanelOpen(true)}
-                className="flex items-center gap-2 border-kumulus-yellow text-kumulus-yellow hover:bg-kumulus-yellow hover:text-kumulus-dark-blue"
+                className="flex items-center gap-1 sm:gap-2 border-kumulus-yellow text-kumulus-yellow hover:bg-kumulus-yellow hover:text-kumulus-dark-blue px-2 sm:px-3"
               >
                 <Shield className="h-4 w-4" />
-                Admin Panel
+                <span className="hidden sm:inline">Admin Panel</span>
               </Button>
             )}
             
@@ -132,7 +138,7 @@ const DashboardHeader = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full hover:bg-kumulus-blue">
                   <Avatar className="h-8 w-8 bg-kumulus-yellow">
-                    <AvatarFallback className="bg-kumulus-yellow text-kumulus-dark-blue font-semibold">
+                    <AvatarFallback className="bg-kumulus-yellow text-kumulus-dark-blue font-semibold text-sm">
                       {displayProfile ? getInitials(displayProfile.username) : 'U'}
                     </AvatarFallback>
                   </Avatar>
@@ -140,7 +146,7 @@ const DashboardHeader = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-72" align="end" forceMount>
                 <div className="flex flex-col space-y-1 p-2">
-                  <p className="text-sm font-medium leading-none">
+                  <p className="text-sm font-medium leading-none truncate">
                     {displayProfile?.username}
                   </p>
                   <p className="text-xs leading-none text-muted-foreground">
@@ -176,7 +182,7 @@ const DashboardHeader = () => {
                             {allProfiles.map((userProfile) => (
                               <SelectItem key={userProfile.id} value={userProfile.id}>
                                 <div className="flex items-center gap-2">
-                                  <span>{userProfile.username}</span>
+                                  <span className="truncate">{userProfile.username}</span>
                                   <Badge variant="secondary" className="text-xs">
                                     {userProfile.role}
                                   </Badge>
