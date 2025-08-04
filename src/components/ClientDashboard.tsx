@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardHeader from './DashboardHeader';
@@ -116,20 +115,12 @@ const ClientDashboard = () => {
           liveData={liveData}
         />
 
-        {/* Machine Info - Show for commercial users only */}
-        {selectedMachine && profile?.role === 'commercial' && (
+        {/* Machine Info - Show basic machine information */}
+        {selectedMachine && (
           <div className="mb-8">
             <MachineInfo
-              machineId={selectedMachine.machine_id}
-              liveData={liveData ? {
-                lastUpdated: liveData.lastUpdated,
-                waterLevel: liveData.waterLevel,
-                ambient_temp_c: null,
-                current_a: null,
-                compressor_on: liveData.compressorOn,
-              } : null}
-              loading={dataLoading}
-              onRefresh={() => {}} // Will be handled by the hook
+              machine={selectedMachine}
+              showOwner={profile?.role === 'commercial'}
             />
           </div>
         )}
