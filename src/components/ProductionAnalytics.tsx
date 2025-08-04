@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Calendar, TrendingUp, BarChart3 } from 'lucide-react';
 import { ProductionData, MonthlyProductionData, StatusData, MonthlyStatusData } from '@/types/productionAnalytics';
+import AnalyticsSummaryCards from './AnalyticsSummaryCards';
 
 interface ProductionAnalyticsProps {
   selectedPeriod: string;
@@ -190,6 +191,15 @@ const ProductionAnalytics = ({
           </ResponsiveContainer>
         </CardContent>
       </Card>
+
+      {/* Analytics Summary Cards */}
+      <AnalyticsSummaryCards
+        selectedPeriod={selectedPeriod}
+        dailyProductionData={dailyProductionData}
+        monthlyProductionData={monthlyProductionData}
+        statusData={statusData}
+        monthlyStatusData={monthlyStatusData}
+      />
     </div>
   );
 };
