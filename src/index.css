@@ -241,7 +241,7 @@
   }
 }
 
-/* Water Tank Animation Styles - Slower Animations with Dynamic Text */
+/* Water Tank Animation Styles - Slower Animations with Simple White Text */
 .water-tank-box {
   position: relative;
   width: 120px;
@@ -267,18 +267,12 @@
   font-weight: 700;
   font-size: 24px;
   pointer-events: none;
-}
-
-.water-tank-percent-above {
-  color: hsl(var(--kumulus-blue));
-  z-index: 4;
-  clip-path: inset(0 0 var(--water-fill-percent, 0%) 0);
-}
-
-.water-tank-percent-below {
-  color: hsl(var(--kumulus-cream));
-  z-index: 2;
-  clip-path: inset(var(--water-empty-percent, 100%) 0 0 0);
+  color: white;
+  text-shadow: 
+    -2px -2px 0 hsl(var(--kumulus-blue)),
+    2px -2px 0 hsl(var(--kumulus-blue)),
+    -2px 2px 0 hsl(var(--kumulus-blue)),
+    2px 2px 0 hsl(var(--kumulus-blue));
 }
 
 .water-tank-percent-num {
@@ -291,13 +285,11 @@
 }
 
 .water-tank-water {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 3;
+  position: relative;
   width: 100%;
   height: 100%;
   background: hsl(var(--kumulus-blue));
+  transform-origin: bottom;
   transition: transform 1s ease-out;
 }
 
@@ -339,12 +331,12 @@
   border-color: hsl(var(--kumulus-yellow));
 }
 
-.dark .water-tank-percent-above {
-  color: hsl(var(--kumulus-yellow));
-}
-
-.dark .water-tank-percent-below {
-  color: hsl(var(--kumulus-dark-blue));
+.dark .water-tank-percent {
+  text-shadow: 
+    -2px -2px 0 hsl(var(--kumulus-yellow)),
+    2px -2px 0 hsl(var(--kumulus-yellow)),
+    -2px 2px 0 hsl(var(--kumulus-yellow)),
+    2px 2px 0 hsl(var(--kumulus-yellow));
 }
 
 .dark .water-tank-water {
