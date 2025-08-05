@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AlertCircle, CheckCircle, Clock, XCircle, Activity } from 'lucide-react';
+import { MachineWithClient } from '@/types/machine';
 
 interface DataIngestionLog {
   id: string;
@@ -21,7 +21,11 @@ interface DataIngestionLog {
   created_at: string;
 }
 
-const DataIngestionMonitor = () => {
+interface DataIngestionMonitorProps {
+  selectedMachine?: MachineWithClient;
+}
+
+const DataIngestionMonitor = ({ selectedMachine }: DataIngestionMonitorProps) => {
   const [logs, setLogs] = useState<DataIngestionLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedLogType, setSelectedLogType] = useState<string>('all');
@@ -36,6 +40,11 @@ const DataIngestionMonitor = () => {
 
       if (selectedLogType !== 'all') {
         query = query.eq('log_type', selectedLogType);
+      }
+
+      // Filter by selected machine if provided
+      if (selectedMachine) {
+        query = query.eq('machine_id', selectedMachine.machine_id);
       }
 
       const { data, error } = await query;
@@ -54,7 +63,7 @@ const DataIngestionMonitor = () => {
 
   useEffect(() => {
     fetchLogs();
-  }, [selectedLogType]);
+  }, [selectedLogType, selectedMachine]);
 
   const getLogIcon = (logType: string) => {
     switch (logType) {
@@ -108,7 +117,10 @@ const DataIngestionMonitor = () => {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold">Data Ingestion Monitor</h2>
-          <p className="text-muted-foreground">Monitor InfluxDB data flow and processing</p>
+          <p className="text-muted-foreground">
+            Monitor InfluxDB data flow and processing
+            {selectedMachine && ` for ${selectedMachine.machine_id}`}
+          </p>
         </div>
         <Button onClick={fetchLogs} disabled={loading}>
           {loading ? 'Loading...' : 'Refresh'}

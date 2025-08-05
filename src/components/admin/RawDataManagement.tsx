@@ -13,6 +13,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Trash2, RefreshCw } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { MachineWithClient } from '@/types/machine';
 
 interface RawMachineData {
   id: string;
@@ -40,11 +41,10 @@ interface RawMachineData {
 }
 
 interface RawDataManagementProps {
-  loading: boolean;
-  onRefresh: () => void;
+  selectedMachine?: MachineWithClient;
 }
 
-const RawDataManagement = ({ loading, onRefresh }: RawDataManagementProps) => {
+const RawDataManagement = ({ selectedMachine }: RawDataManagementProps) => {
   const { toast } = useToast();
   const [rawData, setRawData] = useState<RawMachineData[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
@@ -53,7 +53,7 @@ const RawDataManagement = ({ loading, onRefresh }: RawDataManagementProps) => {
 
   useEffect(() => {
     fetchRawData();
-  }, []);
+  }, [selectedMachine]);
 
   const fetchRawData = async () => {
     setDataLoading(true);
@@ -70,10 +70,25 @@ const RawDataManagement = ({ loading, onRefresh }: RawDataManagementProps) => {
       
       console.log('Current user profile:', profile);
       
-      // Get total count with error details
-      const { count, error: countError } = await supabase
+      // Build query with optional machine filter
+      let countQuery = supabase
         .from('raw_machine_data')
         .select('*', { count: 'exact', head: true });
+
+      let dataQuery = supabase
+        .from('raw_machine_data')
+        .select('*')
+        .order('timestamp_utc', { ascending: false })
+        .limit(100);
+
+      // Filter by selected machine if provided
+      if (selectedMachine) {
+        countQuery = countQuery.eq('machine_id', selectedMachine.machine_id);
+        dataQuery = dataQuery.eq('machine_id', selectedMachine.machine_id);
+      }
+
+      // Get total count with error details
+      const { count, error: countError } = await countQuery;
 
       console.log('Count query result:', { count, countError });
       
@@ -85,11 +100,7 @@ const RawDataManagement = ({ loading, onRefresh }: RawDataManagementProps) => {
       }
 
       // Get latest 100 records with all new fields
-      const { data, error } = await supabase
-        .from('raw_machine_data')
-        .select('*')
-        .order('timestamp_utc', { ascending: false })
-        .limit(100);
+      const { data, error } = await dataQuery;
 
       console.log('Enhanced data query result:', { data, error, dataLength: data?.length });
 
@@ -115,10 +126,17 @@ const RawDataManagement = ({ loading, onRefresh }: RawDataManagementProps) => {
 
   const cleanupOldData = async () => {
     try {
-      const { error } = await supabase
+      let deleteQuery = supabase
         .from('raw_machine_data')
         .delete()
         .lt('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+
+      // If a specific machine is selected, only cleanup that machine's data
+      if (selectedMachine) {
+        deleteQuery = deleteQuery.eq('machine_id', selectedMachine.machine_id);
+      }
+
+      const { error } = await deleteQuery;
 
       if (error) throw error;
 
@@ -163,6 +181,7 @@ const RawDataManagement = ({ loading, onRefresh }: RawDataManagementProps) => {
           <h3 className="text-lg font-semibold">Enhanced Raw Machine Data</h3>
           <p className="text-sm text-muted-foreground">
             Total records: {totalCount} (showing latest 100) - Now includes all 18 sensor fields
+            {selectedMachine && ` for ${selectedMachine.machine_id}`}
           </p>
           {debugInfo && (
             <details className="mt-2">
@@ -233,7 +252,7 @@ const RawDataManagement = ({ loading, onRefresh }: RawDataManagementProps) => {
                 {rawData.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={21} className="text-center py-8">
-                      No enhanced raw data found. The edge function may be having issues storing data.
+                      No enhanced raw data found{selectedMachine ? ` for ${selectedMachine.machine_id}` : ''}. The edge function may be having issues storing data.
                     </TableCell>
                   </TableRow>
                 ) : (
