@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, XCircle, AlertCircle, Database, Wifi } from 'lucide-react';
-import { useLiveMachineData } from '@/hooks/useLiveMachineData';
+import useLiveMachineData from '@/hooks/useLiveMachineData';
 import { MachineWithClient } from '@/types/machine';
 
 interface DataPipelineMonitorProps {

@@ -1,151 +1,207 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { MachineWithClient } from '@/types/machine';
 
 export type MachineStatus = 'Producing' | 'Idle' | 'Full Water' | 'Disconnected' | 'Defrosting';
 
 interface UseLiveMachineDataProps {
-  machineId: string;
+  selectedMachine: MachineWithClient | null;
 }
 
-interface MachineData {
-  timestamp: string;
-  water_level: number;
-  tank_capacity: number;
-  producing_flag: boolean;
-  full_water_flag: boolean;
-  idle_flag: boolean;
-  defrosting_flag: boolean;
+interface LiveMachineData {
+  status: MachineStatus;
+  waterLevel: number;
+  lastUpdated: string | null;
+  isOnline: boolean;
+  dataSource: 'live' | 'fallback';
+  dataAge: number;
+  lastConnection?: string;
+  compressorOn: boolean;
 }
 
-const useLiveMachineData = ({ machineId }: UseLiveMachineDataProps) => {
-  const [latestData, setLatestData] = useState<MachineData | null>(null);
-  const [status, setStatus] = useState<MachineStatus>('Disconnected');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+export const useLiveMachineData = (selectedMachine: MachineWithClient | null) => {
+  const [data, setData] = useState<LiveMachineData>({
+    status: 'Disconnected',
+    waterLevel: 0,
+    lastUpdated: null,
+    isOnline: false,
+    dataSource: 'fallback',
+    dataAge: 0,
+    compressorOn: false
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchInitialData = async () => {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('machine_data')
-          .select('*')
-          .eq('machine_id', machineId)
-          .order('timestamp', { ascending: false })
-          .limit(1)
-          .single();
+    if (!selectedMachine) {
+      setIsLoading(false);
+      return;
+    }
 
-        if (error) {
-          throw error;
+    const fetchInitialData = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        console.log('🔍 Fetching data for machine:', selectedMachine.machine_id);
+        
+        // Try to get the most recent raw machine data
+        const { data: rawData, error: rawError } = await supabase
+          .from('raw_machine_data')
+          .select('*')
+          .eq('machine_id', selectedMachine.machine_id)
+          .order('timestamp_utc', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (rawError) {
+          console.error('Error fetching raw machine data:', rawError);
+          throw new Error(`Database error: ${rawError.message}`);
         }
 
-        if (data) {
-          setLatestData(data);
-          setStatus(calculateStatus(data));
+        if (rawData) {
+          console.log('✅ Found raw machine data:', rawData);
+          const processedData = processRawData(rawData);
+          setData(processedData);
+        } else {
+          console.log('⚠️ No raw machine data found, using fallback');
+          setData({
+            status: 'Disconnected',
+            waterLevel: 0,
+            lastUpdated: null,
+            isOnline: false,
+            dataSource: 'fallback',
+            dataAge: Infinity,
+            compressorOn: false
+          });
         }
       } catch (err: any) {
-        setError(err);
-        console.error("Failed to fetch initial machine data:", err);
+        console.error('❌ Failed to fetch machine data:', err);
+        setError(err.message || 'Failed to fetch machine data');
+        setData({
+          status: 'Disconnected',
+          waterLevel: 0,
+          lastUpdated: null,
+          isOnline: false,
+          dataSource: 'fallback',
+          dataAge: Infinity,
+          compressorOn: false
+        });
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
     fetchInitialData();
 
+    // Set up real-time subscription for new data
     const channel = supabase
-      .channel(`machine_data:${machineId}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'machine_data', filter: `machine_id=eq.${machineId}` }, async payload => {
-        console.log('Realtime payload received:', payload);
-        const newData = payload.new;
-        setLatestData(newData);
-        setStatus(calculateStatus(newData));
+      .channel(`raw_machine_data:${selectedMachine.machine_id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'raw_machine_data',
+        filter: `machine_id=eq.${selectedMachine.machine_id}`
+      }, (payload) => {
+        console.log('🔄 Real-time update received:', payload);
+        if (payload.new) {
+          const processedData = processRawData(payload.new);
+          setData(processedData);
+        }
       })
-      .subscribe()
+      .subscribe();
 
     return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [machineId]);
+      supabase.removeChannel(channel);
+    };
+  }, [selectedMachine?.machine_id]);
 
-  // Enhanced status calculation with better logic and debugging
-  const calculateStatus = (latestData: any): MachineStatus => {
-    console.log('🔍 Status calculation input:', {
-      timestamp: latestData.timestamp,
-      producing_flag: latestData.producing_flag,
-      full_water_flag: latestData.full_water_flag,
-      idle_flag: latestData.idle_flag,
-      defrosting_flag: latestData.defrosting_flag,
-      water_level: latestData.water_level,
-      tank_capacity: latestData.tank_capacity
+  const processRawData = (rawData: any): LiveMachineData => {
+    const dataTimestamp = new Date(rawData.timestamp_utc);
+    const now = new Date();
+    const dataAge = now.getTime() - dataTimestamp.getTime();
+    
+    console.log('🔍 Processing raw data:', {
+      timestamp: rawData.timestamp_utc,
+      water_level: rawData.water_level_l,
+      producing_water: rawData.producing_water,
+      full_tank: rawData.full_tank,
+      defrosting: rawData.defrosting,
+      compressor_on: rawData.compressor_on,
+      dataAge: Math.round(dataAge / 1000 / 60) // minutes
     });
 
     // Check if data is too old (15 minutes threshold)
-    const dataAge = Date.now() - new Date(latestData.timestamp).getTime();
     const isDisconnected = dataAge > 15 * 60 * 1000; // 15 minutes in milliseconds
     
-    console.log('🕐 Data age check:', {
-      dataAge: Math.round(dataAge / 1000 / 60), // minutes
-      isDisconnected,
-      threshold: '15 minutes'
-    });
-    
     if (isDisconnected) {
-      return 'Disconnected';
+      console.log('⚠️ Data is too old, marking as disconnected');
+      return {
+        status: 'Disconnected',
+        waterLevel: rawData.water_level_l || 0,
+        lastUpdated: rawData.timestamp_utc,
+        isOnline: false,
+        dataSource: 'live',
+        dataAge,
+        lastConnection: rawData.timestamp_utc,
+        compressorOn: Boolean(rawData.compressor_on)
+      };
     }
 
-    // Parse flags as numbers (they come as strings from InfluxDB)
-    const producingFlag = Number(latestData.producing_flag) || 0;
-    const fullWaterFlag = Number(latestData.full_water_flag) || 0;
-    const idleFlag = Number(latestData.idle_flag) || 0;
-    const defrostingFlag = Number(latestData.defrosting_flag) || 0;
+    // Calculate status based on available flags
+    const status = calculateStatus(rawData);
     
-    console.log('🏁 Parsed flags:', {
-      producingFlag,
-      fullWaterFlag,
-      idleFlag,
-      defrostingFlag
+    return {
+      status,
+      waterLevel: rawData.water_level_l || 0,
+      lastUpdated: rawData.timestamp_utc,
+      isOnline: true,
+      dataSource: 'live',
+      dataAge,
+      compressorOn: Boolean(rawData.compressor_on)
+    };
+  };
+
+  const calculateStatus = (rawData: any): MachineStatus => {
+    console.log('🎯 Calculating status from flags:', {
+      defrosting: rawData.defrosting,
+      full_tank: rawData.full_tank,
+      producing_water: rawData.producing_water,
+      serving_water: rawData.serving_water,
+      treating_water: rawData.treating_water,
+      water_level: rawData.water_level_l
     });
 
-    // Status priority logic with fallback
-    if (defrostingFlag > 0) {
+    // Status priority logic
+    if (rawData.defrosting === true) {
+      console.log('✅ Status: Defrosting');
       return 'Defrosting';
     }
     
-    if (fullWaterFlag > 0) {
+    if (rawData.full_tank === true) {
+      console.log('✅ Status: Full Water');
       return 'Full Water';
     }
     
-    if (producingFlag > 0) {
+    if (rawData.producing_water === true) {
+      console.log('✅ Status: Producing');
       return 'Producing';
     }
     
-    if (idleFlag > 0) {
-      return 'Idle';
-    }
-
-    // Fallback: check water level if flags are unreliable
-    const waterLevel = Number(latestData.water_level) || 0;
-    const tankCapacity = Number(latestData.tank_capacity) || 100;
-    const fillPercentage = tankCapacity > 0 ? (waterLevel / tankCapacity) * 100 : 0;
-    
-    console.log('💧 Water level fallback:', {
-      waterLevel,
-      tankCapacity,
-      fillPercentage
-    });
-    
-    // If tank is nearly full, assume Full Water status
-    if (fillPercentage >= 95) {
+    // Fallback: check water level for full tank
+    const waterLevel = rawData.water_level_l || 0;
+    if (waterLevel >= 9.5) { // Nearly full
+      console.log('✅ Status: Full Water (based on level)');
       return 'Full Water';
     }
     
-    // Default fallback - if we have recent data but no clear flags, assume Idle
-    console.log('⚠️ Using fallback status: Idle');
+    // Default to Idle if we have recent data but no clear producing flags
+    console.log('✅ Status: Idle (default)');
     return 'Idle';
   };
 
-  return { latestData, status, loading, error };
+  return { data, isLoading, error };
 };
 
 export default useLiveMachineData;

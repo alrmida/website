@@ -1,6 +1,6 @@
 
 import { useMemo } from 'react';
-import { useLiveMachineData } from '@/hooks/useLiveMachineData';
+import useLiveMachineData from '@/hooks/useLiveMachineData';
 import { useProductionAnalytics } from '@/hooks/useProductionAnalytics';
 import { MachineWithClient, getDisplayModelName } from '@/types/machine';
 import { useAuth } from '@/contexts/AuthContext';
@@ -92,6 +92,6 @@ export const useDashboardData = (selectedMachine: MachineWithClient | null) => {
   return {
     ...dashboardData,
     dataLoading: dataLoading || analyticsLoading,
-    dataError
+    dataError: dataError || null
   };
 };
