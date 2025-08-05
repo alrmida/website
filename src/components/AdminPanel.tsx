@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -181,7 +180,6 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
 
           <TabsContent value="rawdata" className="space-y-4">
             <RawDataManagement 
-              loading={loading}
               onRefresh={handleRefresh}
             />
           </TabsContent>

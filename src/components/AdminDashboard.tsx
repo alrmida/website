@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DashboardHeader from './DashboardHeader';
@@ -180,7 +179,6 @@ const AdminDashboard = () => {
 
           <TabsContent value="data">
             <RawDataManagement 
-              loading={loading}
               onRefresh={handleRefresh}
             />
           </TabsContent>
