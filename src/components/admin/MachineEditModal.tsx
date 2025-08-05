@@ -87,10 +87,10 @@ const MachineEditModal = ({ open, onOpenChange, machine, profiles, onSuccess }: 
         machine_id: machine.machine_id,
         name: machine.name,
         location: machine.location || '',
-        machine_model: machine.machine_model || '',
+        machine_model: machine.machine_model || 'no-model',
         purchase_date: machine.purchase_date ? machine.purchase_date.split('T')[0] : '',
         microcontroller_uid: currentUID || '',
-        client_id: machine.client_id || '',
+        client_id: machine.client_id || 'no-assignment',
       });
     }
   }, [machine, open, currentUID, form]);
@@ -101,14 +101,14 @@ const MachineEditModal = ({ open, onOpenChange, machine, profiles, onSuccess }: 
     try {
       setLoading(true);
 
-      // Update machine data (without microcontroller_uid)
+      // Convert special values back to null for database
       const updateData = {
         machine_id: data.machine_id,
         name: data.name,
         location: data.location || null,
-        machine_model: data.machine_model || null,
+        machine_model: data.machine_model === 'no-model' ? null : data.machine_model,
         purchase_date: data.purchase_date || null,
-        client_id: data.client_id || null,
+        client_id: data.client_id === 'no-assignment' ? null : data.client_id,
         updated_at: new Date().toISOString(),
       };
 
@@ -226,10 +226,10 @@ const MachineEditModal = ({ open, onOpenChange, machine, profiles, onSuccess }: 
                   <FormControl>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Select model" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No model specified</SelectItem>
+                        <SelectItem value="no-model">No model specified</SelectItem>
                         <SelectItem value="Amphore">Amphore</SelectItem>
                         <SelectItem value="BoKs">BoKs</SelectItem>
                         <SelectItem value="Water Dispenser">Water Dispenser</SelectItem>
@@ -278,10 +278,10 @@ const MachineEditModal = ({ open, onOpenChange, machine, profiles, onSuccess }: 
                   <FormControl>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Select client" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No assignment</SelectItem>
+                        <SelectItem value="no-assignment">No assignment</SelectItem>
                         {clientProfiles.map((profile) => (
                           <SelectItem key={profile.id} value={profile.id}>
                             {profile.username}
