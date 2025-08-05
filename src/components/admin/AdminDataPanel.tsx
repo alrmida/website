@@ -1,9 +1,9 @@
 
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DataIngestionMonitor } from './DataIngestionMonitor';
+import DataIngestionMonitor from './DataIngestionMonitor';
 import { DataPipelineTest } from './DataPipelineTest';
-import { RawDataManagement } from './RawDataManagement';
+import RawDataManagement from './RawDataManagement';
 import { DataPipelineDiagnostics } from './DataPipelineDiagnostics';
 import { PipelineRepair } from './PipelineRepair';
 import { MachineWithClient } from '@/types/machine';
