@@ -42,9 +42,10 @@ interface RawMachineData {
 
 interface RawDataManagementProps {
   selectedMachine?: MachineWithClient;
+  onRefresh?: () => void;
 }
 
-const RawDataManagement = ({ selectedMachine }: RawDataManagementProps) => {
+const RawDataManagement = ({ selectedMachine, onRefresh }: RawDataManagementProps) => {
   const { toast } = useToast();
   const [rawData, setRawData] = useState<RawMachineData[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
@@ -146,6 +147,10 @@ const RawDataManagement = ({ selectedMachine }: RawDataManagementProps) => {
       });
       
       fetchRawData();
+      // Call parent refresh if provided
+      if (onRefresh) {
+        onRefresh();
+      }
     } catch (error: any) {
       console.error('Error cleaning up data:', error);
       toast({
@@ -153,6 +158,14 @@ const RawDataManagement = ({ selectedMachine }: RawDataManagementProps) => {
         description: `Failed to cleanup data: ${error.message}`,
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleRefresh = () => {
+    fetchRawData();
+    // Call parent refresh if provided
+    if (onRefresh) {
+      onRefresh();
     }
   };
 
@@ -194,7 +207,7 @@ const RawDataManagement = ({ selectedMachine }: RawDataManagementProps) => {
         </div>
         <div className="flex gap-2">
           <Button
-            onClick={fetchRawData}
+            onClick={handleRefresh}
             disabled={dataLoading}
             variant="outline"
             size="sm"
