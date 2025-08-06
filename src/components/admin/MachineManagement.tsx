@@ -42,7 +42,11 @@ const MachineRow = ({ machine, profiles, onEdit, onDelete }: {
       <TableCell>{machine.location || '-'}</TableCell>
       <TableCell>{machine.machine_model || '-'}</TableCell>
       <TableCell>
-        {machine.client_profile?.username || 'Unassigned'}
+        {machine.client_profile?.username ? (
+          <Badge variant="default">{machine.client_profile.username}</Badge>
+        ) : (
+          <Badge variant="secondary">Unassigned</Badge>
+        )}
       </TableCell>
       <TableCell>
         <Badge 
@@ -96,12 +100,29 @@ const MachineManagement = ({ machines, profiles, profile, loading, onRefresh }: 
     onRefresh();
   };
 
+  // Separate assigned and unassigned machines for better display
+  const assignedMachines = machines.filter(machine => machine.client_id);
+  const unassignedMachines = machines.filter(machine => !machine.client_id);
+
   return (
     <>
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Machine Management</CardTitle>
+            <div>
+              <CardTitle>Machine Management</CardTitle>
+              <div className="flex items-center space-x-4 mt-2">
+                <Badge variant="outline">
+                  Total: {machines.length}
+                </Badge>
+                <Badge variant="default">
+                  Assigned: {assignedMachines.length}
+                </Badge>
+                <Badge variant="secondary">
+                  Unassigned: {unassignedMachines.length}
+                </Badge>
+              </div>
+            </div>
             <div className="flex space-x-2">
               <Button
                 variant="outline"

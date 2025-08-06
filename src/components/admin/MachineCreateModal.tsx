@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -48,7 +49,7 @@ const machineCreateSchema = z.object({
   microcontroller_uid: z.string().min(1, 'Microcontroller UID is required').refine(isValidMicrocontrollerUID, {
     message: 'Microcontroller UID must be 24 hexadecimal characters',
   }),
-  client_id: z.string().min(1, 'Client assignment is required'),
+  client_id: z.string().optional(), // Made optional
 });
 
 type MachineCreateData = z.infer<typeof machineCreateSchema>;
@@ -76,7 +77,7 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
       location: '',
       purchase_date: '',
       microcontroller_uid: '',
-      client_id: '',
+      client_id: 'no-assignment',
     },
   });
 
@@ -154,14 +155,14 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
       // Generate final machine ID
       const machineId = generateMachineId(data.model, data.machineNumber);
 
-      // Create the machine with required client assignment
+      // Create the machine with optional client assignment
       const machineData = {
         machine_id: machineId,
         name: data.name,
         location: data.location || null,
         machine_model: data.model,
         purchase_date: data.purchase_date || null,
-        client_id: data.client_id,
+        client_id: data.client_id === 'no-assignment' ? null : data.client_id,
       };
 
       const { data: newMachine, error } = await supabase
@@ -195,9 +196,13 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
           variant: 'destructive',
         });
       } else {
+        const assignmentMessage = data.client_id === 'no-assignment' 
+          ? 'Machine created successfully. Available for client assignment.' 
+          : 'Machine created successfully and assigned to client. Live data connection established.';
+        
         toast({
           title: 'Success',
-          description: `Machine created successfully and assigned to client. Live data connection established.`,
+          description: assignmentMessage,
         });
       }
 
@@ -222,7 +227,7 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
         <DialogHeader>
           <DialogTitle>Create New Machine</DialogTitle>
           <DialogDescription>
-            Select model and machine number to generate the Kumulus ID automatically. Client assignment is required.
+            Select model and machine number to generate the Kumulus ID automatically. Client assignment is optional.
           </DialogDescription>
         </DialogHeader>
 
@@ -233,13 +238,14 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
               name="client_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Assigned Client *</FormLabel>
+                  <FormLabel>Assigned Client</FormLabel>
                   <FormControl>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select client (required)" />
+                        <SelectValue placeholder="Select client (optional)" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="no-assignment">No assignment (available for later assignment)</SelectItem>
                         {clientProfiles.map((profile) => (
                           <SelectItem key={profile.id} value={profile.id}>
                             {profile.username}
