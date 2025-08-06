@@ -6,6 +6,7 @@ import { DataPipelineTest } from './DataPipelineTest';
 import RawDataManagement from './RawDataManagement';
 import { DataPipelineDiagnostics } from './DataPipelineDiagnostics';
 import { PipelineRepair } from './PipelineRepair';
+import { PipelineDiagnosticTool } from './PipelineDiagnosticTool';
 import { MachineWithClient } from '@/types/machine';
 
 interface AdminDataPanelProps {
@@ -16,8 +17,9 @@ export const AdminDataPanel = ({ selectedMachine }: AdminDataPanelProps) => {
   return (
     <div className="w-full space-y-6">
       <Tabs defaultValue="diagnostics" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="diagnostics">Pipeline Health</TabsTrigger>
+          <TabsTrigger value="troubleshoot">Troubleshoot</TabsTrigger>
           <TabsTrigger value="repair">Pipeline Repair</TabsTrigger>
           <TabsTrigger value="monitor">Data Monitor</TabsTrigger>
           <TabsTrigger value="test">Pipeline Test</TabsTrigger>
@@ -26,6 +28,10 @@ export const AdminDataPanel = ({ selectedMachine }: AdminDataPanelProps) => {
         
         <TabsContent value="diagnostics" className="space-y-4">
           <DataPipelineDiagnostics />
+        </TabsContent>
+        
+        <TabsContent value="troubleshoot" className="space-y-4">
+          <PipelineDiagnosticTool />
         </TabsContent>
         
         <TabsContent value="repair" className="space-y-4">
