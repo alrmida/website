@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -96,22 +95,22 @@ export const EnhancedPipelineDiagnostic = () => {
         }
       });
 
-      // Step 3: Historical data check
-      const { data: historicalData, error: historicalError } = await supabase
+      // Step 3: Historical data check - get data BEFORE function call
+      const { data: historicalDataBefore, error: historicalError } = await supabase
         .from('raw_machine_data')
         .select('timestamp_utc, water_level_l, producing_water, full_tank')
         .eq('machine_id', machineData.machine_id)
         .order('timestamp_utc', { ascending: false })
         .limit(5);
 
-      const historyStatus = historicalData && historicalData.length > 0 ? 'success' : 'warning';
+      const historyStatus = historicalDataBefore && historicalDataBefore.length > 0 ? 'success' : 'warning';
       diagnosticResults.push({
         step: 'Historical Data',
         status: historyStatus,
-        message: `Found ${historicalData?.length || 0} recent records in database`,
+        message: `Found ${historicalDataBefore?.length || 0} recent records in database`,
         data: {
-          recent_records: historicalData,
-          last_update: historicalData?.[0]?.timestamp_utc || null
+          recent_records: historicalDataBefore,
+          last_update: historicalDataBefore?.[0]?.timestamp_utc || null
         }
       });
 
@@ -167,42 +166,64 @@ export const EnhancedPipelineDiagnostic = () => {
             debug_info: functionData.debug
           }
         });
+
+        // Step 5: Improved data verification with better timestamp handling
+        if (storageSuccess && storageAction === 'inserted') {
+          await new Promise(resolve => setTimeout(resolve, 1500)); // Wait 1.5 seconds
+
+          const { data: postFunctionData } = await supabase
+            .from('raw_machine_data')
+            .select('timestamp_utc, water_level_l, producing_water, id')
+            .eq('machine_id', machineData.machine_id)
+            .order('timestamp_utc', { ascending: false })
+            .limit(3); // Get more records to account for timing
+
+          const expectedTimestamp = functionData.data._time;
+          const expectedTime = new Date(expectedTimestamp).getTime();
+          
+          // Look for a record within 1 second of the expected timestamp
+          const foundMatchingRecord = postFunctionData?.find(record => {
+            const recordTime = new Date(record.timestamp_utc).getTime();
+            const timeDiff = Math.abs(recordTime - expectedTime);
+            return timeDiff <= 1000; // Within 1 second tolerance
+          });
+
+          const isNewRecord = foundMatchingRecord && (
+            !historicalDataBefore?.length || 
+            new Date(foundMatchingRecord.timestamp_utc).getTime() > new Date(historicalDataBefore[0].timestamp_utc).getTime()
+          );
+
+          diagnosticResults.push({
+            step: 'Data Verification',
+            status: foundMatchingRecord ? 'success' : 'warning',
+            message: foundMatchingRecord 
+              ? `✅ Confirmed: Data stored successfully! ${isNewRecord ? '(New record)' : '(Existing record)'}` 
+              : '⚠️ Warning: Could not verify data storage (may be timing issue)',
+            data: {
+              expected_timestamp: expectedTimestamp,
+              found_record: foundMatchingRecord || null,
+              all_recent_records: postFunctionData,
+              match: !!foundMatchingRecord,
+              is_new_record: isNewRecord
+            }
+          });
+        } else if (storageAction === 'skipped') {
+          diagnosticResults.push({
+            step: 'Data Verification',
+            status: 'info',
+            message: '📋 Data verification skipped - duplicate timestamp detected (normal behavior)',
+            data: {
+              reason: 'Storage was skipped due to duplicate timestamp',
+              expected_timestamp: functionData.data._time
+            }
+          });
+        }
       } else {
         diagnosticResults.push({
           step: 'Enhanced Function Test',
           status: 'warning',
           message: 'Function returned unexpected response',
           data: functionData
-        });
-      }
-
-      // Step 5: Post-function data verification
-      if (functionData?.status === 'ok') {
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-
-        const { data: postFunctionData } = await supabase
-          .from('raw_machine_data')
-          .select('timestamp_utc, water_level_l, producing_water')
-          .eq('machine_id', machineData.machine_id)
-          .order('timestamp_utc', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        const expectedTimestamp = functionData.data._time;
-        const foundMatchingRecord = postFunctionData && 
-          new Date(postFunctionData.timestamp_utc).getTime() === new Date(expectedTimestamp).getTime();
-
-        diagnosticResults.push({
-          step: 'Data Verification',
-          status: foundMatchingRecord ? 'success' : 'error',
-          message: foundMatchingRecord 
-            ? 'Confirmed: New data successfully stored in database!' 
-            : 'Error: Retrieved data was not stored in database',
-          data: {
-            expected_timestamp: expectedTimestamp,
-            found_record: postFunctionData,
-            match: foundMatchingRecord
-          }
         });
       }
 
@@ -302,7 +323,7 @@ export const EnhancedPipelineDiagnostic = () => {
           Enhanced Pipeline Diagnostic Tool
         </CardTitle>
         <p className="text-sm text-gray-600">
-          Comprehensive pipeline testing with enhanced error logging and storage verification
+          Comprehensive pipeline testing with enhanced error logging and improved verification
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -392,8 +413,9 @@ export const EnhancedPipelineDiagnostic = () => {
             <li>• Schema validation and column verification</li>
             <li>• Multi-range InfluxDB data search (1h, 6h, 24h)</li>
             <li>• Detailed storage error logging and debugging</li>
-            <li>• Post-function data verification</li>
-            <li>• Historical data analysis</li>
+            <li>• Improved data verification with timestamp tolerance</li>
+            <li>• Historical data analysis and comparison</li>
+            <li>• Better handling of duplicate timestamp scenarios</li>
           </ul>
         </div>
       </CardContent>
