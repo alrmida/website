@@ -44,7 +44,16 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
       setError(null);
       
       try {
+        // Get current user info for role-based debugging
+        const { data: currentUser } = await supabase.auth.getUser();
+        const { data: currentProfile } = await supabase
+          .from('profiles')
+          .select('role, username')
+          .eq('id', currentUser.user?.id)
+          .single();
+
         console.log('🔍 Fetching data for machine:', selectedMachine.machine_id);
+        console.log('👤 Current user role:', currentProfile?.role, 'username:', currentProfile?.username);
         
         // Try to get the most recent raw machine data
         const { data: rawData, error: rawError } = await supabase
@@ -56,16 +65,34 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
           .maybeSingle();
 
         if (rawError) {
-          console.error('Error fetching raw machine data:', rawError);
+          console.error('❌ Error fetching raw machine data:', rawError);
+          console.error('🔍 RLS Debug - User role:', currentProfile?.role, 'Machine ID:', selectedMachine.machine_id);
           throw new Error(`Database error: ${rawError.message}`);
         }
 
+        console.log('🔍 Raw data query result:', {
+          found: !!rawData,
+          userRole: currentProfile?.role,
+          machineId: selectedMachine.machine_id,
+          timestamp: rawData?.timestamp_utc || 'none',
+          recordId: rawData?.id || 'none'
+        });
+
         if (rawData) {
-          console.log('✅ Found raw machine data:', rawData);
+          console.log('✅ Found raw machine data:', {
+            timestamp: rawData.timestamp_utc,
+            water_level: rawData.water_level_l,
+            age_minutes: Math.round((new Date().getTime() - new Date(rawData.timestamp_utc).getTime()) / (1000 * 60))
+          });
           const processedData = processRawData(rawData);
           setData(processedData);
         } else {
           console.log('⚠️ No raw machine data found, using fallback');
+          console.log('🔍 Debug info:', {
+            userRole: currentProfile?.role,
+            machineId: selectedMachine.machine_id,
+            possibleCause: 'RLS policy may be blocking access or no data exists'
+          });
           setData({
             status: 'Disconnected',
             waterLevel: 0,
@@ -78,6 +105,11 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
         }
       } catch (err: any) {
         console.error('❌ Failed to fetch machine data:', err);
+        console.error('🔍 Error context:', {
+          machineId: selectedMachine.machine_id,
+          errorMessage: err.message,
+          errorCode: err.code
+        });
         setError(err.message || 'Failed to fetch machine data');
         setData({
           status: 'Disconnected',
@@ -104,13 +136,19 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
         table: 'raw_machine_data',
         filter: `machine_id=eq.${selectedMachine.machine_id}`
       }, (payload) => {
-        console.log('🔄 Real-time update received:', payload);
+        console.log('🔄 Real-time update received:', {
+          machineId: selectedMachine.machine_id,
+          timestamp: payload.new.timestamp_utc,
+          water_level: payload.new.water_level_l
+        });
         if (payload.new) {
           const processedData = processRawData(payload.new);
           setData(processedData);
         }
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 Real-time subscription status:', status, 'for machine:', selectedMachine.machine_id);
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -136,7 +174,10 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
     const isDisconnected = dataAge > 15 * 60 * 1000; // 15 minutes in milliseconds
     
     if (isDisconnected) {
-      console.log('⚠️ Data is too old, marking as disconnected');
+      console.log('⚠️ Data is too old, marking as disconnected:', {
+        dataAge: Math.round(dataAge / 1000 / 60),
+        threshold: 15
+      });
       return {
         status: 'Disconnected',
         waterLevel: rawData.water_level_l || 0,
@@ -151,6 +192,12 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
 
     // Calculate status based on available flags
     const status = calculateStatus(rawData);
+    
+    console.log('✅ Machine status calculated:', {
+      status,
+      isOnline: true,
+      dataAge: Math.round(dataAge / 1000 / 60)
+    });
     
     return {
       status,

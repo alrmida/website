@@ -21,8 +21,7 @@ export const EnhancedPipelineDiagnostic = () => {
   const [results, setResults] = useState<EnhancedDiagnosticResult[]>([]);
 
   const problemUIDs = [
-    { uid: '353636343034510E002A0020', machineId: 'KU001619000094', name: 'R&D embraco' },
-    { uid: '353636343034510D005F0039', machineId: 'KU001619000001', name: 'test' }
+    { uid: '353636343034510E002A0020', machineId: 'KU001619000094', name: 'R&D embraco' }
   ];
 
   const runEnhancedDiagnostic = async (uid: string) => {
@@ -167,25 +166,50 @@ export const EnhancedPipelineDiagnostic = () => {
           }
         });
 
-        // Step 5: Improved data verification with better timestamp handling
+        // Step 5: Improved data verification with better timing and role check
         if (storageSuccess && storageAction === 'inserted') {
-          await new Promise(resolve => setTimeout(resolve, 1500)); // Wait 1.5 seconds
+          // Wait longer for data to be available and indexed
+          await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds
 
-          const { data: postFunctionData } = await supabase
+          // Add role-specific debugging
+          const { data: currentProfile } = await supabase
+            .from('profiles')
+            .select('role, username')
+            .eq('id', (await supabase.auth.getUser()).data.user?.id)
+            .single();
+
+          diagnosticResults.push({
+            step: 'Role Check',
+            status: 'info',
+            message: `Running verification as role: ${currentProfile?.role} (${currentProfile?.username})`,
+            data: { profile: currentProfile }
+          });
+
+          const { data: postFunctionData, error: verificationError } = await supabase
             .from('raw_machine_data')
-            .select('timestamp_utc, water_level_l, producing_water, id')
+            .select('timestamp_utc, water_level_l, producing_water, id, created_at')
             .eq('machine_id', machineData.machine_id)
             .order('timestamp_utc', { ascending: false })
-            .limit(3); // Get more records to account for timing
+            .limit(5); // Get more records to account for timing
+
+          if (verificationError) {
+            diagnosticResults.push({
+              step: 'Data Verification',
+              status: 'error',
+              message: `Database query failed during verification: ${verificationError.message}`,
+              data: { error: verificationError }
+            });
+            return diagnosticResults;
+          }
 
           const expectedTimestamp = functionData.data._time;
           const expectedTime = new Date(expectedTimestamp).getTime();
           
-          // Look for a record within 1 second of the expected timestamp
+          // Look for a record within 2 seconds of the expected timestamp
           const foundMatchingRecord = postFunctionData?.find(record => {
             const recordTime = new Date(record.timestamp_utc).getTime();
             const timeDiff = Math.abs(recordTime - expectedTime);
-            return timeDiff <= 1000; // Within 1 second tolerance
+            return timeDiff <= 2000; // Within 2 seconds tolerance
           });
 
           const isNewRecord = foundMatchingRecord && (
@@ -198,15 +222,32 @@ export const EnhancedPipelineDiagnostic = () => {
             status: foundMatchingRecord ? 'success' : 'warning',
             message: foundMatchingRecord 
               ? `✅ Confirmed: Data stored successfully! ${isNewRecord ? '(New record)' : '(Existing record)'}` 
-              : '⚠️ Warning: Could not verify data storage (may be timing issue)',
+              : '⚠️ Warning: Could not verify data storage within 2-second window (may be timing or permission issue)',
             data: {
               expected_timestamp: expectedTimestamp,
               found_record: foundMatchingRecord || null,
               all_recent_records: postFunctionData,
               match: !!foundMatchingRecord,
-              is_new_record: isNewRecord
+              is_new_record: isNewRecord,
+              verification_error: verificationError,
+              user_role: currentProfile?.role,
+              records_found: postFunctionData?.length || 0
             }
           });
+
+          // Additional debugging for role-based data visibility
+          if (!foundMatchingRecord && postFunctionData?.length === 0) {
+            diagnosticResults.push({
+              step: 'Permission Debug',
+              status: 'warning',
+              message: 'No records visible to current user role - possible RLS policy issue',
+              data: {
+                role: currentProfile?.role,
+                machine_id: machineData.machine_id,
+                expected_records: 'Should see recent raw_machine_data records'
+              }
+            });
+          }
         } else if (storageAction === 'skipped') {
           diagnosticResults.push({
             step: 'Data Verification',
@@ -276,23 +317,47 @@ export const EnhancedPipelineDiagnostic = () => {
     setTesting(true);
     setResults([]);
     
+    // Fetch current machines from database instead of using hardcoded list
+    const { data: currentMachines } = await supabase
+      .from('machines')
+      .select(`
+        machine_id,
+        name,
+        machine_microcontrollers!inner(
+          microcontroller_uid
+        )
+      `)
+      .is('machine_microcontrollers.unassigned_at', null);
+    
     const allResults: EnhancedDiagnosticResult[] = [];
     
-    for (const machine of problemUIDs) {
+    if (currentMachines && currentMachines.length > 0) {
+      for (const machine of currentMachines) {
+        const uid = machine.machine_microcontrollers[0]?.microcontroller_uid;
+        if (uid) {
+          allResults.push({
+            step: 'Machine Test',
+            status: 'info',
+            message: `=== TESTING ${machine.name} (${machine.machine_id}) ===`,
+            timestamp: new Date().toISOString()
+          });
+          
+          const machineResults = await runEnhancedDiagnostic(uid);
+          allResults.push(...machineResults);
+          
+          allResults.push({
+            step: 'Separator',
+            status: 'info',
+            message: '─'.repeat(60)
+          });
+        }
+      }
+    } else {
       allResults.push({
-        step: 'Machine Test',
-        status: 'info',
-        message: `=== TESTING ${machine.name} (${machine.machineId}) ===`,
+        step: 'No Machines',
+        status: 'warning',
+        message: 'No machines with active microcontroller assignments found in database',
         timestamp: new Date().toISOString()
-      });
-      
-      const machineResults = await runEnhancedDiagnostic(machine.uid);
-      allResults.push(...machineResults);
-      
-      allResults.push({
-        step: 'Separator',
-        status: 'info',
-        message: '─'.repeat(60)
       });
     }
     
@@ -323,7 +388,7 @@ export const EnhancedPipelineDiagnostic = () => {
           Enhanced Pipeline Diagnostic Tool
         </CardTitle>
         <p className="text-sm text-gray-600">
-          Comprehensive pipeline testing with enhanced error logging and improved verification
+          Comprehensive pipeline testing with enhanced error logging, improved verification, and role-based debugging
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -336,7 +401,7 @@ export const EnhancedPipelineDiagnostic = () => {
               className="flex-1"
             >
               <Play className="h-4 w-4 mr-2" />
-              {testing ? 'Testing...' : 'Test Problem Machines (Enhanced)'}
+              {testing ? 'Testing...' : 'Test All Active Machines (Enhanced)'}
             </Button>
           </div>
           
@@ -413,8 +478,10 @@ export const EnhancedPipelineDiagnostic = () => {
             <li>• Schema validation and column verification</li>
             <li>• Multi-range InfluxDB data search (1h, 6h, 24h)</li>
             <li>• Detailed storage error logging and debugging</li>
-            <li>• Improved data verification with timestamp tolerance</li>
+            <li>• Improved data verification with 2-second timestamp tolerance</li>
             <li>• Historical data analysis and comparison</li>
+            <li>• Role-based debugging and permission checking</li>
+            <li>• Dynamic machine list (no hardcoded values)</li>
             <li>• Better handling of duplicate timestamp scenarios</li>
           </ul>
         </div>
