@@ -82,18 +82,7 @@ export const RoleBasedDataDebugger = () => {
         }
       }
 
-      // Step 4: Test RLS policies directly
-      const { data: rlsTest, error: rlsError } = await supabase
-        .rpc('pg_get_policy_names', { schema_name: 'public', table_name: 'raw_machine_data' });
-
-      debugResults.push({
-        step: 'RLS Policy Check',
-        status: rlsError ? 'warning' : 'info',
-        message: rlsError ? 'Cannot check RLS policies' : 'RLS policies accessible',
-        data: { policies: rlsTest, error: rlsError }
-      });
-
-      // Step 5: Check recent data across all machines
+      // Step 4: Check recent data across all machines
       const { data: allRecentData, error: allDataError } = await supabase
         .from('raw_machine_data')
         .select('machine_id, timestamp_utc, id')
@@ -109,6 +98,25 @@ export const RoleBasedDataDebugger = () => {
           recent_data: allRecentData,
           error: allDataError,
           machines_with_recent_data: [...new Set(allRecentData?.map(d => d.machine_id) || [])]
+        }
+      });
+
+      // Step 5: Test machine status calculation access
+      const { data: waterLevelSnapshots, error: snapshotError } = await supabase
+        .from('water_level_snapshots')
+        .select('*')
+        .order('timestamp_utc', { ascending: false })
+        .limit(5);
+
+      debugResults.push({
+        step: 'Water Level Snapshots Access',
+        status: snapshotError ? 'error' : 'success',
+        message: snapshotError 
+          ? `Cannot access snapshots: ${snapshotError.message}`
+          : `Found ${waterLevelSnapshots?.length || 0} water level snapshots`,
+        data: {
+          snapshots: waterLevelSnapshots,
+          error: snapshotError
         }
       });
 
