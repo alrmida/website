@@ -50,12 +50,12 @@ export const RoleBasedDataDebugger = () => {
         data: { machines, error: machineError }
       });
 
-      // Step 3: Check raw_machine_data access for each machine
+      // Step 3: Check raw_machine_data access for each available machine
       if (machines && machines.length > 0) {
         for (const machine of machines) {
           const { data: rawData, error: rawError } = await supabase
             .from('raw_machine_data')
-            .select('id, timestamp_utc, water_level_l, producing_water, full_tank')
+            .select('id, timestamp_utc, water_level_l, producing_water, full_tank, machine_id')
             .eq('machine_id', machine.machine_id)
             .order('timestamp_utc', { ascending: false })
             .limit(3);
@@ -65,7 +65,7 @@ export const RoleBasedDataDebugger = () => {
             : null;
 
           debugResults.push({
-            step: `Raw Data Access - ${machine.name}`,
+            step: `Raw Data Access - ${machine.name} (${machine.machine_id})`,
             status: rawError ? 'error' : (rawData && rawData.length > 0 ? 'success' : 'warning'),
             message: rawError 
               ? `Cannot access raw data: ${rawError.message}`
@@ -82,26 +82,52 @@ export const RoleBasedDataDebugger = () => {
         }
       }
 
-      // Step 4: Check recent data across all machines
+      // Step 4: Check recent data across all machines (last hour)
       const { data: allRecentData, error: allDataError } = await supabase
         .from('raw_machine_data')
-        .select('machine_id, timestamp_utc, id')
-        .gte('timestamp_utc', new Date(Date.now() - 60 * 60 * 1000).toISOString()) // Last hour
+        .select('machine_id, timestamp_utc, id, water_level_l')
+        .gte('timestamp_utc', new Date(Date.now() - 60 * 60 * 1000).toISOString())
+        .order('timestamp_utc', { ascending: false })
+        .limit(20);
+
+      const machinesWithRecentData = [...new Set(allRecentData?.map(d => d.machine_id) || [])];
+      
+      debugResults.push({
+        step: 'Recent Data Summary (Last Hour)',
+        status: allDataError ? 'error' : 'success',
+        message: `Found ${allRecentData?.length || 0} records from ${machinesWithRecentData.length} machines`,
+        data: {
+          recent_data: allRecentData,
+          error: allDataError,
+          machines_with_recent_data: machinesWithRecentData,
+          data_breakdown: machinesWithRecentData.map(machineId => ({
+            machine_id: machineId,
+            record_count: allRecentData?.filter(d => d.machine_id === machineId).length || 0,
+            latest_timestamp: allRecentData?.find(d => d.machine_id === machineId)?.timestamp_utc
+          }))
+        }
+      });
+
+      // Step 5: Test production analytics access
+      const { data: productionEvents, error: productionError } = await supabase
+        .from('water_production_events')
+        .select('*')
         .order('timestamp_utc', { ascending: false })
         .limit(10);
 
       debugResults.push({
-        step: 'Recent Data Summary',
-        status: allDataError ? 'error' : 'success',
-        message: `Found ${allRecentData?.length || 0} records in last hour across all machines`,
+        step: 'Production Events Access',
+        status: productionError ? 'error' : 'success',
+        message: productionError 
+          ? `Cannot access production events: ${productionError.message}`
+          : `Found ${productionEvents?.length || 0} production events`,
         data: {
-          recent_data: allRecentData,
-          error: allDataError,
-          machines_with_recent_data: [...new Set(allRecentData?.map(d => d.machine_id) || [])]
+          events: productionEvents,
+          error: productionError
         }
       });
 
-      // Step 5: Test machine status calculation access
+      // Step 6: Check water level snapshots
       const { data: waterLevelSnapshots, error: snapshotError } = await supabase
         .from('water_level_snapshots')
         .select('*')
@@ -154,7 +180,7 @@ export const RoleBasedDataDebugger = () => {
           Role-Based Data Access Debugger
         </CardTitle>
         <p className="text-sm text-gray-600">
-          Debug role-based data visibility issues and RLS policy behavior
+          Debug role-based data visibility issues and validate machine monitoring pipeline
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -164,7 +190,7 @@ export const RoleBasedDataDebugger = () => {
           className="w-full"
         >
           <Database className="h-4 w-4 mr-2" />
-          {testing ? 'Running Debug...' : 'Run Role-Based Data Debug'}
+          {testing ? 'Running Debug...' : 'Run Machine Data Access Debug'}
         </Button>
 
         {results.length > 0 && (
@@ -204,13 +230,13 @@ export const RoleBasedDataDebugger = () => {
           </div>
         )}
 
-        <div className="mt-4 p-3 bg-yellow-50 rounded text-sm">
-          <strong>Common Issues:</strong>
+        <div className="mt-4 p-3 bg-blue-50 rounded text-sm">
+          <strong>Testing Focus:</strong>
           <ul className="mt-2 space-y-1 text-xs">
-            <li>• Different user roles may have different RLS policy access</li>
-            <li>• Real-time subscriptions may not work if RLS blocks access</li>
-            <li>• Cache differences between admin and commercial roles</li>
-            <li>• Timing issues with data insertion and query visibility</li>
+            <li>• RLS policy access for admin vs commercial accounts</li>
+            <li>• Data freshness and age calculations for each machine</li>
+            <li>• End-to-end pipeline from raw data to production analytics</li>
+            <li>• Machine status calculation availability</li>
           </ul>
         </div>
       </CardContent>

@@ -9,6 +9,7 @@ import { PipelineRepair } from './PipelineRepair';
 import { PipelineDiagnosticTool } from './PipelineDiagnosticTool';
 import { EnhancedPipelineDiagnostic } from './EnhancedPipelineDiagnostic';
 import { RoleBasedDataDebugger } from './RoleBasedDataDebugger';
+import { MachineStatusValidator } from './MachineStatusValidator';
 import { MachineWithClient } from '@/types/machine';
 
 interface AdminDataPanelProps {
@@ -18,10 +19,11 @@ interface AdminDataPanelProps {
 export const AdminDataPanel = ({ selectedMachine }: AdminDataPanelProps) => {
   return (
     <div className="w-full space-y-6">
-      <Tabs defaultValue="enhanced-diagnostics" className="w-full">
-        <TabsList className="grid w-full grid-cols-8">
-          <TabsTrigger value="enhanced-diagnostics">Enhanced Debug</TabsTrigger>
+      <Tabs defaultValue="machine-validator" className="w-full">
+        <TabsList className="grid w-full grid-cols-9">
+          <TabsTrigger value="machine-validator">Machine Status</TabsTrigger>
           <TabsTrigger value="role-debug">Role Debug</TabsTrigger>
+          <TabsTrigger value="enhanced-diagnostics">Enhanced Debug</TabsTrigger>
           <TabsTrigger value="diagnostics">Pipeline Health</TabsTrigger>
           <TabsTrigger value="troubleshoot">Troubleshoot</TabsTrigger>
           <TabsTrigger value="repair">Pipeline Repair</TabsTrigger>
@@ -30,12 +32,16 @@ export const AdminDataPanel = ({ selectedMachine }: AdminDataPanelProps) => {
           <TabsTrigger value="raw">Raw Data</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="enhanced-diagnostics" className="space-y-4">
-          <EnhancedPipelineDiagnostic />
+        <TabsContent value="machine-validator" className="space-y-4">
+          <MachineStatusValidator />
         </TabsContent>
         
         <TabsContent value="role-debug" className="space-y-4">
           <RoleBasedDataDebugger />
+        </TabsContent>
+        
+        <TabsContent value="enhanced-diagnostics" className="space-y-4">
+          <EnhancedPipelineDiagnostic />
         </TabsContent>
         
         <TabsContent value="diagnostics" className="space-y-4">

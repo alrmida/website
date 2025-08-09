@@ -20,6 +20,8 @@ interface LiveMachineData {
   compressorOn: boolean;
 }
 
+const DATA_STALENESS_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
+
 export const useLiveMachineData = (selectedMachine: MachineWithClient | null) => {
   const [data, setData] = useState<LiveMachineData>({
     status: 'Disconnected',
@@ -52,8 +54,8 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
           .eq('id', currentUser.user?.id)
           .single();
 
-        console.log('🔍 Fetching data for machine:', selectedMachine.machine_id);
-        console.log('👤 Current user role:', currentProfile?.role, 'username:', currentProfile?.username);
+        console.log(`🔍 [${selectedMachine.machine_id}] Fetching live data`);
+        console.log(`👤 User: ${currentProfile?.username} (${currentProfile?.role})`);
         
         // Try to get the most recent raw machine data
         const { data: rawData, error: rawError } = await supabase
@@ -65,34 +67,27 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
           .maybeSingle();
 
         if (rawError) {
-          console.error('❌ Error fetching raw machine data:', rawError);
-          console.error('🔍 RLS Debug - User role:', currentProfile?.role, 'Machine ID:', selectedMachine.machine_id);
+          console.error(`❌ [${selectedMachine.machine_id}] Raw data query error:`, rawError);
           throw new Error(`Database error: ${rawError.message}`);
         }
 
-        console.log('🔍 Raw data query result:', {
-          found: !!rawData,
-          userRole: currentProfile?.role,
-          machineId: selectedMachine.machine_id,
-          timestamp: rawData?.timestamp_utc || 'none',
-          recordId: rawData?.id || 'none'
-        });
-
         if (rawData) {
-          console.log('✅ Found raw machine data:', {
+          const dataAge = new Date().getTime() - new Date(rawData.timestamp_utc).getTime();
+          const isDataFresh = dataAge <= DATA_STALENESS_THRESHOLD_MS;
+          
+          console.log(`✅ [${selectedMachine.machine_id}] Found raw data:`, {
             timestamp: rawData.timestamp_utc,
+            age_minutes: Math.round(dataAge / (1000 * 60)),
+            is_fresh: isDataFresh,
             water_level: rawData.water_level_l,
-            age_minutes: Math.round((new Date().getTime() - new Date(rawData.timestamp_utc).getTime()) / (1000 * 60))
+            producing_water: rawData.producing_water,
+            full_tank: rawData.full_tank
           });
+          
           const processedData = processRawData(rawData);
           setData(processedData);
         } else {
-          console.log('⚠️ No raw machine data found, using fallback');
-          console.log('🔍 Debug info:', {
-            userRole: currentProfile?.role,
-            machineId: selectedMachine.machine_id,
-            possibleCause: 'RLS policy may be blocking access or no data exists'
-          });
+          console.log(`⚠️ [${selectedMachine.machine_id}] No raw data found`);
           setData({
             status: 'Disconnected',
             waterLevel: 0,
@@ -104,12 +99,7 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
           });
         }
       } catch (err: any) {
-        console.error('❌ Failed to fetch machine data:', err);
-        console.error('🔍 Error context:', {
-          machineId: selectedMachine.machine_id,
-          errorMessage: err.message,
-          errorCode: err.code
-        });
+        console.error(`❌ [${selectedMachine.machine_id}] Failed to fetch data:`, err);
         setError(err.message || 'Failed to fetch machine data');
         setData({
           status: 'Disconnected',
@@ -136,8 +126,7 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
         table: 'raw_machine_data',
         filter: `machine_id=eq.${selectedMachine.machine_id}`
       }, (payload) => {
-        console.log('🔄 Real-time update received:', {
-          machineId: selectedMachine.machine_id,
+        console.log(`🔄 [${selectedMachine.machine_id}] Real-time update:`, {
           timestamp: payload.new.timestamp_utc,
           water_level: payload.new.water_level_l
         });
@@ -147,7 +136,7 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
         }
       })
       .subscribe((status) => {
-        console.log('📡 Real-time subscription status:', status, 'for machine:', selectedMachine.machine_id);
+        console.log(`📡 [${selectedMachine.machine_id}] Subscription status:`, status);
       });
 
     return () => {
@@ -160,24 +149,24 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
     const now = new Date();
     const dataAge = now.getTime() - dataTimestamp.getTime();
     
-    console.log('🔍 Processing raw data:', {
+    // Check if data is too old (using our defined threshold)
+    const isDisconnected = dataAge > DATA_STALENESS_THRESHOLD_MS;
+    
+    console.log(`🔍 [${rawData.machine_id}] Processing data:`, {
       timestamp: rawData.timestamp_utc,
+      age_minutes: Math.round(dataAge / (1000 * 60)),
+      threshold_minutes: DATA_STALENESS_THRESHOLD_MS / (1000 * 60),
+      is_disconnected: isDisconnected,
       water_level: rawData.water_level_l,
-      producing_water: rawData.producing_water,
-      full_tank: rawData.full_tank,
-      defrosting: rawData.defrosting,
-      compressor_on: rawData.compressor_on,
-      dataAge: Math.round(dataAge / 1000 / 60) // minutes
+      flags: {
+        producing_water: rawData.producing_water,
+        full_tank: rawData.full_tank,
+        defrosting: rawData.defrosting
+      }
     });
-
-    // Check if data is too old (15 minutes threshold)
-    const isDisconnected = dataAge > 15 * 60 * 1000; // 15 minutes in milliseconds
     
     if (isDisconnected) {
-      console.log('⚠️ Data is too old, marking as disconnected:', {
-        dataAge: Math.round(dataAge / 1000 / 60),
-        threshold: 15
-      });
+      console.log(`⚠️ [${rawData.machine_id}] Data is stale - marking as disconnected`);
       return {
         status: 'Disconnected',
         waterLevel: rawData.water_level_l || 0,
@@ -193,10 +182,10 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
     // Calculate status based on available flags
     const status = calculateStatus(rawData);
     
-    console.log('✅ Machine status calculated:', {
+    console.log(`✅ [${rawData.machine_id}] Status calculated:`, {
       status,
       isOnline: true,
-      dataAge: Math.round(dataAge / 1000 / 60)
+      age_minutes: Math.round(dataAge / (1000 * 60))
     });
     
     return {
@@ -211,40 +200,38 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
   };
 
   const calculateStatus = (rawData: any): MachineStatus => {
-    console.log('🎯 Calculating status from flags:', {
+    console.log(`🎯 [${rawData.machine_id}] Calculating status from flags:`, {
       defrosting: rawData.defrosting,
       full_tank: rawData.full_tank,
       producing_water: rawData.producing_water,
-      serving_water: rawData.serving_water,
-      treating_water: rawData.treating_water,
       water_level: rawData.water_level_l
     });
 
     // Status priority logic
     if (rawData.defrosting === true) {
-      console.log('✅ Status: Defrosting');
+      console.log(`✅ [${rawData.machine_id}] Status: Defrosting`);
       return 'Defrosting';
     }
     
     if (rawData.full_tank === true) {
-      console.log('✅ Status: Full Water');
+      console.log(`✅ [${rawData.machine_id}] Status: Full Water`);
       return 'Full Water';
     }
     
     if (rawData.producing_water === true) {
-      console.log('✅ Status: Producing');
+      console.log(`✅ [${rawData.machine_id}] Status: Producing`);
       return 'Producing';
     }
     
     // Fallback: check water level for full tank
     const waterLevel = rawData.water_level_l || 0;
     if (waterLevel >= 9.5) { // Nearly full
-      console.log('✅ Status: Full Water (based on level)');
+      console.log(`✅ [${rawData.machine_id}] Status: Full Water (based on level)`);
       return 'Full Water';
     }
     
     // Default to Idle if we have recent data but no clear producing flags
-    console.log('✅ Status: Idle (default)');
+    console.log(`✅ [${rawData.machine_id}] Status: Idle (default)`);
     return 'Idle';
   };
 
