@@ -219,9 +219,9 @@ export const MachineStatusValidator = () => {
               <h5 className="font-medium text-blue-800 mb-2">Analysis Summary:</h5>
               <ul className="text-sm text-blue-700 space-y-1">
                 <li>• Both machines should appear if they have valid machine IDs</li>
-                <li>• Data age > 15 minutes = Disconnected status</li>
+                <li>• Data age {'>'}15 minutes = Disconnected status</li>
                 <li>• Data age ≤ 15 minutes = Online with calculated status</li>
-                <li>• Status priority: Defrosting > Full Water > Producing > Idle</li>
+                <li>• Status priority: Defrosting {'>'} Full Water {'>'} Producing {'>'} Idle</li>
                 <li>• Missing raw data = RLS policy or data ingestion issue</li>
               </ul>
             </div>
