@@ -1,249 +1,208 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { AlertCircle, CheckCircle, Clock, XCircle, Activity } from 'lucide-react';
-import { MachineWithClient } from '@/types/machine';
 
-interface DataIngestionLog {
-  id: string;
-  machine_id: string;
-  log_type: string;
-  message: string;
-  data_timestamp: string | null;
-  data_freshness_minutes: number | null;
-  influx_query: string | null;
-  influx_response_size: number | null;
-  error_details: string | null;
-  created_at: string;
-}
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { Activity, RefreshCw, Database, CheckCircle, AlertTriangle, Clock } from 'lucide-react';
+import { MachineWithClient } from '@/types/machine';
 
 interface DataIngestionMonitorProps {
   selectedMachine?: MachineWithClient;
 }
 
+interface SyncResult {
+  machineId: string;
+  name: string;
+  status: 'success' | 'error' | 'no_data';
+  action?: string;
+  timestamp?: string;
+  waterLevel?: number;
+  error?: string;
+  message?: string;
+}
+
+interface SyncResponse {
+  status: string;
+  processedMachines: number;
+  successCount: number;
+  errorCount: number;
+  results: SyncResult[];
+  timestamp: string;
+}
+
 const DataIngestionMonitor = ({ selectedMachine }: DataIngestionMonitorProps) => {
-  const [logs, setLogs] = useState<DataIngestionLog[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedLogType, setSelectedLogType] = useState<string>('all');
+  const [syncing, setSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState<SyncResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchLogs = async () => {
+  const triggerSync = async () => {
+    setSyncing(true);
+    setError(null);
+    
     try {
-      let query = supabase
-        .from('data_ingestion_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100);
+      console.log('🔄 Triggering sync-all-machines...');
+      
+      const { data, error: invokeError } = await supabase.functions.invoke('sync-all-machines', {
+        body: {}
+      });
 
-      if (selectedLogType !== 'all') {
-        query = query.eq('log_type', selectedLogType);
+      if (invokeError) {
+        console.error('❌ Error invoking sync function:', invokeError);
+        throw new Error(`Sync function error: ${invokeError.message}`);
       }
 
-      // Filter by selected machine if provided
-      if (selectedMachine) {
-        query = query.eq('machine_id', selectedMachine.machine_id);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching ingestion logs:', error);
-      } else {
-        setLogs(data || []);
-      }
-    } catch (error) {
-      console.error('Error fetching logs:', error);
+      console.log('✅ Sync completed:', data);
+      setLastSync(data);
+      
+    } catch (err: any) {
+      console.error('❌ Sync failed:', err);
+      setError(err.message || 'Failed to sync machines');
     } finally {
-      setLoading(false);
+      setSyncing(false);
     }
   };
 
-  useEffect(() => {
-    fetchLogs();
-  }, [selectedLogType, selectedMachine]);
-
-  const getLogIcon = (logType: string) => {
-    switch (logType) {
-      case 'SUCCESS':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'ERROR':
-        return <XCircle className="h-4 w-4 text-red-500" />;
-      case 'WARNING':
-        return <AlertCircle className="h-4 w-4 text-yellow-500" />;
-      case 'EVENT':
-        return <Activity className="h-4 w-4 text-blue-500" />;
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'success':
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case 'error':
+        return <AlertTriangle className="h-4 w-4 text-red-600" />;
+      case 'no_data':
+        return <Clock className="h-4 w-4 text-yellow-600" />;
       default:
-        return <Clock className="h-4 w-4 text-gray-500" />;
+        return <Activity className="h-4 w-4 text-gray-600" />;
     }
   };
 
-  const getLogBadgeVariant = (logType: string) => {
-    switch (logType) {
-      case 'SUCCESS':
-        return 'default';
-      case 'ERROR':
-        return 'destructive';
-      case 'WARNING':
-        return 'secondary';
-      case 'EVENT':
-        return 'outline';
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'success':
+        return 'text-green-600';
+      case 'error':
+        return 'text-red-600';
+      case 'no_data':
+        return 'text-yellow-600';
       default:
-        return 'secondary';
+        return 'text-gray-600';
     }
-  };
-
-  const logTypeCounts = logs.reduce((acc, log) => {
-    acc[log.log_type] = (acc[log.log_type] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const formatTimestamp = (timestamp: string) => {
-    return new Date(timestamp).toLocaleString();
-  };
-
-  const formatFreshness = (minutes: number | null) => {
-    if (minutes === null) return 'N/A';
-    if (minutes < 5) return `${minutes}m (Fresh)`;
-    if (minutes < 30) return `${minutes}m (Recent)`;
-    if (minutes < 120) return `${minutes}m (Old)`;
-    return `${minutes}m (Stale)`;
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold">Data Ingestion Monitor</h2>
-          <p className="text-muted-foreground">
-            Monitor InfluxDB data flow and processing
-            {selectedMachine && ` for ${selectedMachine.machine_id}`}
-          </p>
-        </div>
-        <Button onClick={fetchLogs} disabled={loading}>
-          {loading ? 'Loading...' : 'Refresh'}
-        </Button>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Logs</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{logs.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Errors</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-500">{logTypeCounts.ERROR || 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Warnings</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-500">{logTypeCounts.WARNING || 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Success</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-500">{logTypeCounts.SUCCESS || 0}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Log Filters and Display */}
       <Card>
         <CardHeader>
-          <CardTitle>Ingestion Logs</CardTitle>
-          <CardDescription>
-            Recent data ingestion events and diagnostics
-          </CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <Database className="h-5 w-5" />
+            Consolidated Data Ingestion Monitor
+          </CardTitle>
+          <p className="text-sm text-gray-600">
+            Sync all active machines from InfluxDB to raw_machine_data table
+          </p>
         </CardHeader>
-        <CardContent>
-          <Tabs value={selectedLogType} onValueChange={setSelectedLogType}>
-            <TabsList>
-              <TabsTrigger value="all">All ({logs.length})</TabsTrigger>
-              <TabsTrigger value="ERROR">Errors ({logTypeCounts.ERROR || 0})</TabsTrigger>
-              <TabsTrigger value="WARNING">Warnings ({logTypeCounts.WARNING || 0})</TabsTrigger>
-              <TabsTrigger value="SUCCESS">Success ({logTypeCounts.SUCCESS || 0})</TabsTrigger>
-              <TabsTrigger value="EVENT">Events ({logTypeCounts.EVENT || 0})</TabsTrigger>
-              <TabsTrigger value="INFO">Info ({logTypeCounts.INFO || 0})</TabsTrigger>
-            </TabsList>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Manual Sync Control</p>
+              <p className="text-xs text-gray-500">
+                Fetch latest data for all machines with active microcontroller UIDs
+              </p>
+            </div>
+            
+            <Button
+              onClick={triggerSync}
+              disabled={syncing}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+              {syncing ? 'Syncing...' : 'Sync All Machines'}
+            </Button>
+          </div>
 
-            <TabsContent value={selectedLogType} className="mt-4">
-              <ScrollArea className="h-[600px]">
-                <div className="space-y-3">
-                  {logs.map((log) => (
-                    <Card key={log.id} className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center space-x-3">
-                          {getLogIcon(log.log_type)}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center space-x-2 mb-1">
-                              <Badge variant={getLogBadgeVariant(log.log_type)}>
-                                {log.log_type}
-                              </Badge>
-                              <span className="text-sm text-muted-foreground">
-                                {formatTimestamp(log.created_at)}
-                              </span>
-                              {log.data_freshness_minutes !== null && (
-                                <Badge variant="outline">
-                                  {formatFreshness(log.data_freshness_minutes)}
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="text-sm font-medium">{log.message}</p>
-                            {log.data_timestamp && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Data timestamp: {formatTimestamp(log.data_timestamp)}
-                              </p>
-                            )}
-                            {log.influx_response_size && (
-                              <p className="text-xs text-muted-foreground">
-                                Response size: {log.influx_response_size} chars
-                              </p>
-                            )}
-                            {log.error_details && (
-                              <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded text-xs">
-                                <strong>Error details:</strong> {log.error_details}
-                              </div>
-                            )}
-                            {log.influx_query && (
-                              <details className="mt-2">
-                                <summary className="text-xs cursor-pointer text-muted-foreground hover:text-foreground">
-                                  View InfluxDB Query
-                                </summary>
-                                <pre className="mt-1 p-2 bg-gray-50 dark:bg-gray-800 rounded text-xs overflow-x-auto">
-                                  {log.influx_query}
-                                </pre>
-                              </details>
-                            )}
-                          </div>
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-800">
+                <strong>Error:</strong> {error}
+              </p>
+            </div>
+          )}
+
+          {lastSync && (
+            <div className="space-y-4">
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+                <h4 className="font-medium text-blue-800 mb-2">Last Sync Results</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium">Timestamp:</span><br />
+                    <span className="text-blue-700">
+                      {new Date(lastSync.timestamp).toLocaleString()}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium">Processed:</span><br />
+                    <span className="text-blue-700">{lastSync.processedMachines} machines</span>
+                  </div>
+                  <div>
+                    <span className="font-medium">Successful:</span><br />
+                    <span className="text-green-600">{lastSync.successCount}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium">Errors:</span><br />
+                    <span className="text-red-600">{lastSync.errorCount}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h5 className="font-medium">Machine Results:</h5>
+                {lastSync.results.map((result, index) => (
+                  <div key={index} className="border rounded-lg p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {getStatusIcon(result.status)}
+                        <div>
+                          <h6 className="font-medium">{result.name}</h6>
+                          <p className="text-sm text-gray-500">{result.machineId}</p>
                         </div>
                       </div>
-                    </Card>
-                  ))}
-                  {logs.length === 0 && !loading && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No logs found for the selected filter.
+                      <div className={`text-sm font-medium ${getStatusColor(result.status)}`}>
+                        {result.status.toUpperCase()}
+                      </div>
                     </div>
-                  )}
-                </div>
-              </ScrollArea>
-            </TabsContent>
-          </Tabs>
+
+                    {result.status === 'success' && (
+                      <div className="text-sm space-y-1">
+                        <p><strong>Action:</strong> {result.action}</p>
+                        <p><strong>Water Level:</strong> {result.waterLevel}L</p>
+                        <p><strong>Timestamp:</strong> {result.timestamp}</p>
+                      </div>
+                    )}
+
+                    {result.status === 'error' && (
+                      <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                        <strong>Error:</strong> {result.error}
+                      </div>
+                    )}
+
+                    {result.status === 'no_data' && (
+                      <div className="text-sm text-yellow-600 bg-yellow-50 p-2 rounded">
+                        <strong>Issue:</strong> {result.message}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-800">
+                <strong>Next Steps:</strong>
+                <ul className="list-disc list-inside space-y-1 mt-1">
+                  <li>Check the machine status in the main dashboard</li>
+                  <li>Verify ID94 now shows as online if data was found</li>
+                  <li>Set up automated sync via pg_cron once validated</li>
+                </ul>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

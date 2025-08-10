@@ -1,8 +1,9 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { AlertTriangle, CheckCircle, Activity, Clock } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Activity, Clock, RefreshCw, Database } from 'lucide-react';
 
 interface MachineValidationResult {
   machineId: string;
@@ -18,6 +19,7 @@ interface MachineValidationResult {
 
 export const MachineStatusValidator = () => {
   const [testing, setTesting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [results, setResults] = useState<MachineValidationResult[]>([]);
 
   const validateMachines = async () => {
@@ -120,6 +122,35 @@ export const MachineStatusValidator = () => {
     setTesting(false);
   };
 
+  const triggerSync = async () => {
+    setSyncing(true);
+    
+    try {
+      console.log('🔄 Triggering sync-all-machines from validator...');
+      
+      const { data, error: invokeError } = await supabase.functions.invoke('sync-all-machines', {
+        body: {}
+      });
+
+      if (invokeError) {
+        console.error('❌ Error invoking sync function:', invokeError);
+        throw new Error(`Sync function error: ${invokeError.message}`);
+      }
+
+      console.log('✅ Sync completed, re-validating machines...');
+      
+      // Wait a moment for data to propagate, then re-validate
+      setTimeout(() => {
+        validateMachines();
+      }, 2000);
+      
+    } catch (err: any) {
+      console.error('❌ Sync failed:', err);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const getStatusColor = (result: MachineValidationResult) => {
     if (result.errorMessage) return 'text-red-600';
     if (!result.hasRawData) return 'text-gray-500';
@@ -142,22 +173,34 @@ export const MachineStatusValidator = () => {
           Machine Status Validator
         </CardTitle>
         <p className="text-sm text-gray-600">
-          Compare machine monitoring status: ID97 vs ID94 analysis
+          Validate machine status and trigger data sync for all machines
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Button 
-          onClick={validateMachines}
-          disabled={testing}
-          className="w-full"
-        >
-          <Activity className="h-4 w-4 mr-2" />
-          {testing ? 'Validating Machines...' : 'Validate All Machine Status'}
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={validateMachines}
+            disabled={testing || syncing}
+            className="flex-1"
+          >
+            <Activity className="h-4 w-4 mr-2" />
+            {testing ? 'Validating...' : 'Validate All Machines'}
+          </Button>
+          
+          <Button 
+            onClick={triggerSync}
+            disabled={testing || syncing}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Database className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? 'Syncing...' : 'Sync Data'}
+          </Button>
+        </div>
 
         {results.length > 0 && (
           <div className="mt-6 space-y-4">
-            <h4 className="font-semibold">Machine Status Comparison:</h4>
+            <h4 className="font-semibold">Machine Status Analysis:</h4>
             <div className="grid gap-4">
               {results.map((result) => (
                 <div key={result.machineId} className="border rounded-lg p-4 space-y-2">
@@ -199,15 +242,21 @@ export const MachineStatusValidator = () => {
                     </div>
                   )}
 
-                  {result.machineId === 'id97' && result.isOnline && (
+                  {result.machineId === 'KU001619000097' && result.isOnline && (
                     <div className="text-green-600 text-sm bg-green-50 p-2 rounded">
                       ✅ ID97 is working correctly - this is our baseline
                     </div>
                   )}
 
-                  {result.machineId === 'id94' && !result.isOnline && (
+                  {result.machineId === 'KU001619000094' && !result.isOnline && (
                     <div className="text-yellow-600 text-sm bg-yellow-50 p-2 rounded">
-                      ⚠️ ID94 showing as offline - data age issue detected
+                      ⚠️ ID94 showing as offline - try "Sync Data" to fetch latest
+                    </div>
+                  )}
+
+                  {result.machineId === 'KU001619000094' && result.isOnline && (
+                    <div className="text-green-600 text-sm bg-green-50 p-2 rounded">
+                      ✅ ID94 is now online - sync pipeline working correctly!
                     </div>
                   )}
                 </div>
@@ -222,6 +271,7 @@ export const MachineStatusValidator = () => {
                 <li>• Data age ≤ 15 minutes = Online with calculated status</li>
                 <li>• Status priority: Defrosting {'>'} Full Water {'>'} Producing {'>'} Idle</li>
                 <li>• Missing raw data = RLS policy or data ingestion issue</li>
+                <li>• Use "Sync Data" to manually fetch latest data from InfluxDB</li>
               </ul>
             </div>
           </div>
