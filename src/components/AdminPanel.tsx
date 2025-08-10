@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,13 +9,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import UserManagement from './admin/UserManagement';
-import MachineManagement from './admin/MachineManagement';
-import InvitationManagement from './admin/InvitationManagement';
-import RawDataManagement from './admin/RawDataManagement';
+import SecureAdminTabs from './admin/SecureAdminTabs';
 import { Profile, Invitation } from './admin/types';
 import { useMachineData } from '@/hooks/useMachineData';
 import { mapDatabaseRoleToFrontend } from './admin/utils';
@@ -49,11 +46,8 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
     try {
       console.log('Fetching admin data (profiles and invitations)...');
       
-      // Fetch profiles
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Fetch profiles using the secure function
+      const { data: profilesData, error: profilesError } = await supabase.rpc('get_users_with_auth_emails');
       
       if (profilesError) {
         console.error('Profiles error:', profilesError);
@@ -138,52 +132,22 @@ const AdminPanel = ({ open, onOpenChange }: AdminPanelProps) => {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Admin Panel</DialogTitle>
+          <DialogTitle>Secure Admin Panel</DialogTitle>
           <DialogDescription>
-            Manage users, machines, and system settings
+            Enhanced security mode - All operations are validated and audited
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="users" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="machines">Machines</TabsTrigger>
-            <TabsTrigger value="invitations">Invitations</TabsTrigger>
-            <TabsTrigger value="rawdata">Raw Data</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="users" className="space-y-4">
-            <UserManagement 
-              profiles={profiles} 
-              onRefresh={handleRefresh}
-            />
-          </TabsContent>
-
-          <TabsContent value="machines" className="space-y-4">
-            <MachineManagement 
-              machines={machines}
-              profiles={profiles}
-              profile={profile}
-              loading={machinesLoading}
-              onRefresh={handleRefresh}
-            />
-          </TabsContent>
-
-          <TabsContent value="invitations" className="space-y-4">
-            <InvitationManagement 
-              invitations={invitations}
-              profile={profile}
-              loading={loading}
-              onRefresh={handleRefresh}
-            />
-          </TabsContent>
-
-          <TabsContent value="rawdata" className="space-y-4">
-            <RawDataManagement 
-              onRefresh={handleRefresh}
-            />
-          </TabsContent>
-        </Tabs>
+        <SecureAdminTabs
+          profiles={profiles}
+          machines={machines}
+          invitations={invitations}
+          profile={profile}
+          loading={loading}
+          machinesLoading={machinesLoading}
+          onRefresh={handleRefresh}
+          refetchMachines={refetchMachines}
+        />
       </DialogContent>
     </Dialog>
   );
