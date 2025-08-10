@@ -33,6 +33,16 @@ interface Database {
           timestamp_utc: string;
           water_level_l: number;
           compressor_on: number;
+          producing_water: boolean;
+          full_tank: boolean;
+        };
+        Insert: {
+          machine_id: string;
+          timestamp_utc?: string;
+          water_level_l?: number;
+          compressor_on?: number;
+          producing_water?: boolean;
+          full_tank?: boolean;
         };
       };
       simple_water_snapshots: {
@@ -167,7 +177,7 @@ async function getActiveMachines() {
   return machines;
 }
 
-async function fetchLatestDataFromInflux(machineUID: string, machineId: string): Promise<{ waterLevel: number; timestamp: string } | null> {
+async function fetchLatestDataFromInflux(machineUID: string, machineId: string): Promise<{ waterLevel: number; timestamp: string; compressorOn: number; producingWater: boolean; fullTank: boolean } | null> {
   if (!INFLUX_URL || !INFLUX_TOKEN || !INFLUX_ORG) {
     console.log(`❌ InfluxDB configuration missing for machine ${machineId}`);
     await logDataIngestion(machineId, 'ERROR', 'InfluxDB configuration missing', {
@@ -179,15 +189,15 @@ async function fetchLatestDataFromInflux(machineUID: string, machineId: string):
   try {
     console.log(`🔍 Starting InfluxDB query for machine ${machineId} (UID: ${machineUID})...`);
     
-    // Query InfluxDB using the microcontroller UID
+    // Query InfluxDB for essential fields using the microcontroller UID
     const query = `
       from(bucket: "${INFLUX_BUCKET}")
         |> range(start: -2h)
         |> filter(fn: (r) => r._measurement == "awg_data_full")
-        |> filter(fn: (r) => r._field == "water_level_L")
+        |> filter(fn: (r) => r._field == "water_level_L" or r._field == "compressor_on" or r._field == "producing_water" or r._field == "full_tank")
         |> filter(fn: (r) => r.uid == "${machineUID}")
         |> sort(columns: ["_time"], desc: true)
-        |> limit(n: 1)
+        |> limit(n: 4)
     `;
 
     const baseUrl = INFLUX_URL.replace(/\/+$/, '');
@@ -238,10 +248,10 @@ async function fetchLatestDataFromInflux(machineUID: string, machineId: string):
         from(bucket: "${INFLUX_BUCKET}")
           |> range(start: -24h)
           |> filter(fn: (r) => r._measurement == "awg_data_full")
-          |> filter(fn: (r) => r._field == "water_level_L")
+          |> filter(fn: (r) => r._field == "water_level_L" or r._field == "compressor_on" or r._field == "producing_water" or r._field == "full_tank")
           |> filter(fn: (r) => r.uid == "${machineUID}")
           |> sort(columns: ["_time"], desc: true)
-          |> limit(n: 1)
+          |> limit(n: 4)
       `;
       
       const longerResponse = await fetch(queryUrl, {
@@ -273,14 +283,15 @@ async function fetchLatestDataFromInflux(machineUID: string, machineId: string):
       }
     }
 
-    // Parse CSV response
+    // Parse CSV response and extract data by field
     const headers = lines[0].split(',').map(h => h.trim());
     console.log(`📋 Headers for ${machineId}:`, headers);
     
     const timeIndex = headers.indexOf('_time');
     const valueIndex = headers.indexOf('_value');
+    const fieldIndex = headers.indexOf('_field');
     
-    if (timeIndex === -1 || valueIndex === -1) {
+    if (timeIndex === -1 || valueIndex === -1 || fieldIndex === -1) {
       console.error(`❌ Invalid CSV format from InfluxDB for ${machineId}`);
       await logDataIngestion(machineId, 'ERROR', 'Invalid CSV format from InfluxDB', {
         errorDetails: `Headers: ${headers.join(', ')}`
@@ -288,21 +299,53 @@ async function fetchLatestDataFromInflux(machineUID: string, machineId: string):
       return null;
     }
 
-    // Get the latest data point
-    const dataRow = lines[1].split(',').map(d => d.trim());
-    const timestamp = dataRow[timeIndex];
-    const waterLevel = parseFloat(dataRow[valueIndex]);
-    
-    if (isNaN(waterLevel)) {
-      console.error(`❌ No valid water level data found for ${machineId}`);
-      await logDataIngestion(machineId, 'ERROR', 'No valid water level data found');
+    // Extract latest values for each field
+    let waterLevel = 0;
+    let timestamp = '';
+    let compressorOn = 0;
+    let producingWater = false;
+    let fullTank = false;
+    let latestTime = '';
+
+    for (let i = 1; i < lines.length; i++) {
+      const dataRow = lines[i].split(',').map(d => d.trim());
+      if (dataRow.length < Math.max(timeIndex, valueIndex, fieldIndex) + 1) continue;
+      
+      const rowTime = dataRow[timeIndex];
+      const fieldName = dataRow[fieldIndex];
+      const value = dataRow[valueIndex];
+      
+      if (!latestTime || rowTime > latestTime) {
+        latestTime = rowTime;
+        timestamp = rowTime;
+      }
+      
+      switch (fieldName) {
+        case 'water_level_L':
+          waterLevel = parseFloat(value) || 0;
+          break;
+        case 'compressor_on':
+          compressorOn = parseInt(value) || 0;
+          break;
+        case 'producing_water':
+          producingWater = value === '1' || value.toLowerCase() === 'true';
+          break;
+        case 'full_tank':
+          fullTank = value === '1' || value.toLowerCase() === 'true';
+          break;
+      }
+    }
+
+    if (!timestamp) {
+      console.error(`❌ No valid timestamp found for ${machineId}`);
+      await logDataIngestion(machineId, 'ERROR', 'No valid timestamp found');
       return null;
     }
 
     const dataAge = Date.now() - new Date(timestamp).getTime();
     const freshnessMinutes = Math.round(dataAge / 1000 / 60);
     
-    console.log(`✅ Latest data point for ${machineId}:`, { timestamp, waterLevel, freshnessMinutes });
+    console.log(`✅ Latest data point for ${machineId}:`, { timestamp, waterLevel, compressorOn, producingWater, fullTank, freshnessMinutes });
     
     if (freshnessMinutes > 60) {
       console.log(`⚠️ Data is older than 1 hour for ${machineId}`);
@@ -320,7 +363,10 @@ async function fetchLatestDataFromInflux(machineUID: string, machineId: string):
 
     return { 
       waterLevel, 
-      timestamp 
+      timestamp,
+      compressorOn,
+      producingWater,
+      fullTank
     };
 
   } catch (error) {
@@ -329,6 +375,69 @@ async function fetchLatestDataFromInflux(machineUID: string, machineId: string):
       errorDetails: error instanceof Error ? error.message : 'Unknown error'
     });
     return null;
+  }
+}
+
+async function upsertRawMachineData(machineId: string, timestamp: string, waterLevel: number, compressorOn: number, producingWater: boolean, fullTank: boolean) {
+  try {
+    console.log(`💾 Upserting raw machine data for ${machineId}...`);
+    
+    // Check for existing data at the same timestamp to avoid duplicates
+    const { data: existingData, error: checkError } = await supabase
+      .from('raw_machine_data')
+      .select('id, timestamp_utc')
+      .eq('machine_id', machineId)
+      .eq('timestamp_utc', timestamp)
+      .maybeSingle();
+
+    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found" which is expected
+      console.error(`❌ Error checking existing raw data for ${machineId}:`, checkError);
+      await logDataIngestion(machineId, 'ERROR', 'Failed to check existing raw data', {
+        errorDetails: checkError.message
+      });
+      return { success: false, action: 'error', reason: checkError.message };
+    }
+
+    if (existingData) {
+      console.log(`ℹ️ Raw data already exists for ${machineId} at ${timestamp}, skipping upsert`);
+      await logDataIngestion(machineId, 'INFO', 'Raw data already exists, skipped upsert');
+      return { success: true, action: 'skipped', reason: 'duplicate timestamp' };
+    }
+
+    // Insert new raw machine data
+    const { data: insertData, error: insertError } = await supabase
+      .from('raw_machine_data')
+      .insert([{
+        machine_id: machineId,
+        timestamp_utc: timestamp,
+        water_level_l: waterLevel,
+        compressor_on: compressorOn,
+        producing_water: producingWater,
+        full_tank: fullTank
+      }])
+      .select('id, timestamp_utc, water_level_l');
+
+    if (insertError) {
+      console.error(`❌ Raw data insert error for ${machineId}:`, insertError);
+      await logDataIngestion(machineId, 'ERROR', 'Failed to insert raw data', {
+        errorDetails: insertError.message
+      });
+      return { success: false, action: 'error', reason: insertError.message };
+    }
+
+    console.log(`✅ Successfully upserted raw data for ${machineId}:`, insertData[0]);
+    await logDataIngestion(machineId, 'SUCCESS', 'Raw data upserted successfully', {
+      dataTimestamp: timestamp
+    });
+    
+    return { success: true, action: 'inserted', data: insertData[0] };
+
+  } catch (error) {
+    console.error(`❌ Critical upsert error for ${machineId}:`, error);
+    await logDataIngestion(machineId, 'ERROR', 'Critical upsert error', {
+      errorDetails: error instanceof Error ? error.message : 'Unknown error'
+    });
+    return { success: false, action: 'error', reason: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
 
@@ -365,7 +474,7 @@ async function processMachine(machine: { machine_id: string; microcontroller_uid
     };
   }
 
-  const { waterLevel, timestamp } = latestData;
+  const { waterLevel, timestamp, compressorOn, producingWater, fullTank } = latestData;
   
   if (!waterLevel || waterLevel < 0) {
     console.log(`⚠️ Invalid water level data for ${machineId}:`, waterLevel);
@@ -395,18 +504,16 @@ async function processMachine(machine: { machine_id: string; microcontroller_uid
     await logDataIngestion(machineId, 'ERROR', 'Failed to store snapshot', {
       errorDetails: snapshotError.message
     });
-    return {
-      machineId,
-      status: 'error',
-      message: 'Failed to store snapshot',
-      error: snapshotError.message
-    };
+  } else {
+    console.log(`✅ Snapshot stored successfully for ${machineId}`);
+    await logDataIngestion(machineId, 'SUCCESS', 'Snapshot stored successfully', {
+      dataTimestamp: timestamp
+    });
   }
 
-  console.log(`✅ Snapshot stored successfully for ${machineId}`);
-  await logDataIngestion(machineId, 'SUCCESS', 'Snapshot stored successfully', {
-    dataTimestamp: timestamp
-  });
+  // NEW: Upsert essential data to raw_machine_data for dashboard connectivity
+  const rawDataResult = await upsertRawMachineData(machineId, timestamp, waterLevel, compressorOn, producingWater, fullTank);
+  console.log(`📊 Raw data upsert result for ${machineId}:`, rawDataResult);
 
   const { data: previousSnapshots, error: previousError } = await supabase
     .from('simple_water_snapshots')
@@ -423,7 +530,8 @@ async function processMachine(machine: { machine_id: string; microcontroller_uid
     return {
       machineId,
       status: 'error',
-      message: 'Failed to fetch previous snapshots'
+      message: 'Failed to fetch previous snapshots',
+      rawDataUpsert: rawDataResult
     };
   }
 
@@ -433,7 +541,8 @@ async function processMachine(machine: { machine_id: string; microcontroller_uid
     return {
       machineId,
       status: 'ok',
-      message: 'Initial snapshot stored, waiting for next comparison'
+      message: 'Initial snapshot stored, waiting for next comparison',
+      rawDataUpsert: rawDataResult
     };
   }
 
@@ -487,7 +596,8 @@ async function processMachine(machine: { machine_id: string; microcontroller_uid
       status: 'ok',
       message: `Drainage event detected: ${Math.abs(waterLevelDiff).toFixed(2)}L removed`,
       event_type: 'drainage',
-      water_removed: Math.abs(waterLevelDiff)
+      water_removed: Math.abs(waterLevelDiff),
+      rawDataUpsert: rawDataResult
     };
   }
 
@@ -517,7 +627,8 @@ async function processMachine(machine: { machine_id: string; microcontroller_uid
       return {
         machineId,
         status: 'error',
-        message: 'Failed to store production event'
+        message: 'Failed to store production event',
+        rawDataUpsert: rawDataResult
       };
     }
 
@@ -530,7 +641,8 @@ async function processMachine(machine: { machine_id: string; microcontroller_uid
       message: `Production tracked: ${waterLevelDiff.toFixed(2)}L`,
       production: waterLevelDiff,
       event_type: 'production',
-      production_rate_lh: (waterLevelDiff / timeDiffMinutes) * 60
+      production_rate_lh: (waterLevelDiff / timeDiffMinutes) * 60,
+      rawDataUpsert: rawDataResult
     };
   } else if (waterLevelDiff > 0.05) {
     console.log(`⚠️ Water increase detected for ${machineId} (${waterLevelDiff.toFixed(2)}L) but production rate seems unrealistic`);
@@ -538,7 +650,8 @@ async function processMachine(machine: { machine_id: string; microcontroller_uid
     return {
       machineId,
       status: 'warning',
-      message: `Unrealistic production rate detected: ${waterLevelDiff.toFixed(2)}L in ${Math.round(timeDiffMinutes)} minutes`
+      message: `Unrealistic production rate detected: ${waterLevelDiff.toFixed(2)}L in ${Math.round(timeDiffMinutes)} minutes`,
+      rawDataUpsert: rawDataResult
     };
   } else {
     console.log(`📊 No significant production detected for ${machineId}`);
@@ -548,7 +661,8 @@ async function processMachine(machine: { machine_id: string; microcontroller_uid
       status: 'ok',
       message: 'No production detected in this period',
       water_level_change: waterLevelDiff,
-      event_type: 'no_change'
+      event_type: 'no_change',
+      rawDataUpsert: rawDataResult
     };
   }
 }
@@ -559,8 +673,8 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    console.log('🚀 Water production tracking started at:', new Date().toISOString());
-    console.log('🔄 Processing ALL machines dynamically with updated schema...');
+    console.log('🚀 Enhanced water production tracking started at:', new Date().toISOString());
+    console.log('🔄 Processing ALL machines with raw_machine_data upserts...');
 
     // Get all active machines from database using the new schema
     const machines = await getActiveMachines();
@@ -577,28 +691,42 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Process all machines
+    // Process all machines with concurrency limit (max 3 concurrent)
     const results = [];
-    for (const machine of machines) {
-      try {
-        const result = await processMachine(machine);
-        results.push(result);
-      } catch (error) {
-        console.error(`❌ Error processing machine ${machine.machine_id}:`, error);
-        results.push({
-          machineId: machine.machine_id,
-          status: 'error',
-          message: error instanceof Error ? error.message : 'Unknown error'
-        });
-      }
+    const CONCURRENCY_LIMIT = 3;
+    
+    for (let i = 0; i < machines.length; i += CONCURRENCY_LIMIT) {
+      const batch = machines.slice(i, i + CONCURRENCY_LIMIT);
+      const batchPromises = batch.map(async (machine) => {
+        try {
+          const result = await processMachine(machine);
+          return result;
+        } catch (error) {
+          console.error(`❌ Error processing machine ${machine.machine_id}:`, error);
+          return {
+            machineId: machine.machine_id,
+            status: 'error',
+            message: error instanceof Error ? error.message : 'Unknown error'
+          };
+        }
+      });
+      
+      const batchResults = await Promise.all(batchPromises);
+      results.push(...batchResults);
     }
 
     console.log(`✅ Processed ${machines.length} machines successfully`);
+    
+    // Count successful raw data upserts
+    const rawDataUpserts = results.filter(r => r.rawDataUpsert?.success).length;
+    const rawDataSkipped = results.filter(r => r.rawDataUpsert?.action === 'skipped').length;
     
     return new Response(JSON.stringify({ 
       status: 'ok', 
       message: `Processed ${machines.length} machines`,
       processed_machines: machines.length,
+      raw_data_upserts: rawDataUpserts,
+      raw_data_skipped: rawDataSkipped,
       results: results
     }), {
       status: 200,
@@ -606,7 +734,7 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
   } catch (error) {
-    console.error('💥 Unexpected error in track-water-production:', error);
+    console.error('💥 Unexpected error in enhanced track-water-production:', error);
     return new Response(JSON.stringify({ 
       status: 'error', 
       message: error instanceof Error ? error.message : 'Unknown error' 
