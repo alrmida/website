@@ -36,7 +36,7 @@ async function getActiveMachines(supabase: any) {
         )
       `)
       .is('machine_microcontrollers.unassigned_at', null)
-      .order('machine_microcontrollers.assigned_at', { ascending: false });
+      .order('assigned_at', { referencedTable: 'machine_microcontrollers', ascending: false });
 
     if (error) {
       console.error('❌ Error fetching machines:', error);
