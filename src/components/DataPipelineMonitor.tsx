@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle, XCircle, AlertCircle, Database, Wifi } from 'lucide-react';
 import useLiveMachineData from '@/hooks/useLiveMachineData';
 import { MachineWithClient } from '@/types/machine';
+import { DATA_CONFIG } from '@/config/dataConfig';
 
 interface DataPipelineMonitorProps {
   selectedMachine: MachineWithClient | null;
@@ -70,7 +71,7 @@ const DataPipelineMonitor = ({ selectedMachine }: DataPipelineMonitorProps) => {
       <CardHeader>
         <CardTitle className="text-sm font-medium text-blue-800 dark:text-blue-200 flex items-center gap-2">
           <Database className="h-4 w-4" />
-          Data Pipeline Restoration Monitor
+          Enhanced Data Pipeline Monitor (10s polling, 90s disconnect)
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -91,6 +92,14 @@ const DataPipelineMonitor = ({ selectedMachine }: DataPipelineMonitorProps) => {
             <div className="flex justify-between">
               <span className="text-gray-600 dark:text-gray-300">Machine ID:</span>
               <span className="font-mono">{selectedMachine.machine_id}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600 dark:text-gray-300">Polling Frequency:</span>
+              <span className="text-green-600 font-medium">10 seconds</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600 dark:text-gray-300">Disconnect Threshold:</span>
+              <span className="text-orange-600 font-medium">90 seconds</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600 dark:text-gray-300">Data Source:</span>
@@ -130,18 +139,21 @@ const DataPipelineMonitor = ({ selectedMachine }: DataPipelineMonitorProps) => {
           </div>
         )}
 
-        {/* Phase 1 Validation */}
+        {/* Enhanced Phase 1 Validation */}
         <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded text-xs">
-          <strong>Phase 1 Validation:</strong>
+          <strong>Enhanced Phase 1 Validation:</strong>
           <ul className="mt-1 space-y-1">
             <li className={`flex items-center gap-1 ${!selectedMachine ? 'text-gray-500' : 'text-green-600'}`}>
               {selectedMachine ? '✅' : '⏳'} Machine selected
             </li>
             <li className={`flex items-center gap-1 ${liveData.dataSource !== 'live' ? 'text-gray-500' : 'text-green-600'}`}>
-              {liveData.dataSource === 'live' ? '✅' : '⏳'} Direct Supabase query active
+              {liveData.dataSource === 'live' ? '✅' : '⏳'} 10-second polling active
             </li>
             <li className={`flex items-center gap-1 ${liveData.waterLevel <= 0 ? 'text-orange-500' : 'text-green-600'}`}>
               {liveData.waterLevel > 0 ? '✅' : '⚠️'} Real water level data ({liveData.waterLevel > 0 ? 'SUCCESS' : 'needs investigation'})
+            </li>
+            <li className={`flex items-center gap-1 ${liveData.dataAge > DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS ? 'text-red-500' : 'text-green-600'}`}>
+              {liveData.dataAge <= DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS ? '✅' : '❌'} Data freshness (<90s threshold)
             </li>
           </ul>
         </div>

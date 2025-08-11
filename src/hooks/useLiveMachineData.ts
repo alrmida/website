@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { MachineWithClient } from '@/types/machine';
+import { DATA_CONFIG } from '@/config/dataConfig';
 
 export type MachineStatus = 'Producing' | 'Idle' | 'Full Water' | 'Disconnected' | 'Defrosting';
 
@@ -19,8 +20,6 @@ interface LiveMachineData {
   lastConnection?: string;
   compressorOn: boolean;
 }
-
-const DATA_STALENESS_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
 
 export const useLiveMachineData = (selectedMachine: MachineWithClient | null) => {
   const [data, setData] = useState<LiveMachineData>({
@@ -54,7 +53,7 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
           .eq('id', currentUser.user?.id)
           .single();
 
-        console.log(`🔍 [${selectedMachine.machine_id}] Fetching live data`);
+        console.log(`🔍 [${selectedMachine.machine_id}] Fetching live data (10s frequency)`);
         console.log(`👤 User: ${currentProfile?.username} (${currentProfile?.role})`);
         
         // Try to get the most recent raw machine data
@@ -73,11 +72,12 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
 
         if (rawData) {
           const dataAge = new Date().getTime() - new Date(rawData.timestamp_utc).getTime();
-          const isDataFresh = dataAge <= DATA_STALENESS_THRESHOLD_MS;
+          const isDataFresh = dataAge <= DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS;
           
           console.log(`✅ [${selectedMachine.machine_id}] Found raw data:`, {
             timestamp: rawData.timestamp_utc,
-            age_minutes: Math.round(dataAge / (1000 * 60)),
+            age_seconds: Math.round(dataAge / 1000),
+            threshold_seconds: DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS / 1000,
             is_fresh: isDataFresh,
             water_level: rawData.water_level_l,
             producing_water: rawData.producing_water,
@@ -118,8 +118,9 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
     fetchInitialData();
 
     // Set up real-time subscription for new data
+    const channelName = `raw_machine_data:${selectedMachine.machine_id}-${Date.now()}`;
     const channel = supabase
-      .channel(`raw_machine_data:${selectedMachine.machine_id}`)
+      .channel(channelName)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
@@ -139,8 +140,16 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
         console.log(`📡 [${selectedMachine.machine_id}] Subscription status:`, status);
       });
 
+    // Set up 10-second polling as fallback to real-time
+    const pollInterval = setInterval(() => {
+      console.log(`🔄 [${selectedMachine.machine_id}] Polling for updates (10s interval)`);
+      fetchInitialData();
+    }, DATA_CONFIG.LIVE_DATA_POLL_INTERVAL_MS);
+
     return () => {
-      supabase.removeChannel(channel);
+      console.log(`🔕 [${selectedMachine.machine_id}] Cleaning up subscriptions and polling`);
+      channel.unsubscribe();
+      clearInterval(pollInterval);
     };
   }, [selectedMachine?.machine_id]);
 
@@ -149,13 +158,13 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
     const now = new Date();
     const dataAge = now.getTime() - dataTimestamp.getTime();
     
-    // Check if data is too old (using our defined threshold)
-    const isDisconnected = dataAge > DATA_STALENESS_THRESHOLD_MS;
+    // Check if data is too old (90 seconds threshold)
+    const isDisconnected = dataAge > DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS;
     
     console.log(`🔍 [${rawData.machine_id}] Processing data:`, {
       timestamp: rawData.timestamp_utc,
-      age_minutes: Math.round(dataAge / (1000 * 60)),
-      threshold_minutes: DATA_STALENESS_THRESHOLD_MS / (1000 * 60),
+      age_seconds: Math.round(dataAge / 1000),
+      threshold_seconds: DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS / 1000,
       is_disconnected: isDisconnected,
       water_level: rawData.water_level_l,
       flags: {
@@ -166,7 +175,7 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
     });
     
     if (isDisconnected) {
-      console.log(`⚠️ [${rawData.machine_id}] Data is stale - marking as disconnected`);
+      console.log(`⚠️ [${rawData.machine_id}] Data is stale (>${DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS / 1000}s) - marking as disconnected`);
       return {
         status: 'Disconnected',
         waterLevel: rawData.water_level_l || 0,
@@ -185,7 +194,7 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
     console.log(`✅ [${rawData.machine_id}] Status calculated:`, {
       status,
       isOnline: true,
-      age_minutes: Math.round(dataAge / (1000 * 60))
+      age_seconds: Math.round(dataAge / 1000)
     });
     
     return {

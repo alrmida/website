@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { MachineWithClient } from '@/types/machine';
 import { useMicrocontrollerUID } from './useMicrocontrollerUID';
+import { DATA_CONFIG } from '@/config/dataConfig';
 
 export interface SimpleMachineData {
   uid: string;
@@ -30,7 +31,7 @@ export const useSimpleMachineData = (machine: MachineWithClient | null) => {
     setError(null);
 
     try {
-      console.log('🔄 Fetching simple machine data for UID:', currentUID);
+      console.log('🔄 Fetching simple machine data for UID:', currentUID, '(10s frequency)');
 
       const { data: result, error: functionError } = await supabase.functions.invoke(
         'simple-machine-data',
@@ -52,6 +53,25 @@ export const useSimpleMachineData = (machine: MachineWithClient | null) => {
       }
 
       console.log('✅ Simple machine data fetched:', result);
+      
+      // Apply client-side staleness check using new 90-second threshold
+      if (result?.lastUpdate) {
+        const dataAge = new Date().getTime() - new Date(result.lastUpdate).getTime();
+        const isStale = dataAge > DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS;
+        
+        console.log(`🔍 Data staleness check:`, {
+          age_seconds: Math.round(dataAge / 1000),
+          threshold_seconds: DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS / 1000,
+          is_stale: isStale
+        });
+        
+        if (isStale) {
+          result.status = 'Offline';
+          result.isOnline = false;
+          console.log(`⚠️ Data marked as stale (>${DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS / 1000}s old)`);
+        }
+      }
+      
       setData(result);
 
     } catch (err) {
@@ -71,10 +91,14 @@ export const useSimpleMachineData = (machine: MachineWithClient | null) => {
 
     fetchData();
     
-    // Set up interval for real-time updates (every 30 seconds)
+    // Set up interval for real-time updates (every 10 seconds)
     if (currentUID) {
-      const interval = setInterval(fetchData, 30000);
-      return () => clearInterval(interval);
+      console.log(`🕒 Setting up 10-second polling for UID: ${currentUID}`);
+      const interval = setInterval(fetchData, DATA_CONFIG.SIMPLE_DATA_POLL_INTERVAL_MS);
+      return () => {
+        console.log(`🔕 Clearing 10-second polling for UID: ${currentUID}`);
+        clearInterval(interval);
+      };
     }
   }, [machine?.id, currentUID, uidLoading]);
 
