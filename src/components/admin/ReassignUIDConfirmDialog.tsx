@@ -24,7 +24,7 @@ interface ReassignUIDConfirmDialogProps {
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
   uid: string;
-  currentAssignment: UIDAssignment;
+  currentAssignment: UIDAssignment | null;
   targetMachineName: string;
 }
 
@@ -40,6 +40,11 @@ const ReassignUIDConfirmDialog = ({
     onConfirm();
     onOpenChange(false);
   };
+
+  // Don't render if no current assignment
+  if (!currentAssignment) {
+    return null;
+  }
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>

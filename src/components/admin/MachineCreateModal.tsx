@@ -467,14 +467,16 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
         </DialogContent>
       </Dialog>
 
-      <ReassignUIDConfirmDialog
-        open={showReassignDialog}
-        onOpenChange={setShowReassignDialog}
-        onConfirm={handleConfirmReassignment}
-        uid={microcontrollerUid || ''}
-        currentAssignment={uidAssignment!}
-        targetMachineName={form.getValues('name') || 'New Machine'}
-      />
+      {uidAssignment && (
+        <ReassignUIDConfirmDialog
+          open={showReassignDialog}
+          onOpenChange={setShowReassignDialog}
+          onConfirm={handleConfirmReassignment}
+          uid={microcontrollerUid || ''}
+          currentAssignment={uidAssignment}
+          targetMachineName={form.getValues('name') || 'New Machine'}
+        />
+      )}
     </>
   );
 };

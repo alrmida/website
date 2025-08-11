@@ -367,14 +367,16 @@ const MachineEditModal = ({ open, onOpenChange, machine, profiles, onSuccess }: 
         </DialogContent>
       </Dialog>
 
-      <ReassignUIDConfirmDialog
-        open={showReassignDialog}
-        onOpenChange={setShowReassignDialog}
-        onConfirm={handleConfirmReassignment}
-        uid={microcontrollerUid || ''}
-        currentAssignment={uidAssignment!}
-        targetMachineName={machine.name}
-      />
+      {uidAssignment && (
+        <ReassignUIDConfirmDialog
+          open={showReassignDialog}
+          onOpenChange={setShowReassignDialog}
+          onConfirm={handleConfirmReassignment}
+          uid={microcontrollerUid || ''}
+          currentAssignment={uidAssignment}
+          targetMachineName={machine.name}
+        />
+      )}
     </>
   );
 };
