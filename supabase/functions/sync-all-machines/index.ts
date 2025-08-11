@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -247,12 +246,14 @@ function processRawData(data: any, machineId: string) {
       disinfecting: data.disinfecting || false,
       frost_identified: data.frost_identified || false,
       defrosting: data.defrosting || false,
+      ingestion_source: 'sync', // Tag data from sync process
     };
 
     console.log(`✅ Processed data point for ${machineId}:`, {
       timestamp: dataPoint.timestamp_utc,
       water_level: dataPoint.water_level_l,
-      producing_water: dataPoint.producing_water
+      producing_water: dataPoint.producing_water,
+      ingestion_source: dataPoint.ingestion_source
     });
     
     return dataPoint;
@@ -265,14 +266,15 @@ function processRawData(data: any, machineId: string) {
 // Store or update data point with deduplication
 async function upsertDataPoint(supabase: any, dataPoint: any) {
   try {
-    console.log(`💾 Upserting data point for machine: ${dataPoint.machine_id}`);
+    console.log(`💾 Upserting data point for machine: ${dataPoint.machine_id} with source: ${dataPoint.ingestion_source}`);
 
-    // Check for existing data
+    // Check for existing data with same timestamp and source
     const { data: existingData, error: checkError } = await supabase
       .from('raw_machine_data')
-      .select('id, timestamp_utc')
+      .select('id, timestamp_utc, ingestion_source')
       .eq('machine_id', dataPoint.machine_id)
       .eq('timestamp_utc', dataPoint.timestamp_utc)
+      .eq('ingestion_source', dataPoint.ingestion_source)
       .maybeSingle();
 
     if (checkError) {
@@ -281,7 +283,7 @@ async function upsertDataPoint(supabase: any, dataPoint: any) {
     }
 
     if (existingData) {
-      console.log(`ℹ️ Data point already exists for ${dataPoint.machine_id}, skipping insert`);
+      console.log(`ℹ️ Data point already exists for ${dataPoint.machine_id} (source: ${dataPoint.ingestion_source}), skipping insert`);
       return { success: true, action: 'skipped', reason: 'duplicate' };
     }
 
@@ -289,14 +291,14 @@ async function upsertDataPoint(supabase: any, dataPoint: any) {
     const { data: insertData, error: insertError } = await supabase
       .from('raw_machine_data')
       .insert([dataPoint])
-      .select('id, timestamp_utc, water_level_l');
+      .select('id, timestamp_utc, water_level_l, ingestion_source');
 
     if (insertError) {
       console.error(`❌ Database insert error for ${dataPoint.machine_id}:`, insertError);
       throw new Error(`Database insert failed: ${insertError.message}`);
     }
 
-    console.log(`✅ Successfully stored new data point for ${dataPoint.machine_id}:`, insertData[0]);
+    console.log(`✅ Successfully stored new sync data point for ${dataPoint.machine_id}:`, insertData[0]);
     return { success: true, action: 'inserted', data: insertData[0] };
 
   } catch (error) {

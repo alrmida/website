@@ -57,14 +57,15 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
           .eq('id', currentUser.user?.id)
           .single();
 
-        console.log(`🔍 [${selectedMachine.machine_id}] Fetching live data (${DATA_CONFIG.LIVE_DATA_POLL_INTERVAL_MS / 1000}s frequency)`);
+        console.log(`🔍 [${selectedMachine.machine_id}] Fetching live telemetry data (${DATA_CONFIG.LIVE_DATA_POLL_INTERVAL_MS / 1000}s frequency)`);
         console.log(`👤 User: ${currentProfile?.username} (${currentProfile?.role})`);
         
-        // Try to get the most recent raw machine data
+        // Try to get the most recent TELEMETRY data only (filter out sync data)
         const { data: rawData, error: rawError } = await supabase
           .from('raw_machine_data')
           .select('*')
           .eq('machine_id', selectedMachine.machine_id)
+          .eq('ingestion_source', 'telemetry') // Only get real telemetry data
           .order('timestamp_utc', { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -78,20 +79,21 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
           const dataAge = new Date().getTime() - new Date(rawData.timestamp_utc).getTime();
           const isDataFresh = dataAge <= DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS;
           
-          console.log(`✅ [${selectedMachine.machine_id}] Found raw data:`, {
+          console.log(`✅ [${selectedMachine.machine_id}] Found telemetry data:`, {
             timestamp: rawData.timestamp_utc,
             age_seconds: Math.round(dataAge / 1000),
             threshold_seconds: DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS / 1000,
             is_fresh: isDataFresh,
             water_level: rawData.water_level_l,
             producing_water: rawData.producing_water,
-            full_tank: rawData.full_tank
+            full_tank: rawData.full_tank,
+            ingestion_source: rawData.ingestion_source
           });
           
           const processedData = processRawData(rawData);
           setData(processedData);
         } else {
-          console.log(`⚠️ [${selectedMachine.machine_id}] No raw data found`);
+          console.log(`⚠️ [${selectedMachine.machine_id}] No telemetry data found (sync data filtered out)`);
           setData({
             status: 'Disconnected',
             waterLevel: 0,
@@ -134,7 +136,7 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
 
     fetchInitialData();
 
-    // Set up real-time subscription for new data
+    // Set up real-time subscription for new TELEMETRY data only
     const channelName = `raw_machine_data:${selectedMachine.machine_id}-${Date.now()}`;
     channelRef.current = supabase
       .channel(channelName)
@@ -144,13 +146,20 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
         table: 'raw_machine_data',
         filter: `machine_id=eq.${selectedMachine.machine_id}`
       }, (payload) => {
-        console.log(`🔄 [${selectedMachine.machine_id}] Real-time update:`, {
-          timestamp: payload.new.timestamp_utc,
-          water_level: payload.new.water_level_l
-        });
-        if (payload.new) {
+        // Only process telemetry data for real-time updates
+        if (payload.new && payload.new.ingestion_source === 'telemetry') {
+          console.log(`🔄 [${selectedMachine.machine_id}] Real-time telemetry update:`, {
+            timestamp: payload.new.timestamp_utc,
+            water_level: payload.new.water_level_l,
+            ingestion_source: payload.new.ingestion_source
+          });
           const processedData = processRawData(payload.new);
           setData(processedData);
+        } else if (payload.new) {
+          console.log(`🔄 [${selectedMachine.machine_id}] Ignoring sync data in real-time:`, {
+            timestamp: payload.new.timestamp_utc,
+            ingestion_source: payload.new.ingestion_source
+          });
         }
       })
       .subscribe((status) => {
@@ -159,7 +168,7 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
 
     // Set up polling as fallback to real-time
     pollIntervalRef.current = setInterval(() => {
-      console.log(`🔄 [${selectedMachine.machine_id}] Polling for updates (${DATA_CONFIG.LIVE_DATA_POLL_INTERVAL_MS / 1000}s interval)`);
+      console.log(`🔄 [${selectedMachine.machine_id}] Polling for telemetry updates (${DATA_CONFIG.LIVE_DATA_POLL_INTERVAL_MS / 1000}s interval)`);
       fetchInitialData();
     }, DATA_CONFIG.LIVE_DATA_POLL_INTERVAL_MS);
 
@@ -184,12 +193,13 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
     // Check if data is too old using the configured threshold
     const isDisconnected = dataAge > DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS;
     
-    console.log(`🔍 [${rawData.machine_id}] Processing data:`, {
+    console.log(`🔍 [${rawData.machine_id}] Processing telemetry data:`, {
       timestamp: rawData.timestamp_utc,
       age_seconds: Math.round(dataAge / 1000),
       threshold_seconds: DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS / 1000,
       is_disconnected: isDisconnected,
       water_level: rawData.water_level_l,
+      ingestion_source: rawData.ingestion_source,
       flags: {
         producing_water: rawData.producing_water,
         full_tank: rawData.full_tank,
@@ -198,7 +208,7 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
     });
     
     if (isDisconnected) {
-      console.log(`⚠️ [${rawData.machine_id}] Data is stale (>${DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS / 1000}s) - marking as disconnected`);
+      console.log(`⚠️ [${rawData.machine_id}] Telemetry data is stale (>${DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS / 1000}s) - marking as disconnected`);
       return {
         status: 'Disconnected',
         waterLevel: rawData.water_level_l || 0,
@@ -214,7 +224,7 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
     // Calculate status based on available flags
     const status = calculateStatus(rawData);
     
-    console.log(`✅ [${rawData.machine_id}] Status calculated:`, {
+    console.log(`✅ [${rawData.machine_id}] Status calculated from telemetry:`, {
       status,
       isOnline: true,
       age_seconds: Math.round(dataAge / 1000)
@@ -232,38 +242,39 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
   };
 
   const calculateStatus = (rawData: any): MachineStatus => {
-    console.log(`🎯 [${rawData.machine_id}] Calculating status from flags:`, {
+    console.log(`🎯 [${rawData.machine_id}] Calculating status from telemetry flags:`, {
       defrosting: rawData.defrosting,
       full_tank: rawData.full_tank,
       producing_water: rawData.producing_water,
-      water_level: rawData.water_level_l
+      water_level: rawData.water_level_l,
+      ingestion_source: rawData.ingestion_source
     });
 
     // Status priority logic
     if (rawData.defrosting === true) {
-      console.log(`✅ [${rawData.machine_id}] Status: Defrosting`);
+      console.log(`✅ [${rawData.machine_id}] Status: Defrosting (from telemetry)`);
       return 'Defrosting';
     }
     
     if (rawData.full_tank === true) {
-      console.log(`✅ [${rawData.machine_id}] Status: Full Water`);
+      console.log(`✅ [${rawData.machine_id}] Status: Full Water (from telemetry)`);
       return 'Full Water';
     }
     
     if (rawData.producing_water === true) {
-      console.log(`✅ [${rawData.machine_id}] Status: Producing`);
+      console.log(`✅ [${rawData.machine_id}] Status: Producing (from telemetry)`);
       return 'Producing';
     }
     
     // Fallback: check water level for full tank
     const waterLevel = rawData.water_level_l || 0;
     if (waterLevel >= 9.5) { // Nearly full
-      console.log(`✅ [${rawData.machine_id}] Status: Full Water (based on level)`);
+      console.log(`✅ [${rawData.machine_id}] Status: Full Water (based on telemetry level)`);
       return 'Full Water';
     }
     
-    // Default to Idle if we have recent data but no clear producing flags
-    console.log(`✅ [${rawData.machine_id}] Status: Idle (default)`);
+    // Default to Idle if we have recent telemetry data but no clear producing flags
+    console.log(`✅ [${rawData.machine_id}] Status: Idle (default from telemetry)`);
     return 'Idle';
   };
 

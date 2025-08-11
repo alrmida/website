@@ -253,6 +253,7 @@ export type Database = {
           frost_identified: boolean | null
           full_tank: boolean | null
           id: string
+          ingestion_source: string
           machine_id: string
           producing_water: boolean | null
           refrigerant_temp_c: number | null
@@ -277,6 +278,7 @@ export type Database = {
           frost_identified?: boolean | null
           full_tank?: boolean | null
           id?: string
+          ingestion_source?: string
           machine_id: string
           producing_water?: boolean | null
           refrigerant_temp_c?: number | null
@@ -301,6 +303,7 @@ export type Database = {
           frost_identified?: boolean | null
           full_tank?: boolean | null
           id?: string
+          ingestion_source?: string
           machine_id?: string
           producing_water?: boolean | null
           refrigerant_temp_c?: number | null

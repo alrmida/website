@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, XCircle, AlertCircle, Database, Wifi } from 'lucide-react';
+import { CheckCircle, XCircle, AlertCircle, Database, Wifi, Filter } from 'lucide-react';
 import useLiveMachineData from '@/hooks/useLiveMachineData';
 import { MachineWithClient } from '@/types/machine';
 import { DATA_CONFIG } from '@/config/dataConfig';
@@ -20,7 +20,7 @@ const DataPipelineMonitor = ({ selectedMachine }: DataPipelineMonitorProps) => {
     }
 
     if (isLoading) {
-      return { phase: 'Phase 1: Loading Data', status: 'loading', color: 'yellow' };
+      return { phase: 'Phase 1: Loading Telemetry Data', status: 'loading', color: 'yellow' };
     }
 
     if (error) {
@@ -28,14 +28,14 @@ const DataPipelineMonitor = ({ selectedMachine }: DataPipelineMonitorProps) => {
     }
 
     if (liveData.dataSource === 'live' && liveData.waterLevel > 0) {
-      return { phase: 'Phase 1: Direct Supabase ✅', status: 'success', color: 'green' };
+      return { phase: 'Phase 1: Telemetry Data Retrieved ✅', status: 'success', color: 'green' };
     }
 
     if (liveData.dataSource === 'live' && liveData.waterLevel === 0) {
-      return { phase: 'Phase 1: Data Retrieved (Zero Level)', status: 'partial', color: 'orange' };
+      return { phase: 'Phase 1: Telemetry Data (Zero Level)', status: 'partial', color: 'orange' };
     }
 
-    return { phase: 'Phase 1: No Data Found', status: 'no-data', color: 'red' };
+    return { phase: 'Phase 1: No Telemetry Data Found', status: 'no-data', color: 'red' };
   };
 
   const phaseStatus = getPhaseStatus();
@@ -71,7 +71,7 @@ const DataPipelineMonitor = ({ selectedMachine }: DataPipelineMonitorProps) => {
       <CardHeader>
         <CardTitle className="text-sm font-medium text-blue-800 dark:text-blue-200 flex items-center gap-2">
           <Database className="h-4 w-4" />
-          Enhanced Data Pipeline Monitor ({DATA_CONFIG.LIVE_DATA_POLL_INTERVAL_MS / 1000}s polling, {DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS / 1000}s disconnect)
+          Enhanced Telemetry Monitor ({DATA_CONFIG.LIVE_DATA_POLL_INTERVAL_MS / 1000}s polling, {DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS / 1000}s disconnect)
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -92,6 +92,13 @@ const DataPipelineMonitor = ({ selectedMachine }: DataPipelineMonitorProps) => {
             <div className="flex justify-between">
               <span className="text-gray-600 dark:text-gray-300">Machine ID:</span>
               <span className="font-mono">{selectedMachine.machine_id}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600 dark:text-gray-300">Data Filter:</span>
+              <div className="flex items-center gap-1">
+                <Filter className="h-3 w-3 text-blue-600" />
+                <span className="text-blue-600 font-medium">Telemetry Only</span>
+              </div>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600 dark:text-gray-300">Polling Frequency:</span>
@@ -115,7 +122,7 @@ const DataPipelineMonitor = ({ selectedMachine }: DataPipelineMonitorProps) => {
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600 dark:text-gray-300">Last Data:</span>
+              <span className="text-gray-600 dark:text-gray-300">Last Telemetry:</span>
               <span className="text-xs">{formatDataAge(liveData.dataAge)}</span>
             </div>
             <div className="flex justify-between">
@@ -141,19 +148,22 @@ const DataPipelineMonitor = ({ selectedMachine }: DataPipelineMonitorProps) => {
 
         {/* Enhanced Phase 1 Validation */}
         <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded text-xs">
-          <strong>Enhanced Phase 1 Validation:</strong>
+          <strong>Enhanced Telemetry Validation:</strong>
           <ul className="mt-1 space-y-1">
             <li className={`flex items-center gap-1 ${!selectedMachine ? 'text-gray-500' : 'text-green-600'}`}>
               {selectedMachine ? '✅' : '⏳'} Machine selected
             </li>
             <li className={`flex items-center gap-1 ${liveData.dataSource !== 'live' ? 'text-gray-500' : 'text-green-600'}`}>
-              {liveData.dataSource === 'live' ? '✅' : '⏳'} {DATA_CONFIG.LIVE_DATA_POLL_INTERVAL_MS / 1000}-second polling active
+              {liveData.dataSource === 'live' ? '✅' : '⏳'} {DATA_CONFIG.LIVE_DATA_POLL_INTERVAL_MS / 1000}-second telemetry polling
+            </li>
+            <li className="flex items-center gap-1 text-blue-600">
+              🔍 Sync data filtered out (telemetry only)
             </li>
             <li className={`flex items-center gap-1 ${liveData.waterLevel <= 0 ? 'text-orange-500' : 'text-green-600'}`}>
-              {liveData.waterLevel > 0 ? '✅' : '⚠️'} Real water level data ({liveData.waterLevel > 0 ? 'SUCCESS' : 'needs investigation'})
+              {liveData.waterLevel > 0 ? '✅' : '⚠️'} Real telemetry water level ({liveData.waterLevel > 0 ? 'SUCCESS' : 'needs investigation'})
             </li>
             <li className={`flex items-center gap-1 ${liveData.dataAge > DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS ? 'text-red-500' : 'text-green-600'}`}>
-              {liveData.dataAge <= DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS ? '✅' : '❌'} Data freshness (less than {DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS / 1000}s threshold)
+              {liveData.dataAge <= DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS ? '✅' : '❌'} Telemetry freshness (less than {DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS / 1000}s threshold)
             </li>
           </ul>
         </div>

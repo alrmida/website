@@ -71,8 +71,8 @@ serve(async (req) => {
     const compressorOn = compressorResult.length > 0 ? compressorResult[0]._value : 0;
     const lastUpdate = waterLevelResult.length > 0 ? waterLevelResult[0]._time : null;
 
-    // Determine machine status
-    const isOnline = lastUpdate && (new Date().getTime() - new Date(lastUpdate).getTime()) < 300000; // 5 minutes
+    // Determine machine status using unified 90-second threshold
+    const isOnline = lastUpdate && (new Date().getTime() - new Date(lastUpdate).getTime()) < 90000; // 90 seconds threshold
     const status = isOnline ? (compressorOn ? 'Producing' : 'Idle') : 'Offline';
 
     const response = {
@@ -85,7 +85,7 @@ serve(async (req) => {
       timestamp: new Date().toISOString()
     };
 
-    console.log('✅ Data fetched successfully:', response);
+    console.log('✅ Data fetched successfully with 90s threshold:', response);
 
     return new Response(
       JSON.stringify(response),
