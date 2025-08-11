@@ -2,8 +2,9 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, XCircle, AlertCircle, Database, Wifi, Filter } from 'lucide-react';
+import { CheckCircle, XCircle, AlertCircle, Database, Wifi, Cloud } from 'lucide-react';
 import useLiveMachineData from '@/hooks/useLiveMachineData';
+import { useMicrocontrollerUID } from '@/hooks/useMicrocontrollerUID';
 import { MachineWithClient } from '@/types/machine';
 import { DATA_CONFIG } from '@/config/dataConfig';
 
@@ -13,29 +14,34 @@ interface DataPipelineMonitorProps {
 
 const DataPipelineMonitor = ({ selectedMachine }: DataPipelineMonitorProps) => {
   const { data: liveData, isLoading, error } = useLiveMachineData(selectedMachine);
+  const { currentUID } = useMicrocontrollerUID(selectedMachine?.id);
 
   const getPhaseStatus = () => {
     if (!selectedMachine) {
       return { phase: 'No Machine Selected', status: 'waiting', color: 'gray' };
     }
 
+    if (!currentUID) {
+      return { phase: 'Phase 1: No UID Available', status: 'error', color: 'red' };
+    }
+
     if (isLoading) {
-      return { phase: 'Phase 1: Loading Telemetry Data', status: 'loading', color: 'yellow' };
+      return { phase: 'Phase 1: Loading Influx Data', status: 'loading', color: 'yellow' };
     }
 
     if (error) {
-      return { phase: 'Phase 1: Database Error', status: 'error', color: 'red' };
+      return { phase: 'Phase 1: Influx Edge Function Error', status: 'error', color: 'red' };
     }
 
-    if (liveData.dataSource === 'live' && liveData.waterLevel > 0) {
-      return { phase: 'Phase 1: Telemetry Data Retrieved ✅', status: 'success', color: 'green' };
+    if (liveData.dataSource === 'influx' && liveData.waterLevel > 0) {
+      return { phase: 'Phase 1: Influx Data Retrieved ✅', status: 'success', color: 'green' };
     }
 
-    if (liveData.dataSource === 'live' && liveData.waterLevel === 0) {
-      return { phase: 'Phase 1: Telemetry Data (Zero Level)', status: 'partial', color: 'orange' };
+    if (liveData.dataSource === 'influx' && liveData.waterLevel === 0) {
+      return { phase: 'Phase 1: Influx Data (Zero Level)', status: 'partial', color: 'orange' };
     }
 
-    return { phase: 'Phase 1: No Telemetry Data Found', status: 'no-data', color: 'red' };
+    return { phase: 'Phase 1: No Influx Data Found', status: 'no-data', color: 'red' };
   };
 
   const phaseStatus = getPhaseStatus();
@@ -70,8 +76,8 @@ const DataPipelineMonitor = ({ selectedMachine }: DataPipelineMonitorProps) => {
     <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
       <CardHeader>
         <CardTitle className="text-sm font-medium text-blue-800 dark:text-blue-200 flex items-center gap-2">
-          <Database className="h-4 w-4" />
-          Enhanced Telemetry Monitor ({DATA_CONFIG.LIVE_DATA_POLL_INTERVAL_MS / 1000}s polling, {DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS / 1000}s disconnect)
+          <Cloud className="h-4 w-4" />
+          Influx Edge Function Monitor ({DATA_CONFIG.LIVE_DATA_POLL_INTERVAL_MS / 1000}s polling, {DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS / 1000}s disconnect)
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -94,10 +100,14 @@ const DataPipelineMonitor = ({ selectedMachine }: DataPipelineMonitorProps) => {
               <span className="font-mono">{selectedMachine.machine_id}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600 dark:text-gray-300">Data Filter:</span>
+              <span className="text-gray-600 dark:text-gray-300">Microcontroller UID:</span>
+              <span className="font-mono text-xs">{currentUID || 'Not assigned'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600 dark:text-gray-300">Data Source:</span>
               <div className="flex items-center gap-1">
-                <Filter className="h-3 w-3 text-blue-600" />
-                <span className="text-blue-600 font-medium">Telemetry Only</span>
+                <Cloud className="h-3 w-3 text-blue-600" />
+                <span className="text-blue-600 font-medium">Influx (Edge Function)</span>
               </div>
             </div>
             <div className="flex justify-between">
@@ -109,20 +119,13 @@ const DataPipelineMonitor = ({ selectedMachine }: DataPipelineMonitorProps) => {
               <span className="text-orange-600 font-medium">{DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS / 1000} seconds</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600 dark:text-gray-300">Data Source:</span>
-              <div className="flex items-center gap-1">
-                <Database className="h-3 w-3" />
-                <span>{liveData.dataSource === 'live' ? 'Direct Supabase' : 'Fallback'}</span>
-              </div>
-            </div>
-            <div className="flex justify-between">
               <span className="text-gray-600 dark:text-gray-300">Water Level:</span>
               <span className={`font-medium ${liveData.waterLevel > 0 ? 'text-blue-600' : 'text-gray-500'}`}>
                 {liveData.waterLevel.toFixed(2)} L
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600 dark:text-gray-300">Last Telemetry:</span>
+              <span className="text-gray-600 dark:text-gray-300">Last Influx Data:</span>
               <span className="text-xs">{formatDataAge(liveData.dataAge)}</span>
             </div>
             <div className="flex justify-between">
@@ -146,24 +149,27 @@ const DataPipelineMonitor = ({ selectedMachine }: DataPipelineMonitorProps) => {
           </div>
         )}
 
-        {/* Enhanced Phase 1 Validation */}
+        {/* Enhanced Influx Validation */}
         <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded text-xs">
-          <strong>Enhanced Telemetry Validation:</strong>
+          <strong>Influx Edge Function Validation:</strong>
           <ul className="mt-1 space-y-1">
             <li className={`flex items-center gap-1 ${!selectedMachine ? 'text-gray-500' : 'text-green-600'}`}>
               {selectedMachine ? '✅' : '⏳'} Machine selected
             </li>
-            <li className={`flex items-center gap-1 ${liveData.dataSource !== 'live' ? 'text-gray-500' : 'text-green-600'}`}>
-              {liveData.dataSource === 'live' ? '✅' : '⏳'} {DATA_CONFIG.LIVE_DATA_POLL_INTERVAL_MS / 1000}-second telemetry polling
+            <li className={`flex items-center gap-1 ${!currentUID ? 'text-gray-500' : 'text-green-600'}`}>
+              {currentUID ? '✅' : '⚠️'} Microcontroller UID assigned
+            </li>
+            <li className={`flex items-center gap-1 ${liveData.dataSource !== 'influx' ? 'text-gray-500' : 'text-green-600'}`}>
+              {liveData.dataSource === 'influx' ? '✅' : '⏳'} {DATA_CONFIG.LIVE_DATA_POLL_INTERVAL_MS / 1000}-second Influx polling
             </li>
             <li className="flex items-center gap-1 text-blue-600">
-              🔍 Sync data filtered out (telemetry only)
+              🔍 Data fetched from InfluxDB via edge function
             </li>
             <li className={`flex items-center gap-1 ${liveData.waterLevel <= 0 ? 'text-orange-500' : 'text-green-600'}`}>
-              {liveData.waterLevel > 0 ? '✅' : '⚠️'} Real telemetry water level ({liveData.waterLevel > 0 ? 'SUCCESS' : 'needs investigation'})
+              {liveData.waterLevel > 0 ? '✅' : '⚠️'} Real Influx water level ({liveData.waterLevel > 0 ? 'SUCCESS' : 'needs investigation'})
             </li>
             <li className={`flex items-center gap-1 ${liveData.dataAge > DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS ? 'text-red-500' : 'text-green-600'}`}>
-              {liveData.dataAge <= DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS ? '✅' : '❌'} Telemetry freshness (less than {DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS / 1000}s threshold)
+              {liveData.dataAge <= DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS ? '✅' : '❌'} Data freshness (less than {DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS / 1000}s threshold)
             </li>
           </ul>
         </div>

@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { MachineWithClient } from '@/types/machine';
+import { useMicrocontrollerUID } from './useMicrocontrollerUID';
 import { DATA_CONFIG } from '@/config/dataConfig';
 
 export type MachineStatus = 'Producing' | 'Idle' | 'Full Water' | 'Disconnected' | 'Defrosting';
@@ -15,13 +16,14 @@ interface LiveMachineData {
   waterLevel: number;
   lastUpdated: string | null;
   isOnline: boolean;
-  dataSource: 'live' | 'fallback';
+  dataSource: 'influx' | 'fallback';
   dataAge: number;
   lastConnection?: string;
   compressorOn: boolean;
 }
 
 export const useLiveMachineData = (selectedMachine: MachineWithClient | null) => {
+  const { currentUID, loading: uidLoading } = useMicrocontrollerUID(selectedMachine?.id);
   const [data, setData] = useState<LiveMachineData>({
     status: 'Disconnected',
     waterLevel: 0,
@@ -34,20 +36,30 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Use refs to track active subscriptions and prevent duplicates
-  const channelRef = useRef<any>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (!selectedMachine) {
+    if (!selectedMachine || uidLoading) {
       setIsLoading(false);
       return;
     }
 
-    const fetchInitialData = async () => {
-      setIsLoading(true);
-      setError(null);
-      
+    const fetchInfluxData = async () => {
+      if (!currentUID) {
+        console.log(`⚠️ [${selectedMachine.machine_id}] No UID available, skipping Influx fetch`);
+        setData({
+          status: 'Disconnected',
+          waterLevel: 0,
+          lastUpdated: null,
+          isOnline: false,
+          dataSource: 'fallback',
+          dataAge: Infinity,
+          compressorOn: false
+        });
+        setIsLoading(false);
+        return;
+      }
+
       try {
         // Get current user info for role-based debugging
         const { data: currentUser } = await supabase.auth.getUser();
@@ -57,56 +69,71 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
           .eq('id', currentUser.user?.id)
           .single();
 
-        console.log(`🔍 [${selectedMachine.machine_id}] Fetching live telemetry data (${DATA_CONFIG.LIVE_DATA_POLL_INTERVAL_MS / 1000}s frequency)`);
+        console.log(`🔍 [${selectedMachine.machine_id}] Fetching Influx data via edge function (10s frequency)`);
         console.log(`👤 User: ${currentProfile?.username} (${currentProfile?.role})`);
+        console.log(`🔗 Using UID: ${currentUID}`);
         
-        // Try to get the most recent TELEMETRY data only (filter out sync data)
-        const { data: rawData, error: rawError } = await supabase
-          .from('raw_machine_data')
-          .select('*')
-          .eq('machine_id', selectedMachine.machine_id)
-          .eq('ingestion_source', 'telemetry') // Only get real telemetry data
-          .order('timestamp_utc', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        const { data: influxData, error: influxError } = await supabase.functions.invoke(
+          'simple-machine-data',
+          {
+            body: { uid: currentUID }
+          }
+        );
 
-        if (rawError) {
-          console.error(`❌ [${selectedMachine.machine_id}] Raw data query error:`, rawError);
-          throw new Error(`Database error: ${rawError.message}`);
+        if (influxError) {
+          console.error(`❌ [${selectedMachine.machine_id}] Influx function error:`, influxError);
+          throw new Error(`Edge function error: ${influxError.message}`);
         }
 
-        if (rawData) {
-          const dataAge = new Date().getTime() - new Date(rawData.timestamp_utc).getTime();
-          const isDataFresh = dataAge <= DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS;
-          
-          console.log(`✅ [${selectedMachine.machine_id}] Found telemetry data:`, {
-            timestamp: rawData.timestamp_utc,
-            age_seconds: Math.round(dataAge / 1000),
-            threshold_seconds: DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS / 1000,
-            is_fresh: isDataFresh,
-            water_level: rawData.water_level_l,
-            producing_water: rawData.producing_water,
-            full_tank: rawData.full_tank,
-            ingestion_source: rawData.ingestion_source
-          });
-          
-          const processedData = processRawData(rawData);
-          setData(processedData);
-        } else {
-          console.log(`⚠️ [${selectedMachine.machine_id}] No telemetry data found (sync data filtered out)`);
-          setData({
-            status: 'Disconnected',
-            waterLevel: 0,
-            lastUpdated: null,
-            isOnline: false,
-            dataSource: 'fallback',
-            dataAge: Infinity,
-            compressorOn: false
-          });
+        if (influxData?.error) {
+          console.error(`❌ [${selectedMachine.machine_id}] Influx response error:`, influxData.error);
+          throw new Error(influxData.error);
         }
+
+        console.log(`✅ [${selectedMachine.machine_id}] Influx data received:`, {
+          uid: influxData.uid,
+          waterLevel: influxData.waterLevel,
+          status: influxData.status,
+          isOnline: influxData.isOnline,
+          lastUpdate: influxData.lastUpdate,
+          compressorOn: influxData.compressorOn
+        });
+
+        // Calculate data age for client-side staleness check
+        const dataAge = influxData.lastUpdate 
+          ? new Date().getTime() - new Date(influxData.lastUpdate).getTime()
+          : Infinity;
+
+        // Apply client-side staleness check (90 seconds threshold)
+        const isDataFresh = dataAge <= DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS;
+        const finalStatus = isDataFresh ? influxData.status : 'Disconnected';
+        const finalIsOnline = isDataFresh ? influxData.isOnline : false;
+
+        console.log(`🔍 [${selectedMachine.machine_id}] Staleness check:`, {
+          age_seconds: Math.round(dataAge / 1000),
+          threshold_seconds: DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS / 1000,
+          is_fresh: isDataFresh,
+          edge_function_status: influxData.status,
+          final_status: finalStatus
+        });
+
+        const processedData: LiveMachineData = {
+          status: finalStatus as MachineStatus,
+          waterLevel: influxData.waterLevel || 0,
+          lastUpdated: influxData.lastUpdate,
+          isOnline: finalIsOnline,
+          dataSource: 'influx',
+          dataAge,
+          lastConnection: influxData.lastUpdate,
+          compressorOn: Boolean(influxData.compressorOn)
+        };
+
+        setData(processedData);
+        setError(null);
+
       } catch (err: any) {
-        console.error(`❌ [${selectedMachine.machine_id}] Failed to fetch data:`, err);
-        setError(err.message || 'Failed to fetch machine data');
+        console.error(`❌ [${selectedMachine.machine_id}] Failed to fetch Influx data:`, err);
+        setError(err.message || 'Failed to fetch machine data from Influx');
         setData({
           status: 'Disconnected',
           waterLevel: 0,
@@ -121,162 +148,31 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
       }
     };
 
-    // Clean up any existing subscriptions and intervals
-    if (channelRef.current) {
-      console.log(`🔕 [${selectedMachine.machine_id}] Cleaning up existing channel`);
-      channelRef.current.unsubscribe();
-      channelRef.current = null;
-    }
-    
+    // Clean up any existing polling
     if (pollIntervalRef.current) {
       console.log(`🔕 [${selectedMachine.machine_id}] Cleaning up existing poll interval`);
       clearInterval(pollIntervalRef.current);
       pollIntervalRef.current = null;
     }
 
-    fetchInitialData();
+    // Initial fetch
+    fetchInfluxData();
 
-    // Set up real-time subscription for new TELEMETRY data only
-    const channelName = `raw_machine_data:${selectedMachine.machine_id}-${Date.now()}`;
-    channelRef.current = supabase
-      .channel(channelName)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'raw_machine_data',
-        filter: `machine_id=eq.${selectedMachine.machine_id}`
-      }, (payload) => {
-        // Only process telemetry data for real-time updates
-        if (payload.new && payload.new.ingestion_source === 'telemetry') {
-          console.log(`🔄 [${selectedMachine.machine_id}] Real-time telemetry update:`, {
-            timestamp: payload.new.timestamp_utc,
-            water_level: payload.new.water_level_l,
-            ingestion_source: payload.new.ingestion_source
-          });
-          const processedData = processRawData(payload.new);
-          setData(processedData);
-        } else if (payload.new) {
-          console.log(`🔄 [${selectedMachine.machine_id}] Ignoring sync data in real-time:`, {
-            timestamp: payload.new.timestamp_utc,
-            ingestion_source: payload.new.ingestion_source
-          });
-        }
-      })
-      .subscribe((status) => {
-        console.log(`📡 [${selectedMachine.machine_id}] Subscription status:`, status);
-      });
-
-    // Set up polling as fallback to real-time
+    // Set up 10-second polling for Influx data
+    console.log(`🕒 [${selectedMachine.machine_id}] Setting up 10-second Influx polling`);
     pollIntervalRef.current = setInterval(() => {
-      console.log(`🔄 [${selectedMachine.machine_id}] Polling for telemetry updates (${DATA_CONFIG.LIVE_DATA_POLL_INTERVAL_MS / 1000}s interval)`);
-      fetchInitialData();
+      console.log(`🔄 [${selectedMachine.machine_id}] Polling Influx data (10s interval)`);
+      fetchInfluxData();
     }, DATA_CONFIG.LIVE_DATA_POLL_INTERVAL_MS);
 
     return () => {
-      console.log(`🔕 [${selectedMachine.machine_id}] Cleaning up subscriptions and polling`);
-      if (channelRef.current) {
-        channelRef.current.unsubscribe();
-        channelRef.current = null;
-      }
+      console.log(`🔕 [${selectedMachine.machine_id}] Cleaning up Influx polling`);
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
         pollIntervalRef.current = null;
       }
     };
-  }, [selectedMachine?.machine_id]);
-
-  const processRawData = (rawData: any): LiveMachineData => {
-    const dataTimestamp = new Date(rawData.timestamp_utc);
-    const now = new Date();
-    const dataAge = now.getTime() - dataTimestamp.getTime();
-    
-    // Check if data is too old using the configured threshold
-    const isDisconnected = dataAge > DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS;
-    
-    console.log(`🔍 [${rawData.machine_id}] Processing telemetry data:`, {
-      timestamp: rawData.timestamp_utc,
-      age_seconds: Math.round(dataAge / 1000),
-      threshold_seconds: DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS / 1000,
-      is_disconnected: isDisconnected,
-      water_level: rawData.water_level_l,
-      ingestion_source: rawData.ingestion_source,
-      flags: {
-        producing_water: rawData.producing_water,
-        full_tank: rawData.full_tank,
-        defrosting: rawData.defrosting
-      }
-    });
-    
-    if (isDisconnected) {
-      console.log(`⚠️ [${rawData.machine_id}] Telemetry data is stale (>${DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS / 1000}s) - marking as disconnected`);
-      return {
-        status: 'Disconnected',
-        waterLevel: rawData.water_level_l || 0,
-        lastUpdated: rawData.timestamp_utc,
-        isOnline: false,
-        dataSource: 'live',
-        dataAge,
-        lastConnection: rawData.timestamp_utc,
-        compressorOn: Boolean(rawData.compressor_on)
-      };
-    }
-
-    // Calculate status based on available flags
-    const status = calculateStatus(rawData);
-    
-    console.log(`✅ [${rawData.machine_id}] Status calculated from telemetry:`, {
-      status,
-      isOnline: true,
-      age_seconds: Math.round(dataAge / 1000)
-    });
-    
-    return {
-      status,
-      waterLevel: rawData.water_level_l || 0,
-      lastUpdated: rawData.timestamp_utc,
-      isOnline: true,
-      dataSource: 'live',
-      dataAge,
-      compressorOn: Boolean(rawData.compressor_on)
-    };
-  };
-
-  const calculateStatus = (rawData: any): MachineStatus => {
-    console.log(`🎯 [${rawData.machine_id}] Calculating status from telemetry flags:`, {
-      defrosting: rawData.defrosting,
-      full_tank: rawData.full_tank,
-      producing_water: rawData.producing_water,
-      water_level: rawData.water_level_l,
-      ingestion_source: rawData.ingestion_source
-    });
-
-    // Status priority logic
-    if (rawData.defrosting === true) {
-      console.log(`✅ [${rawData.machine_id}] Status: Defrosting (from telemetry)`);
-      return 'Defrosting';
-    }
-    
-    if (rawData.full_tank === true) {
-      console.log(`✅ [${rawData.machine_id}] Status: Full Water (from telemetry)`);
-      return 'Full Water';
-    }
-    
-    if (rawData.producing_water === true) {
-      console.log(`✅ [${rawData.machine_id}] Status: Producing (from telemetry)`);
-      return 'Producing';
-    }
-    
-    // Fallback: check water level for full tank
-    const waterLevel = rawData.water_level_l || 0;
-    if (waterLevel >= 9.5) { // Nearly full
-      console.log(`✅ [${rawData.machine_id}] Status: Full Water (based on telemetry level)`);
-      return 'Full Water';
-    }
-    
-    // Default to Idle if we have recent telemetry data but no clear producing flags
-    console.log(`✅ [${rawData.machine_id}] Status: Idle (default from telemetry)`);
-    return 'Idle';
-  };
+  }, [selectedMachine?.machine_id, currentUID, uidLoading]);
 
   return { data, isLoading, error };
 };
