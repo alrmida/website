@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -28,10 +27,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from './types';
 import { isValidMicrocontrollerUID } from '@/types/machine';
+import { AlertTriangle } from 'lucide-react';
 import { 
   MACHINE_MODELS, 
   generateMachineId, 
@@ -39,6 +40,8 @@ import {
   getNextAvailableMachineNumber,
   validateMachineNumber 
 } from '@/utils/machineNumberHelpers';
+import { fetchUidAssignment, UIDAssignment } from '@/utils/uidHelpers';
+import ReassignUIDConfirmDialog from './ReassignUIDConfirmDialog';
 
 const machineCreateSchema = z.object({
   model: z.string().min(1, 'Model is required'),
@@ -66,6 +69,9 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
   const [generatedMachineId, setGeneratedMachineId] = useState<string>('');
   const [machineNumberExists, setMachineNumberExists] = useState(false);
   const [suggestedNumber, setSuggestedNumber] = useState<number>(1);
+  const [uidAssignment, setUidAssignment] = useState<UIDAssignment | null>(null);
+  const [showReassignDialog, setShowReassignDialog] = useState(false);
+  const [pendingFormData, setPendingFormData] = useState<MachineCreateData | null>(null);
   const { toast } = useToast();
 
   const form = useForm<MachineCreateData>({
@@ -84,6 +90,7 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
   const clientProfiles = profiles.filter(profile => profile.role === 'client');
   const selectedModel = form.watch('model');
   const machineNumber = form.watch('machineNumber');
+  const microcontrollerUid = form.watch('microcontroller_uid');
 
   // Generate machine ID when model or number changes
   useEffect(() => {
@@ -126,7 +133,20 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
     }
   }, [selectedModel, form]);
 
-  const onSubmit = async (data: MachineCreateData) => {
+  // Check UID assignment when UID changes
+  useEffect(() => {
+    if (microcontrollerUid && microcontrollerUid.trim() !== '') {
+      const checkUid = async () => {
+        const assignment = await fetchUidAssignment(microcontrollerUid);
+        setUidAssignment(assignment);
+      };
+      checkUid();
+    } else {
+      setUidAssignment(null);
+    }
+  }, [microcontrollerUid]);
+
+  const handleConfirmedSubmit = async (data: MachineCreateData) => {
     try {
       setLoading(true);
 
@@ -181,11 +201,15 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
         return;
       }
 
-      // Assign microcontroller UID
+      // Assign microcontroller UID with reassignment note if applicable
+      const reassignmentNote = uidAssignment 
+        ? `Reassigned from machine ${uidAssignment.machine_name} (${uidAssignment.machine_id}) during machine creation`
+        : 'Initial assignment during machine creation';
+
       const { error: assignError } = await supabase.rpc('assign_microcontroller_uid', {
         p_machine_id: newMachine.id,
         p_microcontroller_uid: data.microcontroller_uid,
-        p_notes: 'Initial assignment during machine creation'
+        p_notes: reassignmentNote
       });
 
       if (assignError) {
@@ -221,197 +245,237 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
     }
   };
 
+  const onSubmit = async (data: MachineCreateData) => {
+    // Check if UID is being reassigned
+    if (uidAssignment) {
+      setPendingFormData(data);
+      setShowReassignDialog(true);
+      return;
+    }
+
+    // Proceed normally if no reassignment needed
+    await handleConfirmedSubmit(data);
+  };
+
+  const handleConfirmReassignment = async () => {
+    if (pendingFormData) {
+      await handleConfirmedSubmit(pendingFormData);
+      setPendingFormData(null);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Create New Machine</DialogTitle>
-          <DialogDescription>
-            Select model and machine number to generate the Kumulus ID automatically. Client assignment is optional.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New Machine</DialogTitle>
+            <DialogDescription>
+              Select model and machine number to generate the Kumulus ID automatically. Client assignment is optional.
+            </DialogDescription>
+          </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="client_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Assigned Client</FormLabel>
-                  <FormControl>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select client (optional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="no-assignment">No assignment (available for later assignment)</SelectItem>
-                        {clientProfiles.map((profile) => (
-                          <SelectItem key={profile.id} value={profile.id}>
-                            {profile.username}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="client_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Assigned Client</FormLabel>
+                    <FormControl>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select client (optional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="no-assignment">No assignment (available for later assignment)</SelectItem>
+                          {clientProfiles.map((profile) => (
+                            <SelectItem key={profile.id} value={profile.id}>
+                              {profile.username}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="model"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Model</FormLabel>
-                  <FormControl>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select model" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MACHINE_MODELS.map((model) => (
-                          <SelectItem key={model.code} value={model.name}>
-                            {model.name} ({model.prefix}XXXXXX)
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="model"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Model</FormLabel>
+                    <FormControl>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select model" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MACHINE_MODELS.map((model) => (
+                            <SelectItem key={model.code} value={model.name}>
+                              {model.name} ({model.prefix}XXXXXX)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="machineNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Machine Number</FormLabel>
-                  <FormControl>
-                    <div className="flex items-center space-x-2">
-                      <Input
-                        type="number"
-                        placeholder="97"
-                        {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
-                        min="1"
-                        max="999999"
-                      />
-                      {selectedModel && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => form.setValue('machineNumber', suggestedNumber)}
-                        >
-                          Use {suggestedNumber}
-                        </Button>
-                      )}
-                    </div>
-                  </FormControl>
-                  {machineNumberExists && (
-                    <p className="text-sm text-red-600">
-                      This number is already taken. Suggested: {suggestedNumber}
-                    </p>
-                  )}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="machineNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Machine Number</FormLabel>
+                    <FormControl>
+                      <div className="flex items-center space-x-2">
+                        <Input
+                          type="number"
+                          placeholder="97"
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                          min="1"
+                          max="999999"
+                        />
+                        {selectedModel && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => form.setValue('machineNumber', suggestedNumber)}
+                          >
+                            Use {suggestedNumber}
+                          </Button>
+                        )}
+                      </div>
+                    </FormControl>
+                    {machineNumberExists && (
+                      <p className="text-sm text-red-600">
+                        This number is already taken. Suggested: {suggestedNumber}
+                      </p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            {generatedMachineId && (
-              <div className="p-3 bg-gray-50 rounded-md">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Generated Machine ID
-                </label>
-                <div className="flex items-center space-x-2">
-                  <code className="text-lg font-mono font-bold">{generatedMachineId}</code>
-                  <Badge variant={machineNumberExists ? 'destructive' : 'default'}>
-                    {machineNumberExists ? 'Already exists' : 'Available'}
-                  </Badge>
+              {generatedMachineId && (
+                <div className="p-3 bg-gray-50 rounded-md">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Generated Machine ID
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <code className="text-lg font-mono font-bold">{generatedMachineId}</code>
+                    <Badge variant={machineNumberExists ? 'destructive' : 'default'}>
+                      {machineNumberExists ? 'Already exists' : 'Available'}
+                    </Badge>
+                  </div>
                 </div>
+              )}
+
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Machine Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Machine name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Machine location" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="purchase_date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Purchase Date</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="microcontroller_uid"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Microcontroller UID *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="24 hex characters (required for live data)" {...field} />
+                    </FormControl>
+                    {uidAssignment && (
+                      <Alert className="mt-2">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription>
+                          <strong>Warning:</strong> This UID is currently assigned to machine{' '}
+                          <strong>{uidAssignment.machine_name}</strong> ({uidAssignment.machine_id}).
+                          Creating this machine will reassign the UID.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={loading}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={loading || machineNumberExists || !generatedMachineId}
+                >
+                  {loading ? 'Creating...' : 'Create Machine'}
+                </Button>
               </div>
-            )}
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Machine Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Machine name" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="location"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Location</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Machine location" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="purchase_date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Purchase Date</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="microcontroller_uid"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Microcontroller UID *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="24 hex characters (required for live data)" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="flex justify-end space-x-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={loading}
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                disabled={loading || machineNumberExists || !generatedMachineId}
-              >
-                {loading ? 'Creating...' : 'Create Machine'}
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+      <ReassignUIDConfirmDialog
+        open={showReassignDialog}
+        onOpenChange={setShowReassignDialog}
+        onConfirm={handleConfirmReassignment}
+        uid={microcontrollerUid || ''}
+        currentAssignment={uidAssignment!}
+        targetMachineName={form.getValues('name') || 'New Machine'}
+      />
+    </>
   );
 };
 

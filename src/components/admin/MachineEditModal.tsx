@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -27,12 +26,16 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from './types';
 import { MachineWithClient } from '@/types/machine';
 import { isValidMachineId, isValidMicrocontrollerUID } from '@/types/machine';
 import { useMicrocontrollerUID } from '@/hooks/useMicrocontrollerUID';
+import { fetchUidAssignment, UIDAssignment } from '@/utils/uidHelpers';
+import ReassignUIDConfirmDialog from './ReassignUIDConfirmDialog';
+import { AlertTriangle } from 'lucide-react';
 
 const machineEditSchema = z.object({
   machine_id: z.string().min(1, 'Machine ID is required').refine(isValidMachineId, {
@@ -63,6 +66,9 @@ interface MachineEditModalProps {
 
 const MachineEditModal = ({ open, onOpenChange, machine, profiles, onSuccess }: MachineEditModalProps) => {
   const [loading, setLoading] = useState(false);
+  const [uidAssignment, setUidAssignment] = useState<UIDAssignment | null>(null);
+  const [showReassignDialog, setShowReassignDialog] = useState(false);
+  const [pendingFormData, setPendingFormData] = useState<MachineEditData | null>(null);
   const { toast } = useToast();
   const { currentUID, assignUID } = useMicrocontrollerUID(machine?.id);
 
@@ -95,7 +101,33 @@ const MachineEditModal = ({ open, onOpenChange, machine, profiles, onSuccess }: 
     }
   }, [machine, open, currentUID, form]);
 
+  const microcontrollerUid = form.watch('microcontroller_uid');
+
+  useEffect(() => {
+    if (microcontrollerUid && microcontrollerUid.trim() !== '' && microcontrollerUid !== currentUID) {
+      const checkUid = async () => {
+        const assignment = await fetchUidAssignment(microcontrollerUid);
+        setUidAssignment(assignment);
+      };
+      checkUid();
+    } else {
+      setUidAssignment(null);
+    }
+  }, [microcontrollerUid, currentUID]);
+
   const onSubmit = async (data: MachineEditData) => {
+    // Check if UID is being reassigned
+    if (uidAssignment && data.microcontroller_uid?.trim() !== currentUID) {
+      setPendingFormData(data);
+      setShowReassignDialog(true);
+      return;
+    }
+
+    // Proceed normally if no reassignment needed
+    await handleConfirmedSubmit(data);
+  };
+
+  const handleConfirmedSubmit = async (data: MachineEditData) => {
     if (!machine) return;
 
     try {
@@ -131,7 +163,11 @@ const MachineEditModal = ({ open, onOpenChange, machine, profiles, onSuccess }: 
       const newUID = data.microcontroller_uid?.trim();
       if (newUID && newUID !== currentUID) {
         try {
-          await assignUID(newUID, 'UID updated via machine edit');
+          const reassignmentNote = uidAssignment 
+            ? `Reassigned from machine ${uidAssignment.machine_name} (${uidAssignment.machine_id}) via machine edit`
+            : 'UID updated via machine edit';
+          
+          await assignUID(newUID, reassignmentNote);
         } catch (assignError) {
           console.error('Error assigning microcontroller UID:', assignError);
           toast({
@@ -161,157 +197,185 @@ const MachineEditModal = ({ open, onOpenChange, machine, profiles, onSuccess }: 
     }
   };
 
+  const handleConfirmReassignment = async () => {
+    if (pendingFormData) {
+      await handleConfirmedSubmit(pendingFormData);
+      setPendingFormData(null);
+    }
+  };
+
   if (!machine) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Edit Machine</DialogTitle>
-          <DialogDescription>
-            Update machine information
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Machine</DialogTitle>
+            <DialogDescription>
+              Update machine information
+            </DialogDescription>
+          </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="machine_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Machine ID</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="machine_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Machine ID</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="location"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Location</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="machine_model"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Model</FormLabel>
-                  <FormControl>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select model" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="no-model">No model specified</SelectItem>
-                        <SelectItem value="Amphore">Amphore</SelectItem>
-                        <SelectItem value="BoKs">BoKs</SelectItem>
-                        <SelectItem value="Water Dispenser">Water Dispenser</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="machine_model"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Model</FormLabel>
+                    <FormControl>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select model" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="no-model">No model specified</SelectItem>
+                          <SelectItem value="Amphore">Amphore</SelectItem>
+                          <SelectItem value="BoKs">BoKs</SelectItem>
+                          <SelectItem value="Water Dispenser">Water Dispenser</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="purchase_date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Purchase Date</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="purchase_date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Purchase Date</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="microcontroller_uid"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Microcontroller UID</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="microcontroller_uid"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Microcontroller UID</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    {uidAssignment && field.value?.trim() !== currentUID && (
+                      <Alert className="mt-2">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription>
+                          <strong>Warning:</strong> This UID is currently assigned to machine{' '}
+                          <strong>{uidAssignment.machine_name}</strong> ({uidAssignment.machine_id}).
+                          Saving will reassign the UID to this machine.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="client_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Assigned Client</FormLabel>
-                  <FormControl>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select client" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="no-assignment">No assignment</SelectItem>
-                        {clientProfiles.map((profile) => (
-                          <SelectItem key={profile.id} value={profile.id}>
-                            {profile.username}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="client_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Assigned Client</FormLabel>
+                    <FormControl>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select client" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="no-assignment">No assignment</SelectItem>
+                          {clientProfiles.map((profile) => (
+                            <SelectItem key={profile.id} value={profile.id}>
+                              {profile.username}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <div className="flex justify-end space-x-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={loading}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={loading}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <ReassignUIDConfirmDialog
+        open={showReassignDialog}
+        onOpenChange={setShowReassignDialog}
+        onConfirm={handleConfirmReassignment}
+        uid={microcontrollerUid || ''}
+        currentAssignment={uidAssignment!}
+        targetMachineName={machine.name}
+      />
+    </>
   );
 };
 
