@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { MicrocontrollerAssignment } from '@/types/machine';
 
@@ -8,6 +8,7 @@ export const useMicrocontrollerUID = (machineId?: number) => {
   const [assignments, setAssignments] = useState<MicrocontrollerAssignment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const channelRef = useRef<any>(null);
 
   const fetchCurrentUID = async () => {
     if (!machineId) return;
@@ -92,12 +93,30 @@ export const useMicrocontrollerUID = (machineId?: number) => {
 
   // Set up real-time subscription for microcontroller assignments
   useEffect(() => {
-    if (!machineId) return;
+    if (!machineId) {
+      // Clean up any existing channel when machineId is not available
+      if (channelRef.current) {
+        console.log('🔕 Cleaning up real-time subscription (no machineId)');
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+      return;
+    }
+
+    // Clean up existing channel before creating a new one
+    if (channelRef.current) {
+      console.log('🔕 Cleaning up existing real-time subscription');
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
 
     console.log('🔔 Setting up real-time subscription for machine:', machineId);
 
+    // Create a unique channel name for this machine
+    const channelName = `microcontroller-assignments-${machineId}`;
+    
     const channel = supabase
-      .channel('microcontroller-assignments')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -114,9 +133,14 @@ export const useMicrocontrollerUID = (machineId?: number) => {
       )
       .subscribe();
 
+    channelRef.current = channel;
+
     return () => {
-      console.log('🔕 Cleaning up real-time subscription');
-      supabase.removeChannel(channel);
+      if (channelRef.current) {
+        console.log('🔕 Cleaning up real-time subscription');
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
     };
   }, [machineId]);
 
