@@ -153,7 +153,7 @@ const DataPipelineMonitor = ({ selectedMachine }: DataPipelineMonitorProps) => {
               {liveData.waterLevel > 0 ? '✅' : '⚠️'} Real water level data ({liveData.waterLevel > 0 ? 'SUCCESS' : 'needs investigation'})
             </li>
             <li className={`flex items-center gap-1 ${liveData.dataAge > DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS ? 'text-red-500' : 'text-green-600'}`}>
-              {liveData.dataAge <= DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS ? '✅' : '❌'} Data freshness (<90s threshold)
+              {liveData.dataAge <= DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS ? '✅' : '❌'} Data freshness (less than 90s threshold)
             </li>
           </ul>
         </div>
