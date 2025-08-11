@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { MachineWithClient } from '@/types/machine';
 import { DATA_CONFIG } from '@/config/dataConfig';
@@ -33,6 +33,10 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Use refs to track active subscriptions and prevent duplicates
+  const channelRef = useRef<any>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!selectedMachine) {
@@ -53,7 +57,7 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
           .eq('id', currentUser.user?.id)
           .single();
 
-        console.log(`🔍 [${selectedMachine.machine_id}] Fetching live data (10s frequency)`);
+        console.log(`🔍 [${selectedMachine.machine_id}] Fetching live data (${DATA_CONFIG.LIVE_DATA_POLL_INTERVAL_MS / 1000}s frequency)`);
         console.log(`👤 User: ${currentProfile?.username} (${currentProfile?.role})`);
         
         // Try to get the most recent raw machine data
@@ -115,11 +119,24 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
       }
     };
 
+    // Clean up any existing subscriptions and intervals
+    if (channelRef.current) {
+      console.log(`🔕 [${selectedMachine.machine_id}] Cleaning up existing channel`);
+      channelRef.current.unsubscribe();
+      channelRef.current = null;
+    }
+    
+    if (pollIntervalRef.current) {
+      console.log(`🔕 [${selectedMachine.machine_id}] Cleaning up existing poll interval`);
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+
     fetchInitialData();
 
     // Set up real-time subscription for new data
     const channelName = `raw_machine_data:${selectedMachine.machine_id}-${Date.now()}`;
-    const channel = supabase
+    channelRef.current = supabase
       .channel(channelName)
       .on('postgres_changes', {
         event: 'INSERT',
@@ -140,16 +157,22 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
         console.log(`📡 [${selectedMachine.machine_id}] Subscription status:`, status);
       });
 
-    // Set up 10-second polling as fallback to real-time
-    const pollInterval = setInterval(() => {
-      console.log(`🔄 [${selectedMachine.machine_id}] Polling for updates (10s interval)`);
+    // Set up polling as fallback to real-time
+    pollIntervalRef.current = setInterval(() => {
+      console.log(`🔄 [${selectedMachine.machine_id}] Polling for updates (${DATA_CONFIG.LIVE_DATA_POLL_INTERVAL_MS / 1000}s interval)`);
       fetchInitialData();
     }, DATA_CONFIG.LIVE_DATA_POLL_INTERVAL_MS);
 
     return () => {
       console.log(`🔕 [${selectedMachine.machine_id}] Cleaning up subscriptions and polling`);
-      channel.unsubscribe();
-      clearInterval(pollInterval);
+      if (channelRef.current) {
+        channelRef.current.unsubscribe();
+        channelRef.current = null;
+      }
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
     };
   }, [selectedMachine?.machine_id]);
 
@@ -158,7 +181,7 @@ export const useLiveMachineData = (selectedMachine: MachineWithClient | null) =>
     const now = new Date();
     const dataAge = now.getTime() - dataTimestamp.getTime();
     
-    // Check if data is too old (90 seconds threshold)
+    // Check if data is too old using the configured threshold
     const isDisconnected = dataAge > DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS;
     
     console.log(`🔍 [${rawData.machine_id}] Processing data:`, {

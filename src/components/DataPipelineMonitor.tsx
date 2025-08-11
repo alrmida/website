@@ -71,7 +71,7 @@ const DataPipelineMonitor = ({ selectedMachine }: DataPipelineMonitorProps) => {
       <CardHeader>
         <CardTitle className="text-sm font-medium text-blue-800 dark:text-blue-200 flex items-center gap-2">
           <Database className="h-4 w-4" />
-          Enhanced Data Pipeline Monitor (10s polling, 90s disconnect)
+          Enhanced Data Pipeline Monitor ({DATA_CONFIG.LIVE_DATA_POLL_INTERVAL_MS / 1000}s polling, {DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS / 1000}s disconnect)
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -95,11 +95,11 @@ const DataPipelineMonitor = ({ selectedMachine }: DataPipelineMonitorProps) => {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600 dark:text-gray-300">Polling Frequency:</span>
-              <span className="text-green-600 font-medium">10 seconds</span>
+              <span className="text-green-600 font-medium">{DATA_CONFIG.LIVE_DATA_POLL_INTERVAL_MS / 1000} seconds</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600 dark:text-gray-300">Disconnect Threshold:</span>
-              <span className="text-orange-600 font-medium">90 seconds</span>
+              <span className="text-orange-600 font-medium">{DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS / 1000} seconds</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600 dark:text-gray-300">Data Source:</span>
@@ -147,13 +147,13 @@ const DataPipelineMonitor = ({ selectedMachine }: DataPipelineMonitorProps) => {
               {selectedMachine ? '✅' : '⏳'} Machine selected
             </li>
             <li className={`flex items-center gap-1 ${liveData.dataSource !== 'live' ? 'text-gray-500' : 'text-green-600'}`}>
-              {liveData.dataSource === 'live' ? '✅' : '⏳'} 10-second polling active
+              {liveData.dataSource === 'live' ? '✅' : '⏳'} {DATA_CONFIG.LIVE_DATA_POLL_INTERVAL_MS / 1000}-second polling active
             </li>
             <li className={`flex items-center gap-1 ${liveData.waterLevel <= 0 ? 'text-orange-500' : 'text-green-600'}`}>
               {liveData.waterLevel > 0 ? '✅' : '⚠️'} Real water level data ({liveData.waterLevel > 0 ? 'SUCCESS' : 'needs investigation'})
             </li>
             <li className={`flex items-center gap-1 ${liveData.dataAge > DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS ? 'text-red-500' : 'text-green-600'}`}>
-              {liveData.dataAge <= DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS ? '✅' : '❌'} Data freshness (less than 90s threshold)
+              {liveData.dataAge <= DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS ? '✅' : '❌'} Data freshness (less than {DATA_CONFIG.DATA_STALENESS_THRESHOLD_MS / 1000}s threshold)
             </li>
           </ul>
         </div>
