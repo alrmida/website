@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -70,7 +71,7 @@ const MachineEditModal = ({ open, onOpenChange, machine, profiles, onSuccess }: 
   const [showReassignDialog, setShowReassignDialog] = useState(false);
   const [pendingFormData, setPendingFormData] = useState<MachineEditData | null>(null);
   const { toast } = useToast();
-  const { currentUID, assignUID } = useMicrocontrollerUID(machine?.id);
+  const { currentUID, assignUID, refetch } = useMicrocontrollerUID(machine?.id);
 
   const form = useForm<MachineEditData>({
     resolver: zodResolver(machineEditSchema),
@@ -87,8 +88,10 @@ const MachineEditModal = ({ open, onOpenChange, machine, profiles, onSuccess }: 
 
   const clientProfiles = profiles.filter(profile => profile.role === 'client');
 
+  // Update form when machine or currentUID changes
   useEffect(() => {
     if (machine && open) {
+      console.log('🔄 Updating form with machine data and currentUID:', currentUID);
       form.reset({
         machine_id: machine.machine_id,
         name: machine.name,
@@ -103,10 +106,16 @@ const MachineEditModal = ({ open, onOpenChange, machine, profiles, onSuccess }: 
 
   const microcontrollerUid = form.watch('microcontroller_uid');
 
+  // Check UID assignment when UID changes
   useEffect(() => {
-    if (microcontrollerUid && microcontrollerUid.trim() !== '' && microcontrollerUid !== currentUID) {
+    const normalizedInputUid = microcontrollerUid?.trim() || '';
+    const normalizedCurrentUid = currentUID?.trim() || '';
+    
+    if (normalizedInputUid && normalizedInputUid !== normalizedCurrentUid) {
+      console.log('🔍 Checking UID assignment for:', normalizedInputUid);
       const checkUid = async () => {
-        const assignment = await fetchUidAssignment(microcontrollerUid);
+        const assignment = await fetchUidAssignment(normalizedInputUid);
+        console.log('🔍 UID assignment result:', assignment);
         setUidAssignment(assignment);
       };
       checkUid();
@@ -116,8 +125,12 @@ const MachineEditModal = ({ open, onOpenChange, machine, profiles, onSuccess }: 
   }, [microcontrollerUid, currentUID]);
 
   const onSubmit = async (data: MachineEditData) => {
-    // Check if UID is being reassigned
-    if (uidAssignment && data.microcontroller_uid?.trim() !== currentUID) {
+    const normalizedUid = data.microcontroller_uid?.trim() || '';
+    const normalizedCurrentUid = currentUID?.trim() || '';
+
+    // Check if UID is being reassigned to another machine
+    if (uidAssignment && normalizedUid !== normalizedCurrentUid) {
+      console.log('⚠️ UID reassignment detected, showing confirmation dialog');
       setPendingFormData(data);
       setShowReassignDialog(true);
       return;
@@ -132,6 +145,7 @@ const MachineEditModal = ({ open, onOpenChange, machine, profiles, onSuccess }: 
 
     try {
       setLoading(true);
+      console.log('💾 Saving machine changes...');
 
       // Convert special values back to null for database
       const updateData = {
@@ -150,7 +164,7 @@ const MachineEditModal = ({ open, onOpenChange, machine, profiles, onSuccess }: 
         .eq('id', machine.id);
 
       if (error) {
-        console.error('Error updating machine:', error);
+        console.error('❌ Error updating machine:', error);
         toast({
           title: 'Error',
           description: `Failed to update machine: ${error.message}`,
@@ -159,34 +173,48 @@ const MachineEditModal = ({ open, onOpenChange, machine, profiles, onSuccess }: 
         return;
       }
 
+      console.log('✅ Machine updated successfully');
+
       // Handle microcontroller UID assignment
       const newUID = data.microcontroller_uid?.trim();
-      if (newUID && newUID !== currentUID) {
+      const currentUIDTrimmed = currentUID?.trim();
+      
+      if (newUID && newUID !== currentUIDTrimmed) {
         try {
+          console.log('🔗 Assigning new UID:', newUID);
           const reassignmentNote = uidAssignment 
             ? `Reassigned from machine ${uidAssignment.machine_name} (${uidAssignment.machine_id}) via machine edit`
             : 'UID updated via machine edit';
           
           await assignUID(newUID, reassignmentNote);
-        } catch (assignError) {
-          console.error('Error assigning microcontroller UID:', assignError);
+          
+          // Update form immediately to reflect the change
+          form.setValue('microcontroller_uid', newUID);
+          
+          console.log('✅ UID assigned successfully');
+          toast({
+            title: 'Success',
+            description: 'Machine updated and microcontroller UID assigned successfully',
+          });
+        } catch (assignError: any) {
+          console.error('❌ Error assigning microcontroller UID:', assignError);
           toast({
             title: 'Warning',
             description: `Machine updated but failed to assign microcontroller UID: ${assignError.message}`,
             variant: 'destructive',
           });
         }
+      } else {
+        toast({
+          title: 'Success',
+          description: 'Machine updated successfully',
+        });
       }
-
-      toast({
-        title: 'Success',
-        description: 'Machine updated successfully',
-      });
 
       onOpenChange(false);
       onSuccess();
     } catch (error) {
-      console.error('Error updating machine:', error);
+      console.error('❌ Error updating machine:', error);
       toast({
         title: 'Error',
         description: 'Failed to update machine',
@@ -308,7 +336,7 @@ const MachineEditModal = ({ open, onOpenChange, machine, profiles, onSuccess }: 
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
-                    {uidAssignment && field.value?.trim() !== currentUID && (
+                    {uidAssignment && field.value?.trim() !== currentUID?.trim() && (
                       <Alert className="mt-2">
                         <AlertTriangle className="h-4 w-4" />
                         <AlertDescription>

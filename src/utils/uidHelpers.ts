@@ -11,30 +11,44 @@ export const fetchUidAssignment = async (uid: string): Promise<UIDAssignment | n
   if (!uid || uid.trim() === '') return null;
 
   try {
-    const { data, error } = await supabase
+    console.log('🔍 Checking UID assignment for:', uid.trim());
+
+    // Step 1: Find active assignment for this UID
+    const { data: assignment, error: assignmentError } = await supabase
       .from('machine_microcontrollers')
-      .select(`
-        assigned_at,
-        machines!inner (
-          machine_id,
-          name
-        )
-      `)
+      .select('machine_id, assigned_at')
       .eq('microcontroller_uid', uid.trim())
       .is('unassigned_at', null)
       .single();
 
-    if (error || !data) {
+    if (assignmentError || !assignment) {
+      console.log('🔍 No active assignment found for UID:', uid.trim());
       return null;
     }
 
+    console.log('🔍 Found assignment:', assignment);
+
+    // Step 2: Get machine details
+    const { data: machine, error: machineError } = await supabase
+      .from('machines')
+      .select('machine_id, name')
+      .eq('id', assignment.machine_id)
+      .single();
+
+    if (machineError || !machine) {
+      console.log('❌ Machine not found for ID:', assignment.machine_id);
+      return null;
+    }
+
+    console.log('✅ Found machine details:', machine);
+
     return {
-      machine_id: data.machines.machine_id,
-      machine_name: data.machines.name,
-      assigned_at: data.assigned_at,
+      machine_id: machine.machine_id,
+      machine_name: machine.name,
+      assigned_at: assignment.assigned_at,
     };
   } catch (error) {
-    console.error('Error fetching UID assignment:', error);
+    console.error('❌ Error fetching UID assignment:', error);
     return null;
   }
 };

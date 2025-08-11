@@ -135,9 +135,13 @@ const MachineCreateModal = ({ open, onOpenChange, profiles, onSuccess }: Machine
 
   // Check UID assignment when UID changes
   useEffect(() => {
-    if (microcontrollerUid && microcontrollerUid.trim() !== '') {
+    const normalizedUid = microcontrollerUid?.trim() || '';
+    
+    if (normalizedUid) {
+      console.log('🔍 Checking UID assignment for new machine:', normalizedUid);
       const checkUid = async () => {
-        const assignment = await fetchUidAssignment(microcontrollerUid);
+        const assignment = await fetchUidAssignment(normalizedUid);
+        console.log('🔍 UID assignment result:', assignment);
         setUidAssignment(assignment);
       };
       checkUid();
