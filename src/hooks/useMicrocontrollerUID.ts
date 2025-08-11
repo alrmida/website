@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { MicrocontrollerAssignment } from '@/types/machine';
@@ -9,6 +8,7 @@ export const useMicrocontrollerUID = (machineId?: number) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const channelRef = useRef<any>(null);
+  const isSubscribingRef = useRef<boolean>(false);
 
   const fetchCurrentUID = async () => {
     if (!machineId) return;
@@ -97,23 +97,33 @@ export const useMicrocontrollerUID = (machineId?: number) => {
       // Clean up any existing channel when machineId is not available
       if (channelRef.current) {
         console.log('🔕 Cleaning up real-time subscription (no machineId)');
-        supabase.removeChannel(channelRef.current);
+        channelRef.current.unsubscribe();
         channelRef.current = null;
+        isSubscribingRef.current = false;
       }
+      return;
+    }
+
+    // Prevent multiple simultaneous subscriptions
+    if (isSubscribingRef.current) {
+      console.log('🔄 Subscription already in progress, skipping...');
       return;
     }
 
     // Clean up existing channel before creating a new one
     if (channelRef.current) {
       console.log('🔕 Cleaning up existing real-time subscription');
-      supabase.removeChannel(channelRef.current);
+      channelRef.current.unsubscribe();
       channelRef.current = null;
     }
+
+    // Set subscription flag
+    isSubscribingRef.current = true;
 
     console.log('🔔 Setting up real-time subscription for machine:', machineId);
 
     // Create a unique channel name for this machine
-    const channelName = `microcontroller-assignments-${machineId}`;
+    const channelName = `microcontroller-assignments-${machineId}-${Date.now()}`;
     
     const channel = supabase
       .channel(channelName)
@@ -131,16 +141,22 @@ export const useMicrocontrollerUID = (machineId?: number) => {
           fetchAssignments();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 Subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          isSubscribingRef.current = false;
+        }
+      });
 
     channelRef.current = channel;
 
     return () => {
       if (channelRef.current) {
         console.log('🔕 Cleaning up real-time subscription');
-        supabase.removeChannel(channelRef.current);
+        channelRef.current.unsubscribe();
         channelRef.current = null;
       }
+      isSubscribingRef.current = false;
     };
   }, [machineId]);
 
