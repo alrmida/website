@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label } from 'recharts';
 import { Calendar, TrendingUp, BarChart3 } from 'lucide-react';
 import { 
   ProductionData, 
@@ -51,7 +50,6 @@ const ProductionAnalytics = ({
     return value.toFixed(1).replace(/\.0$/, '');
   };
 
-  // Determine which data to show based on selected period
   const getProductionData = () => {
     switch (selectedPeriod) {
       case 'daily':
@@ -112,7 +110,6 @@ const ProductionAnalytics = ({
   const productionData = getProductionData();
   const currentStatusData = getStatusData();
 
-  // Get period labels
   const getPeriodLabel = () => {
     switch (selectedPeriod) {
       case 'daily': return t('analytics.last.7.days');
@@ -146,7 +143,6 @@ const ProductionAnalytics = ({
     }
   };
 
-  // Get axis labels based on period
   const getAxisLabels = () => {
     switch (selectedPeriod) {
       case 'daily':
@@ -166,7 +162,6 @@ const ProductionAnalytics = ({
 
   return (
     <div className="space-y-8">
-      {/* Section Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-kumulus-dark-blue dark:text-white mb-2">
@@ -193,7 +188,6 @@ const ProductionAnalytics = ({
         </div>
       </div>
 
-      {/* Production Chart */}
       <Card className="bg-white dark:bg-gray-800">
         <CardHeader>
           <CardTitle className="flex items-center gap-3 text-xl">
@@ -210,20 +204,24 @@ const ProductionAnalytics = ({
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={productionData} margin={{ top: 20, right: 30, left: 60, bottom: 60 }}>
+            <BarChart data={productionData} margin={{ top: 20, right: 30, left: 60, bottom: 30 }}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
                 dataKey="date"
                 className="text-sm"
                 tick={{ fontSize: 12 }}
-                label={{ value: axisLabels.x, position: 'insideBottom', offset: -10 }}
-              />
+                tickMargin={8}
+              >
+                <Label value={axisLabels.x} position="bottom" offset={0} />
+              </XAxis>
               <YAxis 
                 className="text-sm"
                 tick={{ fontSize: 12 }}
                 tickFormatter={formatNumberShort}
-                label={{ value: axisLabels.y, angle: -90, position: 'insideLeft' }}
-              />
+                tickMargin={8}
+              >
+                <Label value={axisLabels.y} angle={-90} position="insideLeft" offset={10} />
+              </YAxis>
               <Tooltip 
                 formatter={(value: number) => [`${formatNumberShort(value)}L`, t('analytics.production.title')]}
                 labelStyle={{ color: '#374151' }}
@@ -240,7 +238,6 @@ const ProductionAnalytics = ({
         </CardContent>
       </Card>
 
-      {/* Production Summary Cards */}
       <ProductionSummaryCards
         selectedPeriod={selectedPeriod}
         dailyProductionData={dailyProductionData}
@@ -249,7 +246,6 @@ const ProductionAnalytics = ({
         yearlyProductionData={yearlyProductionData}
       />
 
-      {/* Status Analytics Chart */}
       <Card className="bg-white dark:bg-gray-800">
         <CardHeader>
           <CardTitle className="flex items-center gap-3 text-xl">
@@ -266,19 +262,23 @@ const ProductionAnalytics = ({
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={currentStatusData} margin={{ top: 20, right: 30, left: 60, bottom: 60 }}>
+            <BarChart data={currentStatusData} margin={{ top: 20, right: 30, left: 60, bottom: 30 }}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
                 dataKey="date"
                 className="text-sm"
                 tick={{ fontSize: 12 }}
-                label={{ value: axisLabels.x, position: 'insideBottom', offset: -10 }}
-              />
+                tickMargin={8}
+              >
+                <Label value={axisLabels.x} position="bottom" offset={0} />
+              </XAxis>
               <YAxis 
                 className="text-sm"
                 tick={{ fontSize: 12 }}
-                label={{ value: 'Hours', angle: -90, position: 'insideLeft' }}
-              />
+                tickMargin={8}
+              >
+                <Label value="Hours" angle={-90} position="insideLeft" offset={10} />
+              </YAxis>
               <Tooltip 
                 formatter={(value: number, name: string) => [`${value.toFixed(1)}h`, t(`metrics.${name.toLowerCase().replace(' ', '.')}`) || name]}
                 labelStyle={{ color: '#374151' }}
@@ -299,7 +299,6 @@ const ProductionAnalytics = ({
         </CardContent>
       </Card>
 
-      {/* Status Summary Cards */}
       <StatusSummaryCards
         selectedPeriod={selectedPeriod}
         statusData={statusData}
