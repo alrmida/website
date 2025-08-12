@@ -29,6 +29,34 @@ interface ProductionAnalyticsProps {
   yearlyStatusData?: YearlyStatusData[];
 }
 
+// Utility function to calculate nice tick values and domain
+const getNiceTicks = (dataMax: number, targetTickCount: number = 5): { domain: [number, number], ticks: number[] } => {
+  if (dataMax === 0) {
+    return { domain: [0, 10], ticks: [0, 2, 4, 6, 8, 10] };
+  }
+
+  // Calculate nice step size
+  const roughStep = dataMax / (targetTickCount - 1);
+  const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
+  const normalizedStep = roughStep / magnitude;
+  
+  let niceStep;
+  if (normalizedStep <= 1) niceStep = 1;
+  else if (normalizedStep <= 2) niceStep = 2;
+  else if (normalizedStep <= 5) niceStep = 5;
+  else niceStep = 10;
+  
+  const step = niceStep * magnitude;
+  const niceMax = Math.ceil(dataMax / step) * step;
+  
+  const ticks = [];
+  for (let i = 0; i <= niceMax; i += step) {
+    ticks.push(i);
+  }
+  
+  return { domain: [0, niceMax], ticks };
+};
+
 const ProductionAnalytics = ({
   selectedPeriod,
   onPeriodChange,
@@ -109,6 +137,13 @@ const ProductionAnalytics = ({
 
   const productionData = getProductionData();
   const currentStatusData = getStatusData();
+
+  // Calculate nice ticks and domains for both charts
+  const productionMax = Math.max(...productionData.map(item => item.production));
+  const productionTickData = getNiceTicks(productionMax);
+
+  const statusMax = Math.max(...currentStatusData.flatMap(item => [item.producing, item.idle, item.fullWater, item.disconnected]));
+  const statusTickData = getNiceTicks(statusMax);
 
   const getPeriodLabel = () => {
     switch (selectedPeriod) {
@@ -204,7 +239,7 @@ const ProductionAnalytics = ({
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={productionData} margin={{ top: 20, right: 30, left: 50, bottom: 20 }}>
+            <BarChart data={productionData} margin={{ top: 15, right: 25, left: 45, bottom: 15 }}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
                 dataKey="date"
@@ -219,8 +254,10 @@ const ProductionAnalytics = ({
                 tick={{ fontSize: 12 }}
                 tickFormatter={formatNumberShort}
                 tickMargin={8}
+                domain={productionTickData.domain}
+                ticks={productionTickData.ticks}
               >
-                <Label value={axisLabels.y} angle={-90} position="insideLeft" offset={15} dy={20} />
+                <Label value={axisLabels.y} angle={-90} position="insideLeft" offset={15} dy={-10} />
               </YAxis>
               <Tooltip 
                 formatter={(value: number) => [`${formatNumberShort(value)}L`, t('analytics.production.title')]}
@@ -262,7 +299,7 @@ const ProductionAnalytics = ({
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={currentStatusData} margin={{ top: 20, right: 30, left: 50, bottom: 20 }}>
+            <BarChart data={currentStatusData} margin={{ top: 15, right: 25, left: 45, bottom: 15 }}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
                 dataKey="date"
@@ -276,8 +313,10 @@ const ProductionAnalytics = ({
                 className="text-sm"
                 tick={{ fontSize: 12 }}
                 tickMargin={8}
+                domain={statusTickData.domain}
+                ticks={statusTickData.ticks}
               >
-                <Label value="Hours" angle={-90} position="insideLeft" offset={15} dy={20} />
+                <Label value="Hours" angle={-90} position="insideLeft" offset={15} dy={-10} />
               </YAxis>
               <Tooltip 
                 formatter={(value: number, name: string) => [`${value.toFixed(1)}h`, t(`metrics.${name.toLowerCase().replace(' ', '.')}`) || name]}
