@@ -204,7 +204,7 @@ const ProductionAnalytics = ({
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={productionData} margin={{ top: 20, right: 30, left: 60, bottom: 30 }}>
+            <BarChart data={productionData} margin={{ top: 20, right: 30, left: 50, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
                 dataKey="date"
@@ -212,7 +212,7 @@ const ProductionAnalytics = ({
                 tick={{ fontSize: 12 }}
                 tickMargin={8}
               >
-                <Label value={axisLabels.x} position="bottom" offset={0} />
+                <Label value={axisLabels.x} position="insideBottom" offset={-10} />
               </XAxis>
               <YAxis 
                 className="text-sm"
@@ -220,7 +220,7 @@ const ProductionAnalytics = ({
                 tickFormatter={formatNumberShort}
                 tickMargin={8}
               >
-                <Label value={axisLabels.y} angle={-90} position="insideLeft" offset={10} />
+                <Label value={axisLabels.y} angle={-90} position="insideLeft" offset={15} dy={20} />
               </YAxis>
               <Tooltip 
                 formatter={(value: number) => [`${formatNumberShort(value)}L`, t('analytics.production.title')]}
@@ -262,7 +262,7 @@ const ProductionAnalytics = ({
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={currentStatusData} margin={{ top: 20, right: 30, left: 60, bottom: 30 }}>
+            <BarChart data={currentStatusData} margin={{ top: 20, right: 30, left: 50, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
                 dataKey="date"
@@ -270,14 +270,14 @@ const ProductionAnalytics = ({
                 tick={{ fontSize: 12 }}
                 tickMargin={8}
               >
-                <Label value={axisLabels.x} position="bottom" offset={0} />
+                <Label value={axisLabels.x} position="insideBottom" offset={-10} />
               </XAxis>
               <YAxis 
                 className="text-sm"
                 tick={{ fontSize: 12 }}
                 tickMargin={8}
               >
-                <Label value="Hours" angle={-90} position="insideLeft" offset={10} />
+                <Label value="Hours" angle={-90} position="insideLeft" offset={15} dy={20} />
               </YAxis>
               <Tooltip 
                 formatter={(value: number, name: string) => [`${value.toFixed(1)}h`, t(`metrics.${name.toLowerCase().replace(' ', '.')}`) || name]}
