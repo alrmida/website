@@ -305,37 +305,66 @@ const ProductionAnalytics = ({
     }
   };
 
+  // Convert status data from hours to percentages
+  const convertToPercentages = (data: any[]) => {
+    return data.map(item => {
+      const total = item.producing + item.idle + item.fullWater + item.disconnected;
+      if (total === 0) {
+        return {
+          ...item,
+          producing: 0,
+          idle: 0,
+          fullWater: 0,
+          disconnected: 100
+        };
+      }
+      return {
+        ...item,
+        producing: Math.round((item.producing / total) * 100),
+        idle: Math.round((item.idle / total) * 100),
+        fullWater: Math.round((item.fullWater / total) * 100),
+        disconnected: Math.round((item.disconnected / total) * 100)
+      };
+    });
+  };
+
   const getStatusData = () => {
+    let rawData;
     switch (selectedPeriod) {
       case 'daily':
-        return statusData;
+        rawData = statusData;
+        break;
       case 'weekly':
-        return weeklyStatusData.map(item => ({ 
+        rawData = weeklyStatusData.map(item => ({ 
           date: item.week, 
           producing: item.producing,
           idle: item.idle,
           fullWater: item.fullWater,
           disconnected: item.disconnected
         }));
+        break;
       case 'monthly':
-        return monthlyStatusData.map(item => ({ 
+        rawData = monthlyStatusData.map(item => ({ 
           date: item.month, 
           producing: item.producing,
           idle: item.idle,
           fullWater: item.fullWater,
           disconnected: item.disconnected
         }));
+        break;
       case 'yearly':
-        return yearlyStatusData.map(item => ({ 
+        rawData = yearlyStatusData.map(item => ({ 
           date: item.year, 
           producing: item.producing,
           idle: item.idle,
           fullWater: item.fullWater,
           disconnected: item.disconnected
         }));
+        break;
       default:
-        return statusData;
+        rawData = statusData;
     }
+    return convertToPercentages(rawData);
   };
 
   const productionData = getProductionData();
@@ -345,8 +374,8 @@ const ProductionAnalytics = ({
   const productionMax = Math.max(...productionData.map(item => item.production));
   const productionTickData = getNiceTicks(productionMax);
 
-  const statusMax = Math.max(...currentStatusData.flatMap(item => [item.producing, item.idle, item.fullWater, item.disconnected]));
-  const statusTickData = getNiceTicks(statusMax);
+  // For status chart, use fixed domain [0, 100] with nice ticks
+  const statusTickData = { domain: [0, 100] as [number, number], ticks: [0, 20, 40, 60, 80, 100] };
 
   const getPeriodLabel = () => {
     switch (selectedPeriod) {
@@ -532,14 +561,14 @@ const ProductionAnalytics = ({
                 ticks={statusTickData.ticks}
               >
                 <Label 
-                  value="Hours" 
+                  value={t('analytics.status.yaxis')} 
                   angle={-90} 
                   position="insideLeft" 
                   style={{ textAnchor: 'middle' }}
                 />
               </YAxis>
               <Tooltip 
-                formatter={(value: number, name: string) => [`${value.toFixed(1)}h`, t(`metrics.${name.toLowerCase().replace(' ', '.')}`) || name]}
+                formatter={(value: number, name: string) => [`${value}%`, t(`metrics.${name.toLowerCase().replace(' ', '.')}`) || name]}
                 labelStyle={{ color: '#374151' }}
                 contentStyle={{ 
                   backgroundColor: 'white', 

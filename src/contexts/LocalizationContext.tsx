@@ -42,6 +42,7 @@ const translations = {
     'analytics.period.weekly.text': 'the last 4 weeks',
     'analytics.period.monthly.text': 'the last 3 months',
     'analytics.period.yearly.text': 'the last 2 years',
+    'analytics.status.yaxis': 'Percentage (%)',
     
     // Machine Info
     'machine.info': 'Machine Information',
@@ -121,6 +122,7 @@ const translations = {
     'analytics.period.weekly.text': 'les 4 dernières semaines',
     'analytics.period.monthly.text': 'les 3 derniers mois',
     'analytics.period.yearly.text': 'les 2 dernières années',
+    'analytics.status.yaxis': 'Pourcentage (%)',
     
     // Machine Info
     'machine.info': 'Informations sur la machine',
@@ -200,6 +202,7 @@ const translations = {
     'analytics.period.weekly.text': 'las últimas 4 semanas',
     'analytics.period.monthly.text': 'los últimos 3 meses',
     'analytics.period.yearly.text': 'los últimos 2 años',
+    'analytics.status.yaxis': 'Porcentaje (%)',
     
     // Machine Info
     'machine.info': 'Información de la máquina',
