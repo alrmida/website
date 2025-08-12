@@ -14,8 +14,9 @@ import {
   MonthlyStatusData,
   YearlyStatusData
 } from '@/types/productionAnalytics';
-import { ProductionSummaryCards, StatusSummaryCards } from './AnalyticsSummaryCards';
+import { ProductionSummaryCards } from './AnalyticsSummaryCards';
 import { useLocalization } from '@/contexts/LocalizationContext';
+import StatusTooltip from './StatusTooltip';
 
 interface ProductionAnalyticsProps {
   selectedPeriod: string;
@@ -29,6 +30,203 @@ interface ProductionAnalyticsProps {
   monthlyStatusData: MonthlyStatusData[];
   yearlyStatusData?: YearlyStatusData[];
 }
+
+// Status Summary Cards Component with percentages
+const StatusSummaryCards = ({
+  selectedPeriod,
+  statusData,
+  weeklyStatusData = [],
+  monthlyStatusData,
+  yearlyStatusData = []
+}: {
+  selectedPeriod: string;
+  statusData: StatusData[];
+  weeklyStatusData?: WeeklyStatusData[];
+  monthlyStatusData: MonthlyStatusData[];
+  yearlyStatusData?: YearlyStatusData[];
+}) => {
+  const { t } = useLocalization();
+
+  const getCurrentStatusData = () => {
+    switch (selectedPeriod) {
+      case 'daily':
+        return statusData;
+      case 'weekly':
+        return weeklyStatusData.map(item => ({ 
+          date: item.week, 
+          producing: item.producing,
+          idle: item.idle,
+          fullWater: item.fullWater,
+          disconnected: item.disconnected
+        }));
+      case 'monthly':
+        return monthlyStatusData.map(item => ({ 
+          date: item.month, 
+          producing: item.producing,
+          idle: item.idle,
+          fullWater: item.fullWater,
+          disconnected: item.disconnected
+        }));
+      case 'yearly':
+        return yearlyStatusData.map(item => ({ 
+          date: item.year, 
+          producing: item.producing,
+          idle: item.idle,
+          fullWater: item.fullWater,
+          disconnected: item.disconnected
+        }));
+      default:
+        return statusData;
+    }
+  };
+
+  const calculateAveragePercentages = () => {
+    const currentData = getCurrentStatusData();
+    if (currentData.length === 0) {
+      return { producing: 0, idle: 0, fullWater: 0, disconnected: 0 };
+    }
+
+    const totals = currentData.reduce((acc, item) => ({
+      producing: acc.producing + item.producing,
+      idle: acc.idle + item.idle,
+      fullWater: acc.fullWater + item.fullWater,
+      disconnected: acc.disconnected + item.disconnected
+    }), { producing: 0, idle: 0, fullWater: 0, disconnected: 0 });
+
+    const grandTotal = totals.producing + totals.idle + totals.fullWater + totals.disconnected;
+    
+    if (grandTotal === 0) {
+      return { producing: 0, idle: 0, fullWater: 0, disconnected: 0 };
+    }
+
+    return {
+      producing: Math.round((totals.producing / grandTotal) * 100),
+      idle: Math.round((totals.idle / grandTotal) * 100),
+      fullWater: Math.round((totals.fullWater / grandTotal) * 100),
+      disconnected: Math.round((totals.disconnected / grandTotal) * 100)
+    };
+  };
+
+  const averages = calculateAveragePercentages();
+
+  const getPeriodText = () => {
+    switch (selectedPeriod) {
+      case 'daily': return t('analytics.period.daily.text') || 'this week';
+      case 'weekly': return t('analytics.period.weekly.text') || 'these weeks';
+      case 'monthly': return t('analytics.period.monthly.text') || 'these months';
+      case 'yearly': return t('analytics.period.yearly.text') || 'these years';
+      default: return 'this period';
+    }
+  };
+
+  const getTooltipText = (status: string) => {
+    const period = getPeriodText();
+    switch (status) {
+      case 'producing':
+        return `Average percentage of time spent producing water during ${period}`;
+      case 'idle':
+        return `Average percentage of time spent idle (not producing) during ${period}`;
+      case 'fullWater':
+        return `Average percentage of time with full water tank during ${period}`;
+      case 'disconnected':
+        return `Average percentage of time disconnected from monitoring during ${period}`;
+      default:
+        return '';
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <Card className="bg-white dark:bg-gray-800">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  {t('metrics.producing')}
+                </p>
+                <StatusTooltip status="producing" />
+              </div>
+              <p className="text-2xl font-bold text-status-producing-blue">{averages.producing}%</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {getTooltipText('producing')}
+              </p>
+            </div>
+            <div className="h-8 w-8 rounded-full bg-status-producing-blue/10 flex items-center justify-center">
+              <div className="h-3 w-3 rounded-full bg-status-producing-blue"></div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white dark:bg-gray-800">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  {t('metrics.idle')}
+                </p>
+                <StatusTooltip status="idle" />
+              </div>
+              <p className="text-2xl font-bold text-kumulus-orange">{averages.idle}%</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {getTooltipText('idle')}
+              </p>
+            </div>
+            <div className="h-8 w-8 rounded-full bg-kumulus-orange/10 flex items-center justify-center">
+              <div className="h-3 w-3 rounded-full bg-kumulus-orange"></div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white dark:bg-gray-800">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  {t('metrics.full.water')}
+                </p>
+                <StatusTooltip status="full water" />
+              </div>
+              <p className="text-2xl font-bold text-kumulus-chambray">{averages.fullWater}%</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {getTooltipText('fullWater')}
+              </p>
+            </div>
+            <div className="h-8 w-8 rounded-full bg-kumulus-chambray/10 flex items-center justify-center">
+              <div className="h-3 w-3 rounded-full bg-kumulus-chambray"></div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white dark:bg-gray-800">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  {t('metrics.disconnected')}
+                </p>
+                <StatusTooltip status="disconnected" />
+              </div>
+              <p className="text-2xl font-bold text-status-disconnected-yellow">{averages.disconnected}%</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {getTooltipText('disconnected')}
+              </p>
+            </div>
+            <div className="h-8 w-8 rounded-full bg-status-disconnected-yellow/10 flex items-center justify-center">
+              <div className="h-3 w-3 rounded-full bg-status-disconnected-yellow"></div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
 
 // Utility function to calculate nice tick values and domain
 const getNiceTicks = (dataMax: number, targetTickCount: number = 5): { domain: [number, number], ticks: number[] } => {
@@ -240,7 +438,7 @@ const ProductionAnalytics = ({
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={productionData} margin={{ top: 15, right: 25, left: 60, bottom: 60 }}>
+            <BarChart data={productionData} margin={{ top: 15, right: 25, left: 60, bottom: 40 }}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
                 dataKey="date"
@@ -248,7 +446,7 @@ const ProductionAnalytics = ({
                 tick={{ fontSize: 12 }}
                 tickMargin={8}
               >
-                <Label value={axisLabels.x} position="insideBottom" dy={18} style={{ textAnchor: 'middle' }} />
+                <Label value={axisLabels.x} position="insideBottom" dy={8} style={{ textAnchor: 'middle' }} />
               </XAxis>
               <YAxis 
                 className="text-sm"
@@ -305,7 +503,7 @@ const ProductionAnalytics = ({
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={currentStatusData} margin={{ top: 50, right: 25, left: 60, bottom: 60 }}>
+            <BarChart data={currentStatusData} margin={{ top: 50, right: 25, left: 60, bottom: 40 }}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
                 dataKey="date"
@@ -313,7 +511,7 @@ const ProductionAnalytics = ({
                 tick={{ fontSize: 12 }}
                 tickMargin={8}
               >
-                <Label value={axisLabels.x} position="insideBottom" dy={18} style={{ textAnchor: 'middle' }} />
+                <Label value={axisLabels.x} position="insideBottom" dy={8} style={{ textAnchor: 'middle' }} />
               </XAxis>
               <YAxis 
                 className="text-sm"
