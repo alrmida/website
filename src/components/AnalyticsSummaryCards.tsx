@@ -3,18 +3,31 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Info, TrendingUp, BarChart3, Clock, CheckCircle, AlertCircle, XCircle } from 'lucide-react';
-import { ProductionData, MonthlyProductionData, StatusData, MonthlyStatusData } from '@/types/productionAnalytics';
+import { 
+  ProductionData, 
+  WeeklyProductionData,
+  MonthlyProductionData, 
+  YearlyProductionData,
+  StatusData, 
+  WeeklyStatusData,
+  MonthlyStatusData,
+  YearlyStatusData
+} from '@/types/productionAnalytics';
 
 interface ProductionSummaryCardsProps {
   selectedPeriod: string;
   dailyProductionData: ProductionData[];
+  weeklyProductionData?: WeeklyProductionData[];
   monthlyProductionData: MonthlyProductionData[];
+  yearlyProductionData?: YearlyProductionData[];
 }
 
 interface StatusSummaryCardsProps {
   selectedPeriod: string;
   statusData: StatusData[];
+  weeklyStatusData?: WeeklyStatusData[];
   monthlyStatusData: MonthlyStatusData[];
+  yearlyStatusData?: YearlyStatusData[];
 }
 
 const formatNumber = (value: number): string => {
@@ -71,16 +84,82 @@ const SummaryCard = ({
 export const ProductionSummaryCards = ({
   selectedPeriod,
   dailyProductionData,
-  monthlyProductionData
+  weeklyProductionData = [],
+  monthlyProductionData,
+  yearlyProductionData = []
 }: ProductionSummaryCardsProps) => {
-  const productionData = selectedPeriod === 'monthly' ? monthlyProductionData : dailyProductionData;
-  
+  // Get the appropriate data based on selected period
+  const getProductionData = () => {
+    switch (selectedPeriod) {
+      case 'daily':
+        return dailyProductionData;
+      case 'weekly':
+        return weeklyProductionData.map(item => ({ 
+          date: item.week, 
+          production: item.production 
+        }));
+      case 'monthly':
+        return monthlyProductionData.map(item => ({ 
+          date: item.month, 
+          production: item.production 
+        }));
+      case 'yearly':
+        return yearlyProductionData.map(item => ({ 
+          date: item.year, 
+          production: item.production 
+        }));
+      default:
+        return dailyProductionData;
+    }
+  };
+
+  const productionData = getProductionData();
   const totalProduction = productionData.reduce((sum, item) => sum + item.production, 0);
   const avgProduction = productionData.length > 0 ? totalProduction / productionData.length : 0;
   const peakProduction = Math.max(...productionData.map(item => item.production));
 
-  const periodLabel = selectedPeriod === 'monthly' ? 'month' : 'day';
-  const timeframe = selectedPeriod === 'monthly' ? '3 months' : '7 days';
+  // Get period-specific labels
+  const getPeriodLabels = () => {
+    switch (selectedPeriod) {
+      case 'daily':
+        return {
+          periodLabel: 'day',
+          timeframe: '7 days',
+          averageTitle: 'Daily Average',
+          bestTitle: 'Best Day'
+        };
+      case 'weekly':
+        return {
+          periodLabel: 'week',
+          timeframe: '4 weeks',
+          averageTitle: 'Weekly Average',
+          bestTitle: 'Best Week'
+        };
+      case 'monthly':
+        return {
+          periodLabel: 'month',
+          timeframe: '3 months',
+          averageTitle: 'Monthly Average',
+          bestTitle: 'Best Month'
+        };
+      case 'yearly':
+        return {
+          periodLabel: 'year',
+          timeframe: '2 years',
+          averageTitle: 'Yearly Average',
+          bestTitle: 'Best Year'
+        };
+      default:
+        return {
+          periodLabel: 'day',
+          timeframe: '7 days',
+          averageTitle: 'Daily Average',
+          bestTitle: 'Best Day'
+        };
+    }
+  };
+
+  const labels = getPeriodLabels();
 
   return (
     <div>
@@ -91,23 +170,23 @@ export const ProductionSummaryCards = ({
         <SummaryCard
           title="Total Water Made"
           value={totalProduction}
-          explanation={`Total amount of water produced over the last ${timeframe}. This shows the cumulative output of your system.`}
+          explanation={`Total amount of water produced over the last ${labels.timeframe}. This shows the cumulative output of your system.`}
           icon={TrendingUp}
           colorClass="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
         />
         
         <SummaryCard
-          title={selectedPeriod === 'monthly' ? 'Monthly Average' : 'Daily Average'}
+          title={labels.averageTitle}
           value={avgProduction}
-          explanation={`Average water production per ${periodLabel}. This helps you understand your typical output and identify trends.`}
+          explanation={`Average water production per ${labels.periodLabel}. This helps you understand your typical output and identify trends.`}
           icon={BarChart3}
           colorClass="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
         />
         
         <SummaryCard
-          title={selectedPeriod === 'monthly' ? 'Best Month' : 'Best Day'}
+          title={labels.bestTitle}
           value={peakProduction}
-          explanation={`Highest single-${periodLabel} production in this period. This represents your system's peak performance.`}
+          explanation={`Highest single-${labels.periodLabel} production in this period. This represents your system's peak performance.`}
           icon={TrendingUp}
           colorClass="bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800"
         />
@@ -119,9 +198,45 @@ export const ProductionSummaryCards = ({
 export const StatusSummaryCards = ({
   selectedPeriod,
   statusData,
-  monthlyStatusData
+  weeklyStatusData = [],
+  monthlyStatusData,
+  yearlyStatusData = []
 }: StatusSummaryCardsProps) => {
-  const currentStatusData = selectedPeriod === 'monthly' ? monthlyStatusData : statusData;
+  // Get the appropriate data based on selected period
+  const getStatusData = () => {
+    switch (selectedPeriod) {
+      case 'daily':
+        return statusData;
+      case 'weekly':
+        return weeklyStatusData.map(item => ({ 
+          date: item.week, 
+          producing: item.producing,
+          idle: item.idle,
+          fullWater: item.fullWater,
+          disconnected: item.disconnected
+        }));
+      case 'monthly':
+        return monthlyStatusData.map(item => ({ 
+          date: item.month, 
+          producing: item.producing,
+          idle: item.idle,
+          fullWater: item.fullWater,
+          disconnected: item.disconnected
+        }));
+      case 'yearly':
+        return yearlyStatusData.map(item => ({ 
+          date: item.year, 
+          producing: item.producing,
+          idle: item.idle,
+          fullWater: item.fullWater,
+          disconnected: item.disconnected
+        }));
+      default:
+        return statusData;
+    }
+  };
+
+  const currentStatusData = getStatusData();
   
   const avgProducing = currentStatusData.length > 0 ? 
     currentStatusData.reduce((sum, item) => sum + item.producing, 0) / currentStatusData.length : 0;

@@ -146,6 +146,24 @@ const ProductionAnalytics = ({
     }
   };
 
+  // Get axis labels based on period
+  const getAxisLabels = () => {
+    switch (selectedPeriod) {
+      case 'daily':
+        return { x: 'Date', y: 'Water Production (L)' };
+      case 'weekly':
+        return { x: 'Week', y: 'Water Production (L)' };
+      case 'monthly':
+        return { x: 'Month', y: 'Water Production (L)' };
+      case 'yearly':
+        return { x: 'Year', y: 'Water Production (L)' };
+      default:
+        return { x: 'Date', y: 'Water Production (L)' };
+    }
+  };
+
+  const axisLabels = getAxisLabels();
+
   return (
     <div className="space-y-8">
       {/* Section Header */}
@@ -192,17 +210,19 @@ const ProductionAnalytics = ({
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={productionData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+            <BarChart data={productionData} margin={{ top: 20, right: 30, left: 60, bottom: 60 }}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
                 dataKey="date"
                 className="text-sm"
                 tick={{ fontSize: 12 }}
+                label={{ value: axisLabels.x, position: 'insideBottom', offset: -10 }}
               />
               <YAxis 
                 className="text-sm"
                 tick={{ fontSize: 12 }}
                 tickFormatter={formatNumberShort}
+                label={{ value: axisLabels.y, angle: -90, position: 'insideLeft' }}
               />
               <Tooltip 
                 formatter={(value: number) => [`${formatNumberShort(value)}L`, t('analytics.production.title')]}
@@ -224,7 +244,9 @@ const ProductionAnalytics = ({
       <ProductionSummaryCards
         selectedPeriod={selectedPeriod}
         dailyProductionData={dailyProductionData}
+        weeklyProductionData={weeklyProductionData}
         monthlyProductionData={monthlyProductionData}
+        yearlyProductionData={yearlyProductionData}
       />
 
       {/* Status Analytics Chart */}
@@ -244,12 +266,13 @@ const ProductionAnalytics = ({
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={currentStatusData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+            <BarChart data={currentStatusData} margin={{ top: 20, right: 30, left: 60, bottom: 60 }}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
                 dataKey="date"
                 className="text-sm"
                 tick={{ fontSize: 12 }}
+                label={{ value: axisLabels.x, position: 'insideBottom', offset: -10 }}
               />
               <YAxis 
                 className="text-sm"
@@ -280,7 +303,9 @@ const ProductionAnalytics = ({
       <StatusSummaryCards
         selectedPeriod={selectedPeriod}
         statusData={statusData}
+        weeklyStatusData={weeklyStatusData}
         monthlyStatusData={monthlyStatusData}
+        yearlyStatusData={yearlyStatusData}
       />
     </div>
   );
