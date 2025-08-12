@@ -143,7 +143,7 @@ const StatusSummaryCards = ({
             <div>
               <div className="flex items-center gap-2">
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  {t('metrics.producing')}
+                  Producing
                 </p>
                 <StatusTooltip status="producing" />
               </div>
@@ -165,7 +165,7 @@ const StatusSummaryCards = ({
             <div>
               <div className="flex items-center gap-2">
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  {t('metrics.idle')}
+                  Idle
                 </p>
                 <StatusTooltip status="idle" />
               </div>
@@ -187,7 +187,7 @@ const StatusSummaryCards = ({
             <div>
               <div className="flex items-center gap-2">
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  {t('metrics.full.water')}
+                  Full Water
                 </p>
                 <StatusTooltip status="full water" />
               </div>
@@ -209,7 +209,7 @@ const StatusSummaryCards = ({
             <div>
               <div className="flex items-center gap-2">
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  {t('metrics.disconnected')}
+                  Disconnected
                 </p>
                 <StatusTooltip status="disconnected" />
               </div>
@@ -437,16 +437,16 @@ const ProductionAnalytics = ({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={productionData} margin={{ top: 15, right: 25, left: 60, bottom: 40 }}>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={productionData} margin={{ top: 15, right: 25, left: 60, bottom: 25 }}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
                 dataKey="date"
                 className="text-sm"
                 tick={{ fontSize: 12 }}
-                tickMargin={8}
+                tickMargin={5}
               >
-                <Label value={axisLabels.x} position="insideBottom" dy={8} style={{ textAnchor: 'middle' }} />
+                <Label value={axisLabels.x} position="insideBottom" offset={-5} style={{ textAnchor: 'middle' }} />
               </XAxis>
               <YAxis 
                 className="text-sm"
@@ -502,16 +502,16 @@ const ProductionAnalytics = ({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={currentStatusData} margin={{ top: 50, right: 25, left: 60, bottom: 40 }}>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={currentStatusData} margin={{ top: 50, right: 25, left: 60, bottom: 25 }}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
                 dataKey="date"
                 className="text-sm"
                 tick={{ fontSize: 12 }}
-                tickMargin={8}
+                tickMargin={5}
               >
-                <Label value={axisLabels.x} position="insideBottom" dy={8} style={{ textAnchor: 'middle' }} />
+                <Label value={axisLabels.x} position="insideBottom" offset={-5} style={{ textAnchor: 'middle' }} />
               </XAxis>
               <YAxis 
                 className="text-sm"
@@ -542,10 +542,10 @@ const ProductionAnalytics = ({
                 height={36}
                 wrapperStyle={{ paddingBottom: '10px' }}
               />
-              <Bar dataKey="producing" stackId="a" fill="hsl(var(--status-producing-blue))" name={t('metrics.producing')} radius={[0, 0, 0, 0]} />
-              <Bar dataKey="idle" stackId="a" fill="hsl(var(--kumulus-orange))" name={t('metrics.idle')} radius={[0, 0, 0, 0]} />
-              <Bar dataKey="fullWater" stackId="a" fill="hsl(var(--kumulus-chambray))" name={t('metrics.full.water')} radius={[0, 0, 0, 0]} />
-              <Bar dataKey="disconnected" stackId="a" fill="hsl(var(--status-disconnected-yellow))" name={t('metrics.disconnected')} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="producing" stackId="a" fill="hsl(var(--status-producing-blue))" name="Producing" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="idle" stackId="a" fill="hsl(var(--kumulus-orange))" name="Idle" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="fullWater" stackId="a" fill="hsl(var(--kumulus-chambray))" name="Full Water" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="disconnected" stackId="a" fill="hsl(var(--status-disconnected-yellow))" name="Disconnected" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
