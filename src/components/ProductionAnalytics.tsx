@@ -57,6 +57,36 @@ const getNiceTicks = (dataMax: number, targetTickCount: number = 5): { domain: [
   return { domain: [0, niceMax], ticks };
 };
 
+// Custom Y-axis label component that centers based on actual chart dimensions
+const CenteredYAxisLabel = ({ value, chartHeight = 300, topMargin = 15, bottomMargin = 15 }: { 
+  value: string; 
+  chartHeight?: number; 
+  topMargin?: number; 
+  bottomMargin?: number; 
+}) => {
+  // Calculate the actual chart area height (excluding margins)
+  const actualChartHeight = chartHeight - topMargin - bottomMargin;
+  // Position the label at the visual center of the chart area
+  const yPosition = topMargin + (actualChartHeight / 2);
+  
+  return (
+    <text
+      x={20}
+      y={yPosition}
+      textAnchor="middle"
+      style={{
+        textAnchor: 'middle',
+        fontSize: '12px',
+        fill: 'currentColor',
+        transform: 'rotate(-90deg)',
+        transformOrigin: `20px ${yPosition}px`
+      }}
+    >
+      {value}
+    </text>
+  );
+};
+
 const ProductionAnalytics = ({
   selectedPeriod,
   onPeriodChange,
@@ -237,18 +267,17 @@ const ProductionAnalytics = ({
             </div>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="relative">
+          <CenteredYAxisLabel value={axisLabels.y} chartHeight={300} topMargin={15} bottomMargin={40} />
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={productionData} margin={{ top: 15, right: 25, left: 45, bottom: 15 }}>
+            <BarChart data={productionData} margin={{ top: 15, right: 25, left: 45, bottom: 40 }}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
                 dataKey="date"
                 className="text-sm"
                 tick={{ fontSize: 12 }}
                 tickMargin={8}
-              >
-                <Label value={axisLabels.x} position="insideBottom" offset={-10} />
-              </XAxis>
+              />
               <YAxis 
                 className="text-sm"
                 tick={{ fontSize: 12 }}
@@ -256,9 +285,7 @@ const ProductionAnalytics = ({
                 tickMargin={8}
                 domain={productionTickData.domain}
                 ticks={productionTickData.ticks}
-              >
-                <Label value={axisLabels.y} angle={-90} position="insideLeft" offset={15} dy={-10} />
-              </YAxis>
+              />
               <Tooltip 
                 formatter={(value: number) => [`${formatNumberShort(value)}L`, t('analytics.production.title')]}
                 labelStyle={{ color: '#374151' }}
@@ -272,6 +299,9 @@ const ProductionAnalytics = ({
               <Bar dataKey="production" fill="hsl(var(--kumulus-blue))" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
+          <div className="text-center text-sm text-gray-600 dark:text-gray-400 mt-2">
+            {axisLabels.x}
+          </div>
         </CardContent>
       </Card>
 
@@ -297,27 +327,24 @@ const ProductionAnalytics = ({
             </div>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="relative">
+          <CenteredYAxisLabel value="Hours" chartHeight={300} topMargin={15} bottomMargin={70} />
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={currentStatusData} margin={{ top: 15, right: 25, left: 45, bottom: 15 }}>
+            <BarChart data={currentStatusData} margin={{ top: 15, right: 25, left: 45, bottom: 70 }}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
                 dataKey="date"
                 className="text-sm"
                 tick={{ fontSize: 12 }}
                 tickMargin={8}
-              >
-                <Label value={axisLabels.x} position="insideBottom" offset={-10} />
-              </XAxis>
+              />
               <YAxis 
                 className="text-sm"
                 tick={{ fontSize: 12 }}
                 tickMargin={8}
                 domain={statusTickData.domain}
                 ticks={statusTickData.ticks}
-              >
-                <Label value="Hours" angle={-90} position="insideLeft" offset={15} dy={-10} />
-              </YAxis>
+              />
               <Tooltip 
                 formatter={(value: number, name: string) => [`${value.toFixed(1)}h`, t(`metrics.${name.toLowerCase().replace(' ', '.')}`) || name]}
                 labelStyle={{ color: '#374151' }}
@@ -328,13 +355,20 @@ const ProductionAnalytics = ({
                   boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                 }}
               />
-              <Legend />
+              <Legend 
+                verticalAlign="bottom" 
+                height={36}
+                wrapperStyle={{ paddingTop: '10px' }}
+              />
               <Bar dataKey="producing" stackId="a" fill="hsl(var(--status-producing-blue))" name={t('metrics.producing')} radius={[0, 0, 0, 0]} />
               <Bar dataKey="idle" stackId="a" fill="hsl(var(--kumulus-orange))" name={t('metrics.idle')} radius={[0, 0, 0, 0]} />
               <Bar dataKey="fullWater" stackId="a" fill="hsl(var(--kumulus-chambray))" name={t('metrics.full.water')} radius={[0, 0, 0, 0]} />
               <Bar dataKey="disconnected" stackId="a" fill="hsl(var(--status-disconnected-yellow))" name={t('metrics.disconnected')} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
+          <div className="text-center text-sm text-gray-600 dark:text-gray-400 mt-2">
+            {axisLabels.x}
+          </div>
         </CardContent>
       </Card>
 
