@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -110,11 +109,16 @@ const StatusSummaryCards = ({
   const averages = calculateAveragePercentages();
 
   const getPeriodText = () => {
+    const safeT = (key: string, fallback: string) => {
+      const translation = t(key);
+      return translation === key ? fallback : translation;
+    };
+
     switch (selectedPeriod) {
-      case 'daily': return t('analytics.period.daily.text') || 'this week';
-      case 'weekly': return t('analytics.period.weekly.text') || 'these weeks';
-      case 'monthly': return t('analytics.period.monthly.text') || 'these months';
-      case 'yearly': return t('analytics.period.yearly.text') || 'these years';
+      case 'daily': return safeT('analytics.period.daily.text', 'the last 7 days');
+      case 'weekly': return safeT('analytics.period.weekly.text', 'the last 4 weeks');
+      case 'monthly': return safeT('analytics.period.monthly.text', 'the last 3 months');
+      case 'yearly': return safeT('analytics.period.yearly.text', 'the last 2 years');
       default: return 'this period';
     }
   };
@@ -436,17 +440,18 @@ const ProductionAnalytics = ({
             </div>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-3 pb-2 px-3">
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={productionData} margin={{ top: 15, right: 25, left: 60, bottom: 25 }}>
+            <BarChart data={productionData} margin={{ top: 15, right: 25, left: 60, bottom: 8 }}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
                 dataKey="date"
                 className="text-sm"
                 tick={{ fontSize: 12 }}
-                tickMargin={5}
+                tickMargin={3}
+                height={28}
               >
-                <Label value={axisLabels.x} position="insideBottom" offset={-5} style={{ textAnchor: 'middle' }} />
+                <Label value={axisLabels.x} position="insideBottom" offset={-12} style={{ textAnchor: 'middle' }} />
               </XAxis>
               <YAxis 
                 className="text-sm"
@@ -501,17 +506,23 @@ const ProductionAnalytics = ({
             </div>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-3 pb-2 px-3">
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={currentStatusData} margin={{ top: 50, right: 25, left: 60, bottom: 25 }}>
+            <BarChart 
+              data={currentStatusData} 
+              margin={{ top: 42, right: 25, left: 60, bottom: 8 }}
+              barCategoryGap="20%"
+              barGap={2}
+            >
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
                 dataKey="date"
                 className="text-sm"
                 tick={{ fontSize: 12 }}
-                tickMargin={5}
+                tickMargin={3}
+                height={28}
               >
-                <Label value={axisLabels.x} position="insideBottom" offset={-5} style={{ textAnchor: 'middle' }} />
+                <Label value={axisLabels.x} position="insideBottom" offset={-12} style={{ textAnchor: 'middle' }} />
               </XAxis>
               <YAxis 
                 className="text-sm"
