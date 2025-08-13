@@ -81,7 +81,14 @@ const StatusSummaryCards = ({
 
   const calculateAveragePercentages = () => {
     const currentData = getCurrentStatusData();
+    
+    console.log('🧮 [STATUS SUMMARY] Calculating averages for period:', selectedPeriod, {
+      dataPoints: currentData.length,
+      sampleData: currentData[0] || 'No data'
+    });
+    
     if (currentData.length === 0) {
+      console.log('⚠️ [STATUS SUMMARY] No data for averages calculation');
       return { producing: 0, idle: 0, fullWater: 0, disconnected: 0 };
     }
 
@@ -94,16 +101,26 @@ const StatusSummaryCards = ({
 
     const grandTotal = totals.producing + totals.idle + totals.fullWater + totals.disconnected;
     
+    console.log('📊 [STATUS SUMMARY] Totals calculation:', {
+      rawTotals: totals,
+      grandTotal,
+      dataPointCount: currentData.length
+    });
+    
     if (grandTotal === 0) {
+      console.warn('⚠️ [STATUS SUMMARY] Grand total is 0, returning zero percentages');
       return { producing: 0, idle: 0, fullWater: 0, disconnected: 0 };
     }
 
-    return {
+    const result = {
       producing: Math.round((totals.producing / grandTotal) * 100),
       idle: Math.round((totals.idle / grandTotal) * 100),
       fullWater: Math.round((totals.fullWater / grandTotal) * 100),
       disconnected: Math.round((totals.disconnected / grandTotal) * 100)
     };
+
+    console.log('✅ [STATUS SUMMARY] Final averages:', result);
+    return result;
   };
 
   const averages = calculateAveragePercentages();
@@ -238,7 +255,6 @@ const getNiceTicks = (dataMax: number, targetTickCount: number = 5): { domain: [
     return { domain: [0, 10], ticks: [0, 2, 4, 6, 8, 10] };
   }
 
-  // Calculate nice step size
   const roughStep = dataMax / (targetTickCount - 1);
   const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
   const normalizedStep = roughStep / magnitude;
@@ -274,6 +290,14 @@ const ProductionAnalytics = ({
 }: ProductionAnalyticsProps) => {
   const { t, formatNumber } = useLocalization();
 
+  console.log('🎨 [PRODUCTION ANALYTICS] Rendering with data:', {
+    selectedPeriod,
+    statusDataPoints: statusData.length,
+    sampleStatusData: statusData[0] || 'No status data',
+    weeklyStatusDataPoints: weeklyStatusData.length,
+    monthlyStatusDataPoints: monthlyStatusData.length
+  });
+
   const formatNumberShort = (value: number): string => {
     if (value >= 1000) {
       return (value / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
@@ -305,7 +329,6 @@ const ProductionAnalytics = ({
     }
   };
 
-  // Convert status data from hours to percentages
   const convertToPercentages = (data: any[]) => {
     return data.map(item => {
       const total = item.producing + item.idle + item.fullWater + item.disconnected;
@@ -364,17 +387,20 @@ const ProductionAnalytics = ({
       default:
         rawData = statusData;
     }
+    
+    console.log('📊 [PRODUCTION ANALYTICS] Status data for period', selectedPeriod, ':', {
+      rawDataPoints: rawData.length,
+      sampleRawData: rawData[0] || 'No raw data'
+    });
+    
     return convertToPercentages(rawData);
   };
 
   const productionData = getProductionData();
   const currentStatusData = getStatusData();
 
-  // Calculate nice ticks and domains for both charts
   const productionMax = Math.max(...productionData.map(item => item.production));
   const productionTickData = getNiceTicks(productionMax);
-
-  // For status chart, use fixed domain [0, 100] with nice ticks
   const statusTickData = { domain: [0, 100] as [number, number], ticks: [0, 20, 40, 60, 80, 100] };
 
   const getPeriodLabel = () => {
