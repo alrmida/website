@@ -290,7 +290,7 @@ const ProductionAnalytics = ({
 }: ProductionAnalyticsProps) => {
   const { t, formatNumber } = useLocalization();
 
-  console.log('🎨 [PRODUCTION ANALYTICS] Rendering with hierarchical data:', {
+  console.log('🎨 [PRODUCTION ANALYTICS] Rendering with independent time period data:', {
     selectedPeriod,
     statusDataPoints: statusData.length,
     sampleStatusData: statusData[0] || 'No status data',
@@ -332,75 +332,46 @@ const ProductionAnalytics = ({
     }
   };
 
-  const convertToPercentages = (data: any[]) => {
-    return data.map(item => {
-      const total = item.producing + item.idle + item.fullWater + item.disconnected;
-      if (total === 0) {
-        return {
-          ...item,
-          producing: 0,
-          idle: 0,
-          fullWater: 0,
-          disconnected: 100
-        };
-      }
-      return {
-        ...item,
-        producing: Math.round((item.producing / total) * 100),
-        idle: Math.round((item.idle / total) * 100),
-        fullWater: Math.round((item.fullWater / total) * 100),
-        disconnected: Math.round((item.disconnected / total) * 100)
-      };
-    });
-  };
-
   const getStatusData = () => {
-    let rawData;
     switch (selectedPeriod) {
       case 'daily':
-        rawData = statusData;
-        break;
+        return statusData;
       case 'weekly':
-        rawData = weeklyStatusData.map(item => ({ 
+        return weeklyStatusData.map(item => ({ 
           date: item.week, 
           producing: item.producing,
           idle: item.idle,
           fullWater: item.fullWater,
           disconnected: item.disconnected
         }));
-        break;
       case 'monthly':
-        rawData = monthlyStatusData.map(item => ({ 
+        return monthlyStatusData.map(item => ({ 
           date: item.month, 
           producing: item.producing,
           idle: item.idle,
           fullWater: item.fullWater,
           disconnected: item.disconnected
         }));
-        break;
       case 'yearly':
-        rawData = yearlyStatusData.map(item => ({ 
+        return yearlyStatusData.map(item => ({ 
           date: item.year, 
           producing: item.producing,
           idle: item.idle,
           fullWater: item.fullWater,
           disconnected: item.disconnected
         }));
-        break;
       default:
-        rawData = statusData;
+        return statusData;
     }
-    
-    console.log('📊 [PRODUCTION ANALYTICS] Hierarchical status data for period', selectedPeriod, ':', {
-      rawDataPoints: rawData.length,
-      sampleRawData: rawData[0] || 'No raw data'
-    });
-    
-    return convertToPercentages(rawData);
   };
 
   const productionData = getProductionData();
   const currentStatusData = getStatusData();
+
+  console.log('📊 [PRODUCTION ANALYTICS] Current status data for period', selectedPeriod, ':', {
+    dataPoints: currentStatusData.length,
+    sampleData: currentStatusData[0] || 'No data'
+  });
 
   const productionMax = Math.max(...productionData.map(item => item.production));
   const productionTickData = getNiceTicks(productionMax);
@@ -500,16 +471,16 @@ const ProductionAnalytics = ({
         </CardHeader>
         <CardContent className="pt-3 pb-2 px-3">
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={productionData} margin={{ top: 15, right: 25, left: 60, bottom: 30 }}>
+            <BarChart data={productionData} margin={{ top: 15, right: 25, left: 60, bottom: 40 }}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
                 dataKey="date"
                 className="text-sm"
                 tick={{ fontSize: 12 }}
                 tickMargin={3}
-                height={30}
+                height={40}
               >
-                <Label value={axisLabels.x} position="insideBottom" offset={-20} style={{ textAnchor: 'middle' }} />
+                <Label value={axisLabels.x} position="insideBottom" offset={-25} style={{ textAnchor: 'middle' }} />
               </XAxis>
               <YAxis 
                 className="text-sm"
@@ -568,7 +539,7 @@ const ProductionAnalytics = ({
           <ResponsiveContainer width="100%" height={280}>
             <BarChart 
               data={currentStatusData} 
-              margin={{ top: 42, right: 25, left: 60, bottom: 30 }}
+              margin={{ top: 42, right: 25, left: 60, bottom: 40 }}
               barCategoryGap="20%"
               barGap={2}
             >
@@ -578,9 +549,9 @@ const ProductionAnalytics = ({
                 className="text-sm"
                 tick={{ fontSize: 12 }}
                 tickMargin={3}
-                height={30}
+                height={40}
               >
-                <Label value={axisLabels.x} position="insideBottom" offset={-20} style={{ textAnchor: 'middle' }} />
+                <Label value={axisLabels.x} position="insideBottom" offset={-25} style={{ textAnchor: 'middle' }} />
               </XAxis>
               <YAxis 
                 className="text-sm"
