@@ -290,12 +290,15 @@ const ProductionAnalytics = ({
 }: ProductionAnalyticsProps) => {
   const { t, formatNumber } = useLocalization();
 
-  console.log('🎨 [PRODUCTION ANALYTICS] Rendering with data:', {
+  console.log('🎨 [PRODUCTION ANALYTICS] Rendering with hierarchical data:', {
     selectedPeriod,
     statusDataPoints: statusData.length,
     sampleStatusData: statusData[0] || 'No status data',
     weeklyStatusDataPoints: weeklyStatusData.length,
-    monthlyStatusDataPoints: monthlyStatusData.length
+    monthlyStatusDataPoints: monthlyStatusData.length,
+    yearlyStatusDataPoints: yearlyStatusData.length,
+    sampleWeeklyData: weeklyStatusData[0] || 'No weekly data',
+    sampleMonthlyData: monthlyStatusData[0] || 'No monthly data'
   });
 
   const formatNumberShort = (value: number): string => {
@@ -388,7 +391,7 @@ const ProductionAnalytics = ({
         rawData = statusData;
     }
     
-    console.log('📊 [PRODUCTION ANALYTICS] Status data for period', selectedPeriod, ':', {
+    console.log('📊 [PRODUCTION ANALYTICS] Hierarchical status data for period', selectedPeriod, ':', {
       rawDataPoints: rawData.length,
       sampleRawData: rawData[0] || 'No raw data'
     });
@@ -497,16 +500,16 @@ const ProductionAnalytics = ({
         </CardHeader>
         <CardContent className="pt-3 pb-2 px-3">
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={productionData} margin={{ top: 15, right: 25, left: 60, bottom: 8 }}>
+            <BarChart data={productionData} margin={{ top: 15, right: 25, left: 60, bottom: 30 }}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis 
                 dataKey="date"
                 className="text-sm"
                 tick={{ fontSize: 12 }}
                 tickMargin={3}
-                height={28}
+                height={30}
               >
-                <Label value={axisLabels.x} position="insideBottom" offset={-12} style={{ textAnchor: 'middle' }} />
+                <Label value={axisLabels.x} position="insideBottom" offset={-20} style={{ textAnchor: 'middle' }} />
               </XAxis>
               <YAxis 
                 className="text-sm"
@@ -565,7 +568,7 @@ const ProductionAnalytics = ({
           <ResponsiveContainer width="100%" height={280}>
             <BarChart 
               data={currentStatusData} 
-              margin={{ top: 42, right: 25, left: 60, bottom: 8 }}
+              margin={{ top: 42, right: 25, left: 60, bottom: 30 }}
               barCategoryGap="20%"
               barGap={2}
             >
@@ -575,9 +578,9 @@ const ProductionAnalytics = ({
                 className="text-sm"
                 tick={{ fontSize: 12 }}
                 tickMargin={3}
-                height={28}
+                height={30}
               >
-                <Label value={axisLabels.x} position="insideBottom" offset={-12} style={{ textAnchor: 'middle' }} />
+                <Label value={axisLabels.x} position="insideBottom" offset={-20} style={{ textAnchor: 'middle' }} />
               </XAxis>
               <YAxis 
                 className="text-sm"

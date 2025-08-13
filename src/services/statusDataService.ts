@@ -1,6 +1,12 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { calculateStatusPercentagesForDay } from '@/utils/statusCalculations';
+import { 
+  aggregateWeeklyFromDaily, 
+  aggregateMonthlyFromWeekly, 
+  aggregateYearlyFromMonthly,
+  type DailyStatusData
+} from '@/utils/statusAggregation';
 
 export interface StatusData {
   date: string;
@@ -59,22 +65,17 @@ export const fetchStatusData = async (machineId: string) => {
   }
 
   try {
-    // Calculate date ranges
+    // Calculate date ranges for daily data (last 7 days)
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const fourWeeksAgo = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000);
-    const threeMonthsAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-    const twoYearsAgo = new Date(now.getTime() - 730 * 24 * 60 * 60 * 1000);
 
     console.log('📅 [STATUS SERVICE] Date ranges:', {
       machineId,
       sevenDaysAgo: sevenDaysAgo.toISOString(),
-      fourWeeksAgo: fourWeeksAgo.toISOString(),
-      threeMonthsAgo: threeMonthsAgo.toISOString(),
-      twoYearsAgo: twoYearsAgo.toISOString()
+      now: now.toISOString()
     });
 
-    // Fetch daily status data (last 7 days)
+    // Fetch raw data for status calculations (last 7 days for daily view)
     const dailyQuery = supabase
       .from('raw_machine_data')
       .select('timestamp_utc, producing_water, compressor_on, full_tank')
@@ -129,7 +130,7 @@ export const fetchStatusData = async (machineId: string) => {
     });
 
     // Calculate status percentages for each day
-    const statusData: StatusData[] = [];
+    const statusData: DailyStatusData[] = [];
     const last7Days = Array.from({ length: 7 }, (_, i) => {
       const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
       return date.toISOString().split('T')[0];
@@ -151,134 +152,29 @@ export const fetchStatusData = async (machineId: string) => {
       });
     }
 
-    // Fetch weekly data (last 4 weeks) with similar debugging
-    const weeklyQuery = supabase
-      .from('raw_machine_data')
-      .select('timestamp_utc, producing_water, compressor_on, full_tank')
-      .eq('machine_id', machineId)
-      .gte('timestamp_utc', fourWeeksAgo.toISOString())
-      .order('timestamp_utc', { ascending: false });
+    console.log('🔄 [STATUS SERVICE] Starting hierarchical aggregation from daily data:', {
+      dailyDataPoints: statusData.length,
+      sampleDaily: statusData[0] || 'No daily data'
+    });
 
-    const weeklyResult = await weeklyQuery;
-    debugStatusQuery(machineId, 'Weekly Status Query', weeklyQuery, weeklyResult);
+    // Use hierarchical aggregation for other time periods
+    const weeklyStatusData = aggregateWeeklyFromDaily(statusData);
+    console.log('📊 [STATUS SERVICE] Weekly aggregation complete:', {
+      weeklyPoints: weeklyStatusData.length,
+      sampleWeekly: weeklyStatusData[0] || 'No weekly data'
+    });
 
-    // Process weekly data with enhanced validation
-    const weeklyRecords = weeklyResult.data || [];
-    console.log(`📊 [STATUS SERVICE] Processing ${weeklyRecords.length} weekly records for machine ${machineId}`);
+    const monthlyStatusData = aggregateMonthlyFromWeekly(weeklyStatusData);
+    console.log('📊 [STATUS SERVICE] Monthly aggregation complete:', {
+      monthlyPoints: monthlyStatusData.length,
+      sampleMonthly: monthlyStatusData[0] || 'No monthly data'
+    });
 
-    // Group by weeks
-    const weeklyGroups = weeklyRecords.reduce((acc: Record<string, any[]>, record) => {
-      const date = new Date(record.timestamp_utc);
-      const startOfWeek = new Date(date.getFullYear(), date.getMonth(), date.getDate() - date.getDay());
-      const weekKey = startOfWeek.toISOString().split('T')[0];
-      
-      if (!acc[weekKey]) {
-        acc[weekKey] = [];
-      }
-      acc[weekKey].push(record);
-      return acc;
-    }, {});
-
-    const weeklyStatusData: WeeklyStatusData[] = [];
-    const last4Weeks = Array.from({ length: 4 }, (_, i) => {
-      const date = new Date(now.getTime() - (i * 7) * 24 * 60 * 60 * 1000);
-      const startOfWeek = new Date(date.getFullYear(), date.getMonth(), date.getDate() - date.getDay());
-      return startOfWeek.toISOString().split('T')[0];
-    }).reverse();
-
-    for (const weekStart of last4Weeks) {
-      const weekRecords = weeklyGroups[weekStart] || [];
-      const percentages = calculateStatusPercentagesForDay(weekRecords);
-      
-      console.log(`📈 [STATUS SERVICE] Week ${weekStart} for machine ${machineId}:`, {
-        recordCount: weekRecords.length,
-        percentages
-      });
-
-      weeklyStatusData.push({
-        week: new Date(weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        ...percentages
-      });
-    }
-
-    // Fetch monthly data (last 3 months)
-    const monthlyQuery = supabase
-      .from('raw_machine_data')
-      .select('timestamp_utc, producing_water, compressor_on, full_tank')
-      .eq('machine_id', machineId)
-      .gte('timestamp_utc', threeMonthsAgo.toISOString())
-      .order('timestamp_utc', { ascending: false });
-
-    const monthlyResult = await monthlyQuery;
-    debugStatusQuery(machineId, 'Monthly Status Query', monthlyQuery, monthlyResult);
-
-    // Process monthly data
-    const monthlyRecords = monthlyResult.data || [];
-    const monthlyGroups = monthlyRecords.reduce((acc: Record<string, any[]>, record) => {
-      const date = new Date(record.timestamp_utc);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      
-      if (!acc[monthKey]) {
-        acc[monthKey] = [];
-      }
-      acc[monthKey].push(record);
-      return acc;
-    }, {});
-
-    const monthlyStatusData: MonthlyStatusData[] = [];
-    const last3Months = Array.from({ length: 3 }, (_, i) => {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-    }).reverse();
-
-    for (const monthKey of last3Months) {
-      const monthRecords = monthlyGroups[monthKey] || [];
-      const percentages = calculateStatusPercentagesForDay(monthRecords);
-      
-      const [year, month] = monthKey.split('-');
-      const monthName = new Date(parseInt(year), parseInt(month) - 1, 1)
-        .toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-
-      monthlyStatusData.push({
-        month: monthName,
-        ...percentages
-      });
-    }
-
-    // Fetch yearly data (last 2 years)
-    const yearlyQuery = supabase
-      .from('raw_machine_data')
-      .select('timestamp_utc, producing_water, compressor_on, full_tank')
-      .eq('machine_id', machineId)
-      .gte('timestamp_utc', twoYearsAgo.toISOString())
-      .order('timestamp_utc', { ascending: false });
-
-    const yearlyResult = await yearlyQuery;
-    debugStatusQuery(machineId, 'Yearly Status Query', yearlyQuery, yearlyResult);
-
-    // Process yearly data
-    const yearlyRecords = yearlyResult.data || [];
-    const yearlyGroups = yearlyRecords.reduce((acc: Record<string, any[]>, record) => {
-      const year = new Date(record.timestamp_utc).getFullYear().toString();
-      if (!acc[year]) {
-        acc[year] = [];
-      }
-      acc[year].push(record);
-      return acc;
-    }, {});
-
-    const yearlyStatusData: YearlyStatusData[] = [];
-    const last2Years = [now.getFullYear() - 1, now.getFullYear()];
-
-    for (const year of last2Years) {
-      const yearRecords = yearlyGroups[year.toString()] || [];
-      const percentages = calculateStatusPercentagesForDay(yearRecords);
-      
-      yearlyStatusData.push({
-        year: year.toString(),
-        ...percentages
-      });
-    }
+    const yearlyStatusData = aggregateYearlyFromMonthly(monthlyStatusData);
+    console.log('📊 [STATUS SERVICE] Yearly aggregation complete:', {
+      yearlyPoints: yearlyStatusData.length,
+      sampleYearly: yearlyStatusData[0] || 'No yearly data'
+    });
 
     const result = {
       statusData,
@@ -287,16 +183,16 @@ export const fetchStatusData = async (machineId: string) => {
       yearlyStatusData
     };
 
-    console.log('✅ [STATUS SERVICE] Final status data summary for machine', machineId, ':', {
+    console.log('✅ [STATUS SERVICE] Final hierarchical status data summary for machine', machineId, ':', {
       dailyPoints: statusData.length,
       weeklyPoints: weeklyStatusData.length,
       monthlyPoints: monthlyStatusData.length,
       yearlyPoints: yearlyStatusData.length,
       sampleDaily: statusData[0] || 'No daily data',
-      totalDailyRecords: dailyRecords.length,
-      totalWeeklyRecords: weeklyRecords.length,
-      totalMonthlyRecords: monthlyRecords.length,
-      totalYearlyRecords: yearlyRecords.length
+      sampleWeekly: weeklyStatusData[0] || 'No weekly data',
+      sampleMonthly: monthlyStatusData[0] || 'No monthly data',
+      sampleYearly: yearlyStatusData[0] || 'No yearly data',
+      totalDailyRecords: dailyRecords.length
     });
 
     return result;
