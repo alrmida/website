@@ -48,6 +48,8 @@ export const fetchProductionData = async (machineId: string) => {
 
   console.log('📅 [PRODUCTION SERVICE] Fetching events since:', twoYearsAgo.toISOString());
 
+  console.log('🚀 [PRODUCTION SERVICE] About to execute recent events query...');
+  
   const { data: productionEvents, error: productionError } = await supabase
     .from('water_production_events')
     .select('production_liters, timestamp_utc, event_type')
@@ -56,6 +58,7 @@ export const fetchProductionData = async (machineId: string) => {
     .gte('timestamp_utc', twoYearsAgo.toISOString())
     .order('timestamp_utc', { ascending: true });
 
+  console.log('✅ [PRODUCTION SERVICE] Query completed!');
   console.log('📊 [PRODUCTION SERVICE] Recent production events query result:', { 
     count: productionEvents?.length || 0, 
     error: productionError,
