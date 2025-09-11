@@ -1,5 +1,8 @@
 
 // Hierarchical status aggregation utilities
+// Consistent month names for UTC formatting
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 export interface StatusPercentages {
   producing: number;
   idle: number;
@@ -111,7 +114,7 @@ export const aggregateDailyToWeekly = (dailyPoints: DailyStatusPoint[]): WeeklyS
     // Get start of week (Sunday)
     const startOfWeek = new Date(date);
     startOfWeek.setDate(date.getDate() - date.getDay());
-    const weekKey = startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const weekKey = `${startOfWeek.getUTCDate().toString().padStart(2, '0')} ${MONTHS[startOfWeek.getUTCMonth()]}`;
     
     if (!weeklyGroups[weekKey]) {
       weeklyGroups[weekKey] = [];
@@ -154,7 +157,7 @@ export const aggregateWeeklyToMonthly = (weeklyPoints: WeeklyStatusPoint[]): Mon
   
   weeklyPoints.forEach(point => {
     const date = new Date(point.week + ', ' + new Date().getFullYear());
-    const monthKey = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    const monthKey = `${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
     
     if (!monthlyGroups[monthKey]) {
       monthlyGroups[monthKey] = [];
@@ -234,22 +237,27 @@ export const generateTimePeriodLabels = () => {
   
   // Generate last 7 days
   const dailyLabels = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const date = new Date();
+    date.setUTCDate(date.getUTCDate() - i);
+    return `${date.getUTCDate().toString().padStart(2, '0')} ${MONTHS[date.getUTCMonth()]}`;
   }).reverse();
   
   // Generate last 4 weeks
   const weeklyLabels = Array.from({ length: 4 }, (_, i) => {
-    const weekStart = new Date(now.getTime() - (i * 7) * 24 * 60 * 60 * 1000);
-    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-    return weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const date = new Date();
+    date.setUTCDate(date.getUTCDate() - (i * 7));
+    const weekStart = new Date(date);
+    const day = weekStart.getUTCDay();
+    const diff = weekStart.getUTCDate() - day;
+    weekStart.setUTCDate(diff);
+    return `${weekStart.getUTCDate().toString().padStart(2, '0')} ${MONTHS[weekStart.getUTCMonth()]}`;
   }).reverse();
   
   // Generate last 3 months
   const monthlyLabels = Array.from({ length: 3 }, (_, i) => {
     const date = new Date();
-    date.setMonth(date.getMonth() - i);
-    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    date.setUTCMonth(date.getUTCMonth() - i);
+    return `${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
   }).reverse();
   
   // Generate last 2 years

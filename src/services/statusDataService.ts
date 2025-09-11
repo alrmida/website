@@ -9,6 +9,9 @@ import {
   DailyStatusPoint
 } from '@/utils/statusAggregation';
 
+// Consistent month names for UTC formatting
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 export interface StatusData {
   date: string;
   producing: number;
@@ -120,10 +123,8 @@ const calculateDailyStatusPoints = (rawRecords: any[], daysBack: number): DailyS
     const dayRecords = dailyGroups[dateKey];
     const percentages = calculateStatusPercentagesForDay(dayRecords);
     
-    const displayDate = new Date(dateKey).toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric' 
-    });
+    const date = new Date(dateKey);
+    const displayDate = `${date.getUTCDate().toString().padStart(2, '0')} ${MONTHS[date.getUTCMonth()]}`;
     
     dailyStatusPoints.push({
       date: displayDate,
