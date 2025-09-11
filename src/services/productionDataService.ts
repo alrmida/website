@@ -12,6 +12,9 @@ interface YearlyProductionData {
   production: number;
 }
 
+// Consistent month names for UTC formatting
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 export const fetchProductionData = async (machineId: string) => {
   // Fetch ALL production events for total calculation
   const { data: allProductionEvents, error: allProductionError } = await supabase
@@ -55,16 +58,16 @@ export const fetchProductionData = async (machineId: string) => {
       const date = new Date(event.timestamp_utc);
       
       // Daily grouping (using UTC)
-      const dayKey = `${date.getUTCDate().toString().padStart(2, '0')} ${date.toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' })}`;
+      const dayKey = `${date.getUTCDate().toString().padStart(2, '0')} ${MONTHS[date.getUTCMonth()]}`;
       dailyProduction.set(dayKey, (dailyProduction.get(dayKey) || 0) + event.production_liters);
       
       // Weekly grouping (ISO week, using UTC)
       const weekStart = getWeekStartUTC(date);
-      const weekKey = `${weekStart.getUTCDate().toString().padStart(2, '0')} ${weekStart.toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' })}`;
+      const weekKey = `${weekStart.getUTCDate().toString().padStart(2, '0')} ${MONTHS[weekStart.getUTCMonth()]}`;
       weeklyProduction.set(weekKey, (weeklyProduction.get(weekKey) || 0) + event.production_liters);
       
       // Monthly grouping (using UTC)
-      const monthKey = date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+      const monthKey = `${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
       monthlyProduction.set(monthKey, (monthlyProduction.get(monthKey) || 0) + event.production_liters);
       
       // Yearly grouping (using UTC)
@@ -78,7 +81,7 @@ export const fetchProductionData = async (machineId: string) => {
   for (let i = 6; i >= 0; i--) {
     const date = new Date();
     date.setUTCDate(date.getUTCDate() - i);
-    const dayKey = `${date.getUTCDate().toString().padStart(2, '0')} ${date.toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' })}`;
+    const dayKey = `${date.getUTCDate().toString().padStart(2, '0')} ${MONTHS[date.getUTCMonth()]}`;
     dailyProductionData.push({
       date: dayKey,
       production: Math.round((dailyProduction.get(dayKey) || 0) * 10) / 10
@@ -91,7 +94,7 @@ export const fetchProductionData = async (machineId: string) => {
     const date = new Date();
     date.setUTCDate(date.getUTCDate() - (i * 7));
     const weekStart = getWeekStartUTC(date);
-    const weekKey = `${weekStart.getUTCDate().toString().padStart(2, '0')} ${weekStart.toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' })}`;
+    const weekKey = `${weekStart.getUTCDate().toString().padStart(2, '0')} ${MONTHS[weekStart.getUTCMonth()]}`;
     weeklyProductionData.push({
       week: weekKey,
       production: Math.round((weeklyProduction.get(weekKey) || 0) * 10) / 10
@@ -103,7 +106,7 @@ export const fetchProductionData = async (machineId: string) => {
   for (let i = 2; i >= 0; i--) {
     const date = new Date();
     date.setUTCMonth(date.getUTCMonth() - i);
-    const monthKey = date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+    const monthKey = `${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
     monthlyProductionData.push({
       month: monthKey,
       production: Math.round((monthlyProduction.get(monthKey) || 0) * 10) / 10
