@@ -79,8 +79,7 @@ export const fetchProductionData = async (machineId: string) => {
   // Create daily production array (last 7 days, using UTC)
   const dailyProductionData: ProductionData[] = [];
   for (let i = 6; i >= 0; i--) {
-    const date = new Date();
-    date.setUTCDate(date.getUTCDate() - i);
+    const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
     const dayKey = `${date.getUTCDate().toString().padStart(2, '0')} ${MONTHS[date.getUTCMonth()]}`;
     dailyProductionData.push({
       date: dayKey,
@@ -91,8 +90,7 @@ export const fetchProductionData = async (machineId: string) => {
   // Create weekly production array (last 4 weeks, using UTC)
   const weeklyProductionData: WeeklyProductionData[] = [];
   for (let i = 3; i >= 0; i--) {
-    const date = new Date();
-    date.setUTCDate(date.getUTCDate() - (i * 7));
+    const date = new Date(Date.now() - (i * 7) * 24 * 60 * 60 * 1000);
     const weekStart = getWeekStartUTC(date);
     const weekKey = `${weekStart.getUTCDate().toString().padStart(2, '0')} ${MONTHS[weekStart.getUTCMonth()]}`;
     weeklyProductionData.push({
@@ -104,8 +102,8 @@ export const fetchProductionData = async (machineId: string) => {
   // Create monthly production array (last 3 months, using UTC)
   const monthlyProductionData: MonthlyProductionData[] = [];
   for (let i = 2; i >= 0; i--) {
-    const date = new Date();
-    date.setUTCMonth(date.getUTCMonth() - i);
+    const now = new Date();
+    const date = new Date(now.getUTCFullYear(), now.getUTCMonth() - i, 1);
     const monthKey = `${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
     monthlyProductionData.push({
       month: monthKey,
@@ -116,8 +114,8 @@ export const fetchProductionData = async (machineId: string) => {
   // Create yearly production array (last 2 years, using UTC)
   const yearlyProductionData: YearlyProductionData[] = [];
   for (let i = 1; i >= 0; i--) {
-    const date = new Date();
-    date.setUTCFullYear(date.getUTCFullYear() - i);
+    const now = new Date();
+    const date = new Date(now.getUTCFullYear() - i, 0, 1);
     const yearKey = date.getUTCFullYear().toString();
     yearlyProductionData.push({
       year: yearKey,
