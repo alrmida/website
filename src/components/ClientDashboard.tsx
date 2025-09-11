@@ -36,7 +36,7 @@ const ClientDashboard = () => {
   } = useDashboardData(selectedMachine);
 
   // Get comprehensive production analytics
-  const { data: analyticsData, isLoading: analyticsLoading } = useProductionAnalytics(
+  const { data: analyticsData, isLoading: analyticsLoading, error: analyticsError } = useProductionAnalytics(
     selectedMachine?.machine_id
   );
 
@@ -151,17 +151,28 @@ const ClientDashboard = () => {
 
         {/* Production Analytics - Charts and Visualizations */}
         <div className="mb-6 sm:mb-8">
+          {(() => {
+            console.log('🎨 [CLIENT DASHBOARD] Rendering ProductionAnalytics with data:', {
+              hasAnalyticsData: !!analyticsData,
+              dailyPoints: analyticsData?.dailyProductionData?.length || 0,
+              totalProduction: totalWaterProduced,
+              analyticsLoading: analyticsLoading,
+              analyticsError,
+              sampleDaily: analyticsData?.dailyProductionData?.slice(0, 3)
+            });
+            return null;
+          })()}
           <ProductionAnalytics
             selectedPeriod={selectedPeriod}
             onPeriodChange={setSelectedPeriod}
-            dailyProductionData={analyticsData.dailyProductionData}
-            weeklyProductionData={analyticsData.weeklyProductionData}
-            monthlyProductionData={analyticsData.monthlyProductionData}
-            yearlyProductionData={analyticsData.yearlyProductionData}
-            statusData={analyticsData.statusData}
-            weeklyStatusData={analyticsData.weeklyStatusData}
-            monthlyStatusData={analyticsData.monthlyStatusData}
-            yearlyStatusData={analyticsData.yearlyStatusData}
+            dailyProductionData={analyticsData?.dailyProductionData || []}
+            weeklyProductionData={analyticsData?.weeklyProductionData || []}
+            monthlyProductionData={analyticsData?.monthlyProductionData || []}
+            yearlyProductionData={analyticsData?.yearlyProductionData || []}
+            statusData={analyticsData?.statusData || []}
+            weeklyStatusData={analyticsData?.weeklyStatusData || []}
+            monthlyStatusData={analyticsData?.monthlyStatusData || []}
+            yearlyStatusData={analyticsData?.yearlyStatusData || []}
           />
         </div>
       </main>

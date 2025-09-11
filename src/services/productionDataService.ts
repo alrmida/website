@@ -16,6 +16,8 @@ interface YearlyProductionData {
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export const fetchProductionData = async (machineId: string) => {
+  console.log('🔍 [PRODUCTION SERVICE] Fetching production data for machine:', machineId);
+  
   // Fetch ALL production events for total calculation
   const { data: allProductionEvents, error: allProductionError } = await supabase
     .from('water_production_events')
@@ -23,7 +25,14 @@ export const fetchProductionData = async (machineId: string) => {
     .eq('machine_id', machineId)
     .eq('event_type', 'production');
 
+  console.log('📊 [PRODUCTION SERVICE] All production events query result:', { 
+    count: allProductionEvents?.length || 0, 
+    error: allProductionError,
+    sampleEvent: allProductionEvents?.[0] 
+  });
+
   if (allProductionError) {
+    console.error('❌ [PRODUCTION SERVICE] Error fetching all production events:', allProductionError);
     throw allProductionError;
   }
 
@@ -31,9 +40,13 @@ export const fetchProductionData = async (machineId: string) => {
     ?.filter(event => event.production_liters > 0)
     .reduce((sum, event) => sum + event.production_liters, 0) || 0;
 
+  console.log('🎯 [PRODUCTION SERVICE] Total all-time production:', totalAllTimeProduction);
+
   // Fetch extended data (last 2 years for comprehensive coverage)
   const twoYearsAgo = new Date();
   twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+
+  console.log('📅 [PRODUCTION SERVICE] Fetching events since:', twoYearsAgo.toISOString());
 
   const { data: productionEvents, error: productionError } = await supabase
     .from('water_production_events')
@@ -43,7 +56,14 @@ export const fetchProductionData = async (machineId: string) => {
     .gte('timestamp_utc', twoYearsAgo.toISOString())
     .order('timestamp_utc', { ascending: true });
 
+  console.log('📊 [PRODUCTION SERVICE] Recent production events query result:', { 
+    count: productionEvents?.length || 0, 
+    error: productionError,
+    sampleEvents: productionEvents?.slice(-3) // Show last 3 events
+  });
+
   if (productionError) {
+    console.error('❌ [PRODUCTION SERVICE] Error fetching recent production events:', productionError);
     throw productionError;
   }
 
@@ -76,16 +96,30 @@ export const fetchProductionData = async (machineId: string) => {
     }
   });
 
+  console.log('🗂️ [PRODUCTION SERVICE] Daily production map after processing:', {
+    mapSize: dailyProduction.size,
+    entries: Array.from(dailyProduction.entries()),
+    sampleEntries: Array.from(dailyProduction.entries()).slice(0, 5)
+  });
+
   // Create daily production array (last 7 days, using UTC)
   const dailyProductionData: ProductionData[] = [];
+  console.log('📅 [PRODUCTION SERVICE] Generating daily production data for last 7 days...');
+  
   for (let i = 6; i >= 0; i--) {
     const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
     const dayKey = `${date.getUTCDate().toString().padStart(2, '0')} ${MONTHS[date.getUTCMonth()]}`;
+    const production = Math.round((dailyProduction.get(dayKey) || 0) * 10) / 10;
+    
+    console.log(`📊 [PRODUCTION SERVICE] Day ${i} (${dayKey}): ${production}L (from map: ${dailyProduction.get(dayKey) || 0})`);
+    
     dailyProductionData.push({
       date: dayKey,
-      production: Math.round((dailyProduction.get(dayKey) || 0) * 10) / 10
+      production
     });
   }
+  
+  console.log('✅ [PRODUCTION SERVICE] Final daily production data:', dailyProductionData);
 
   // Create weekly production array (last 4 weeks, using UTC)
   const weeklyProductionData: WeeklyProductionData[] = [];
@@ -123,13 +157,21 @@ export const fetchProductionData = async (machineId: string) => {
     });
   }
 
-  return {
+  const result = {
     dailyProductionData,
     weeklyProductionData,
     monthlyProductionData,
     yearlyProductionData,
     totalAllTimeProduction: Math.round(totalAllTimeProduction * 10) / 10
   };
+  
+  console.log('🚀 [PRODUCTION SERVICE] Final result:', {
+    dailyPoints: result.dailyProductionData.length,
+    totalProduction: result.totalAllTimeProduction,
+    sampleDaily: result.dailyProductionData.slice(0, 3)
+  });
+  
+  return result;
 };
 
 // Helper function to get the start of the week (Monday) using UTC
