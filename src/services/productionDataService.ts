@@ -73,13 +73,24 @@ export const fetchProductionData = async (machineId: string) => {
   const monthlyProduction = new Map<string, number>();
   const yearlyProduction = new Map<string, number>();
 
-  productionEvents?.forEach(event => {
+  productionEvents?.forEach((event, index) => {
+    console.log(`🔍 [PRODUCTION SERVICE] Processing event ${index}:`, {
+      timestamp: event.timestamp_utc,
+      production: event.production_liters,
+      eventType: event.event_type,
+      isPositive: event.production_liters > 0
+    });
+
     if (event.production_liters > 0) {
       const date = new Date(event.timestamp_utc);
       
       // Daily grouping (using UTC)
       const dayKey = `${date.getUTCDate().toString().padStart(2, '0')} ${MONTHS[date.getUTCMonth()]}`;
-      dailyProduction.set(dayKey, (dailyProduction.get(dayKey) || 0) + event.production_liters);
+      const previousDailyValue = dailyProduction.get(dayKey) || 0;
+      const newDailyValue = previousDailyValue + event.production_liters;
+      dailyProduction.set(dayKey, newDailyValue);
+      
+      console.log(`📊 [PRODUCTION SERVICE] Daily aggregation - Key: "${dayKey}", Previous: ${previousDailyValue}, Added: ${event.production_liters}, New Total: ${newDailyValue}`);
       
       // Weekly grouping (ISO week, using UTC)
       const weekStart = getWeekStartUTC(date);
@@ -98,8 +109,13 @@ export const fetchProductionData = async (machineId: string) => {
 
   console.log('🗂️ [PRODUCTION SERVICE] Daily production map after processing:', {
     mapSize: dailyProduction.size,
-    entries: Array.from(dailyProduction.entries()),
-    sampleEntries: Array.from(dailyProduction.entries()).slice(0, 5)
+    allEntries: Array.from(dailyProduction.entries()),
+    totalMapProduction: Array.from(dailyProduction.values()).reduce((sum, val) => sum + val, 0)
+  });
+
+  console.log('🗂️ [PRODUCTION SERVICE] Weekly production map after processing:', {
+    mapSize: weeklyProduction.size,
+    allEntries: Array.from(weeklyProduction.entries())
   });
 
   // Create daily production array (last 7 days, using UTC)
@@ -109,9 +125,10 @@ export const fetchProductionData = async (machineId: string) => {
   for (let i = 6; i >= 0; i--) {
     const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
     const dayKey = `${date.getUTCDate().toString().padStart(2, '0')} ${MONTHS[date.getUTCMonth()]}`;
-    const production = Math.round((dailyProduction.get(dayKey) || 0) * 10) / 10;
+    const mapValue = dailyProduction.get(dayKey) || 0;
+    const production = Math.round(mapValue * 10) / 10;
     
-    console.log(`📊 [PRODUCTION SERVICE] Day ${i} (${dayKey}): ${production}L (from map: ${dailyProduction.get(dayKey) || 0})`);
+    console.log(`🔍 [PRODUCTION SERVICE] Daily lookup for day ${i} - Key: "${dayKey}", Map Value: ${mapValue}, Final Production: ${production}, Date Object: ${date.toISOString()}`);
     
     dailyProductionData.push({
       date: dayKey,
