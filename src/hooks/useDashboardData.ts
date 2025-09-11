@@ -13,6 +13,7 @@ export const useDashboardData = (selectedMachine: MachineWithClient | null) => {
   const { data: liveData, isLoading: dataLoading, error: dataError } = useLiveMachineData(selectedMachine);
   
   // Fetch real production analytics data
+  console.log('🎯 [DASHBOARD DATA] About to call useProductionAnalytics with machineId:', selectedMachine?.machine_id);
   const { data: analyticsData, isLoading: analyticsLoading } = useProductionAnalytics(selectedMachine?.machine_id);
 
   const dashboardData = useMemo(() => {

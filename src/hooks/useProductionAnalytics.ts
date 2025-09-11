@@ -5,6 +5,8 @@ import { fetchProductionData } from '@/services/productionDataService';
 import { fetchStatusData } from '@/services/statusDataService';
 
 export const useProductionAnalytics = (machineId?: string) => {
+  console.log('🚀 [ANALYTICS HOOK] Hook called with machineId:', { machineId, type: typeof machineId });
+  
   const [data, setData] = useState<ProductionAnalyticsData>({
     dailyProductionData: [],
     weeklyProductionData: [],
@@ -27,6 +29,9 @@ export const useProductionAnalytics = (machineId?: string) => {
       setIsLoading(false);
       return;
     }
+    
+    console.log('🔍 [ANALYTICS HOOK] About to call fetchProductionData service...');
+    console.log('📦 [ANALYTICS HOOK] fetchProductionData function:', typeof fetchProductionData);
 
     // Validate machine ID format
     if (typeof machineId !== 'string' || machineId.trim() === '') {
@@ -45,11 +50,21 @@ export const useProductionAnalytics = (machineId?: string) => {
 
     try {
       console.log('📡 [ANALYTICS HOOK] Fetching production and status data...');
+      console.log('🔄 [ANALYTICS HOOK] Calling fetchProductionData with machineId:', machineId);
+      
+      const productionDataPromise = fetchProductionData(machineId);
+      console.log('🔄 [ANALYTICS HOOK] fetchProductionData call initiated, awaiting result...');
       
       const [productionData, statusData] = await Promise.all([
-        fetchProductionData(machineId),
+        productionDataPromise,
         fetchStatusData(machineId)
       ]);
+      
+      console.log('🎯 [ANALYTICS HOOK] fetchProductionData completed with result:', {
+        hasData: !!productionData,
+        type: typeof productionData,
+        keys: productionData ? Object.keys(productionData) : 'no data'
+      });
 
       console.log('📊 [ANALYTICS HOOK] Data fetch results:', {
         machineId,
