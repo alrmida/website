@@ -126,7 +126,7 @@ export const useProductionAnalytics = (machineId?: string) => {
       console.log('🛑 [ANALYTICS HOOK] No machine ID, setting loading to false');
       setIsLoading(false);
     }
-  }, [machineId, fetchProductionAnalytics]); // Include fetchProductionAnalytics in dependencies
+  }, [machineId]); // Remove fetchProductionAnalytics to prevent dependency loop
 
   // Set up automatic polling every 2 minutes
   useEffect(() => {
@@ -148,7 +148,7 @@ export const useProductionAnalytics = (machineId?: string) => {
       console.log('🛑 [ANALYTICS HOOK] Cleaning up production analytics polling for machine:', machineId);
       clearInterval(interval);
     };
-  }, [machineId, fetchProductionAnalytics]); // Include fetchProductionAnalytics in dependencies
+  }, [machineId, fetchProductionAnalytics]); // Keep fetchProductionAnalytics for polling setup
 
   return { data, isLoading, error, refetch: fetchProductionAnalytics };
 };
