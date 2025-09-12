@@ -54,13 +54,23 @@ export const useProductionAnalytics = (machineId?: string) => {
     setError(null);
     
     try {
+      // EXTREME FORCE SERVICE EXECUTION WITH MAXIMUM LOGGING
       console.log('📡 [ANALYTICS HOOK] FORCING SERVICE CALLS - No conditions, just execute');
       console.log('🔄 [ANALYTICS HOOK] Calling services with machineId:', machineId);
+      console.log('🚨 [ANALYTICS HOOK] ABOUT TO IMPORT AND CALL fetchProductionData FUNCTION');
       
-      // FORCE SERVICE EXECUTION - No Promise.all, individual calls with immediate logging
+      // FORCE SERVICE EXECUTION - Individual calls with MAXIMUM logging
       console.log('🚀 [ANALYTICS HOOK] STEP 1: FORCING fetchProductionData call...');
+      console.log('🚀 [ANALYTICS HOOK] Machine ID parameter:', JSON.stringify(machineId));
+      console.log('🚀 [ANALYTICS HOOK] Function exists check:', typeof fetchProductionData);
+      console.log('🚀 [ANALYTICS HOOK] CALLING FUNCTION NOW...');
       const productionStartTime = Date.now();
+      
+      // Call with extreme logging
+      console.log('🔥 [ANALYTICS HOOK] fetchProductionData EXECUTION STARTING...');
       const productionData = await fetchProductionData(machineId);
+      console.log('🔥 [ANALYTICS HOOK] fetchProductionData EXECUTION COMPLETED!');
+      
       const productionEndTime = Date.now();
       console.log('✅ [ANALYTICS HOOK] STEP 1 COMPLETED in', (productionEndTime - productionStartTime), 'ms - Production data received:', {
         hasData: !!productionData,

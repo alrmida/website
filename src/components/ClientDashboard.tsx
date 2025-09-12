@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useSimpleWaterProduction } from '@/hooks/useSimpleWaterProduction';
 import { useDirectProductionService } from '@/hooks/useDirectProductionService';
+import { useForceProductionRefresh } from '@/hooks/useForceProductionRefresh';
 
 
 const ClientDashboard = () => {
@@ -52,6 +53,9 @@ const ClientDashboard = () => {
     error: directError,
     directFetch 
   } = useDirectProductionService(selectedMachine?.machine_id);
+
+  // EMERGENCY FORCE REFRESH
+  const { forceRefresh, isRefreshing, lastRefresh } = useForceProductionRefresh();
 
   // Use direct service data if analytics data is missing or zero
   const finalAnalyticsData = analyticsData?.totalAllTimeProduction > 0 
@@ -206,24 +210,33 @@ const ClientDashboard = () => {
             return null;
           })()}
           
-          {/* Force direct fetch button for debugging */}
-          {profile?.role === 'admin' && (
-            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-yellow-800 mb-2">
-                Admin Debug: Force direct production data fetch
-              </p>
+          {/* EMERGENCY PRODUCTION REFRESH - Always visible */}
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-800 mb-2">
+              🚨 EMERGENCY: Force Production Data Refresh (Database shows 458.36L for ID97, 302.98L for ID94)
+            </p>
+            <div className="flex gap-2 mb-2">
+              <button
+                onClick={() => selectedMachine && forceRefresh(selectedMachine.machine_id)}
+                disabled={isRefreshing}
+                className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 disabled:opacity-50"
+              >
+                {isRefreshing ? 'Refreshing...' : '🚨 FORCE REFRESH'}
+              </button>
               <button
                 onClick={directFetch}
                 className="px-3 py-1 bg-yellow-600 text-white rounded text-sm hover:bg-yellow-700"
               >
                 Force Direct Fetch
               </button>
-              <div className="mt-2 text-xs text-yellow-700">
-                Analytics Total: {analyticsData?.totalAllTimeProduction || 0}L | 
-                Direct Total: {directProductionData?.totalAllTimeProduction || 0}L
-              </div>
             </div>
-          )}
+            <div className="text-xs text-red-700">
+              <div>Analytics Total: {analyticsData?.totalAllTimeProduction || 0}L</div>
+              <div>Direct Total: {directProductionData?.totalAllTimeProduction || 0}L</div>
+              <div>Last Refresh: {lastRefresh || 'Never'}</div>
+              <div>Expected: KU001619000097=458.36L | KU001619000094=302.98L</div>
+            </div>
+          </div>
           
           <ProductionAnalytics
             selectedPeriod={selectedPeriod}

@@ -16,7 +16,9 @@ interface YearlyProductionData {
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export const fetchProductionData = async (machineId: string) => {
-  console.log('🔍 [PRODUCTION SERVICE] Fetching production data for machine:', machineId, '- v2 with enhanced debugging');
+  console.log('🔥 [PRODUCTION SERVICE] *** FUNCTION CALLED *** - Machine:', machineId);
+  console.log('🔥 [PRODUCTION SERVICE] *** EXECUTION STARTING *** - Timestamp:', Date.now());
+  console.log('🔍 [PRODUCTION SERVICE] Fetching production data for machine:', machineId, '- FORCED EXECUTION VERSION');
   
   // First, let's check ALL events regardless of event_type to debug
   const { data: debugEvents, error: debugError } = await supabase
