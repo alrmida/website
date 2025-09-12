@@ -46,21 +46,8 @@ const ClientDashboard = () => {
     liveData?.waterLevel
   );
 
-  // DIRECT SERVICE FALLBACK - Guaranteed production data fetch
-  const { 
-    data: directProductionData, 
-    isLoading: directLoading, 
-    error: directError,
-    directFetch 
-  } = useDirectProductionService(selectedMachine?.machine_id);
-
   // EMERGENCY FORCE REFRESH
   const { forceRefresh, isRefreshing, lastRefresh } = useForceProductionRefresh();
-
-  // Use direct service data if analytics data is missing or zero
-  const finalAnalyticsData = analyticsData?.totalAllTimeProduction > 0 
-    ? analyticsData 
-    : directProductionData;
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -185,7 +172,7 @@ const ClientDashboard = () => {
           <MetricsCards 
             waterTank={waterTank}
             machineStatus={liveData?.status || 'Loading...'}
-            totalWaterProduced={finalAnalyticsData?.totalAllTimeProduction || totalWaterProduced}
+            totalWaterProduced={analyticsData?.totalAllTimeProduction || totalWaterProduced}
             lastUpdate={productionData.lastProductionEvent ? productionData.lastProductionEvent.toISOString() : null}
           />
         </div>
