@@ -16,19 +16,38 @@ interface YearlyProductionData {
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export const fetchProductionData = async (machineId: string) => {
-  console.log('🔍 [PRODUCTION SERVICE] Fetching production data for machine:', machineId);
+  console.log('🔍 [PRODUCTION SERVICE] Fetching production data for machine:', machineId, '- v2 with enhanced debugging');
   
-  // Fetch ALL production events for total calculation
-  const { data: allProductionEvents, error: allProductionError } = await supabase
+  // First, let's check ALL events regardless of event_type to debug
+  const { data: debugEvents, error: debugError } = await supabase
     .from('water_production_events')
     .select('production_liters, timestamp_utc, event_type')
     .eq('machine_id', machineId)
-    .eq('event_type', 'production');
+    .order('timestamp_utc', { ascending: false })
+    .limit(10);
+
+  console.log('🐛 [PRODUCTION SERVICE] Debug - Recent events of all types:', {
+    count: debugEvents?.length || 0,
+    events: debugEvents?.map(e => ({
+      timestamp: e.timestamp_utc,
+      production: e.production_liters,
+      event_type: e.event_type,
+      isPositive: e.production_liters > 0
+    }))
+  });
+
+  // Fetch ALL production events (remove event_type filter to get all events)
+  const { data: allProductionEvents, error: allProductionError } = await supabase
+    .from('water_production_events')
+    .select('production_liters, timestamp_utc, event_type')
+    .eq('machine_id', machineId);
 
   console.log('📊 [PRODUCTION SERVICE] All production events query result:', { 
     count: allProductionEvents?.length || 0, 
     error: allProductionError,
-    sampleEvent: allProductionEvents?.[0] 
+    positiveEventsCount: allProductionEvents?.filter(e => e.production_liters > 0).length || 0,
+    totalPositiveProduction: allProductionEvents?.filter(e => e.production_liters > 0).reduce((sum, e) => sum + e.production_liters, 0) || 0,
+    samplePositiveEvents: allProductionEvents?.filter(e => e.production_liters > 0).slice(-3)
   });
 
   if (allProductionError) {
@@ -42,7 +61,7 @@ export const fetchProductionData = async (machineId: string) => {
 
   console.log('🎯 [PRODUCTION SERVICE] Total all-time production:', totalAllTimeProduction);
 
-  // Fetch extended data (last 2 years for comprehensive coverage)
+  // Fetch extended data (last 2 years for comprehensive coverage) - Remove event_type filter
   const twoYearsAgo = new Date();
   twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
 
@@ -54,7 +73,6 @@ export const fetchProductionData = async (machineId: string) => {
     .from('water_production_events')
     .select('production_liters, timestamp_utc, event_type')
     .eq('machine_id', machineId)
-    .eq('event_type', 'production')
     .gte('timestamp_utc', twoYearsAgo.toISOString())
     .order('timestamp_utc', { ascending: true });
 
@@ -86,6 +104,15 @@ export const fetchProductionData = async (machineId: string) => {
 
     if (event.production_liters > 0) {
       const date = new Date(event.timestamp_utc);
+      
+      console.log(`📅 [PRODUCTION SERVICE] Event date breakdown:`, {
+        originalTimestamp: event.timestamp_utc,
+        dateObject: date.toISOString(),
+        utcDate: date.getUTCDate(),
+        utcMonth: date.getUTCMonth(),
+        utcYear: date.getUTCFullYear(),
+        monthName: MONTHS[date.getUTCMonth()]
+      });
       
       // Daily grouping (using UTC)
       const dayKey = `${date.getUTCDate().toString().padStart(2, '0')} ${MONTHS[date.getUTCMonth()]}`;
@@ -123,7 +150,14 @@ export const fetchProductionData = async (machineId: string) => {
 
   // Create daily production array (last 7 days, using UTC)
   const dailyProductionData: ProductionData[] = [];
+  const today = new Date();
   console.log('📅 [PRODUCTION SERVICE] Generating daily production data for last 7 days...');
+  console.log('🕐 [PRODUCTION SERVICE] Current time info:', {
+    now: Date.now(),
+    today: today.toISOString(),
+    todayUTC: today.toUTCString(),
+    todayDayKey: `${today.getUTCDate().toString().padStart(2, '0')} ${MONTHS[today.getUTCMonth()]}`
+  });
   
   for (let i = 6; i >= 0; i--) {
     const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
@@ -131,7 +165,7 @@ export const fetchProductionData = async (machineId: string) => {
     const mapValue = dailyProduction.get(dayKey) || 0;
     const production = Math.round(mapValue * 10) / 10;
     
-    console.log(`🔍 [PRODUCTION SERVICE] Daily lookup for day ${i} - Key: "${dayKey}", Map Value: ${mapValue}, Final Production: ${production}, Date Object: ${date.toISOString()}`);
+    console.log(`🔍 [PRODUCTION SERVICE] Daily lookup for day ${i} - Key: "${dayKey}", Map Value: ${mapValue}, Final Production: ${production}, Date Object: ${date.toISOString()}, UTC Date: ${date.getUTCDate()}, UTC Month: ${date.getUTCMonth()}`);
     
     dailyProductionData.push({
       date: dayKey,

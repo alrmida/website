@@ -22,7 +22,7 @@ export const useProductionAnalytics = (machineId?: string) => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchProductionAnalytics = useCallback(async () => {
-    console.log('🚀 [ANALYTICS HOOK] Starting fetchProductionAnalytics for machine:', machineId);
+    console.log('🚀 [ANALYTICS HOOK] Starting fetchProductionAnalytics for machine:', machineId, '- Force refresh timestamp:', Date.now());
     
     if (!machineId) {
       console.log('⚠️ [ANALYTICS HOOK] No machine ID provided, skipping fetch');
