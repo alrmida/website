@@ -7,7 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Simple function to get machine data from InfluxDB using proven query pattern
+// Enhanced function to get machine data from InfluxDB with complete status logic
 serve(async (req) => {
   console.log('🚀 Simple machine data function invoked');
 
@@ -27,7 +27,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('📊 Fetching data for UID:', uid);
+    console.log('📊 Fetching complete machine data for UID:', uid);
 
     // Create InfluxDB client
     const INFLUXDB_URL = Deno.env.get('INFLUXDB_URL')!;
@@ -38,54 +38,123 @@ serve(async (req) => {
     const client = new InfluxDB({ url: INFLUXDB_URL, token: INFLUXDB_TOKEN });
     const queryApi = client.getQueryApi(INFLUXDB_ORG);
 
-    // Simple query for water level (most important metric)
-    const waterLevelQuery = `
+    // Enhanced query to get all required status flags
+    const statusQuery = `
       from(bucket: "KumulusData")
         |> range(start: -24h)
         |> filter(fn: (r) => r["_measurement"] == "awg_data_full")
         |> filter(fn: (r) => r["uid"] == "${uid}")
-        |> filter(fn: (r) => r["_field"] == "water_level_L")
+        |> filter(fn: (r) => r["_field"] == "water_level_L" or 
+                             r["_field"] == "compressor_on" or 
+                             r["_field"] == "full_tank" or 
+                             r["_field"] == "producing_water")
         |> sort(columns: ["_time"], desc: true)
-        |> limit(n: 1)
+        |> limit(n: 4)
     `;
 
-    // Query for compressor status
-    const compressorQuery = `
-      from(bucket: "KumulusData")
-        |> range(start: -24h)
-        |> filter(fn: (r) => r["_measurement"] == "awg_data_full")
-        |> filter(fn: (r) => r["uid"] == "${uid}")
-        |> filter(fn: (r) => r["_field"] == "compressor_on")
-        |> sort(columns: ["_time"], desc: true)
-        |> limit(n: 1)
-    `;
+    console.log('🔍 Executing enhanced InfluxDB query for all status flags...');
 
-    // Execute queries
-    const [waterLevelResult, compressorResult] = await Promise.all([
-      queryApi.collectRows(waterLevelQuery),
-      queryApi.collectRows(compressorQuery)
-    ]);
+    // Execute query to get all status data
+    const queryResults = await queryApi.collectRows(statusQuery);
 
-    // Extract values
-    const waterLevel = waterLevelResult.length > 0 ? waterLevelResult[0]._value : 0;
-    const compressorOn = compressorResult.length > 0 ? compressorResult[0]._value : 0;
-    const lastUpdate = waterLevelResult.length > 0 ? waterLevelResult[0]._time : null;
+    console.log('📊 Query results received:', queryResults.length, 'records');
 
-    // Determine machine status using unified 90-second threshold
-    const isOnline = lastUpdate && (new Date().getTime() - new Date(lastUpdate).getTime()) < 90000; // 90 seconds threshold
-    const status = isOnline ? (compressorOn ? 'Producing' : 'Idle') : 'Offline';
+    if (queryResults.length === 0) {
+      console.log('⚠️ No data found for UID:', uid);
+      return new Response(
+        JSON.stringify({
+          uid,
+          waterLevel: 0,
+          compressorOn: false,
+          fullTank: false,
+          producingWater: false,
+          status: 'Offline',
+          isOnline: false,
+          lastUpdate: null,
+          timestamp: new Date().toISOString()
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Process results to extract latest values for each field
+    const fieldData: { [key: string]: { value: any, time: string } } = {};
+    
+    queryResults.forEach(record => {
+      const field = record._field;
+      const value = record._value;
+      const time = record._time;
+      
+      if (!fieldData[field] || new Date(time) > new Date(fieldData[field].time)) {
+        fieldData[field] = { value, time };
+      }
+    });
+
+    console.log('🔍 Processed field data:', Object.keys(fieldData));
+
+    // Extract values with defaults
+    const waterLevel = fieldData['water_level_L']?.value || 0;
+    const compressorOn = Boolean(fieldData['compressor_on']?.value);
+    const fullTank = Boolean(fieldData['full_tank']?.value);
+    const producingWater = Boolean(fieldData['producing_water']?.value);
+    const lastUpdate = fieldData['water_level_L']?.time || fieldData['compressor_on']?.time || null;
+
+    console.log('📊 Extracted sensor values:', {
+      waterLevel,
+      compressorOn,
+      fullTank,
+      producingWater,
+      lastUpdate
+    });
+
+    // Determine machine status using enhanced logic with all sensor flags
+    let status = 'Offline';
+    let isOnline = false;
+
+    if (lastUpdate) {
+      const dataAge = new Date().getTime() - new Date(lastUpdate).getTime();
+      isOnline = dataAge < 90000; // 90 seconds threshold
+      
+      if (isOnline) {
+        // Enhanced status logic based on all sensor flags
+        if (fullTank && !compressorOn && !producingWater) {
+          status = 'Full Water';
+        } else if (compressorOn && producingWater) {
+          status = 'Producing';
+        } else if (!compressorOn && !fullTank && !producingWater) {
+          status = 'Idle';
+        } else {
+          // Handle edge cases - compressor on but not producing, etc.
+          status = compressorOn ? 'Producing' : 'Idle';
+        }
+      } else {
+        status = 'Offline';
+        isOnline = false;
+      }
+    }
+
+    console.log('🎯 Status determination logic:', {
+      fullTank,
+      compressorOn,
+      producingWater,
+      dataAge: lastUpdate ? new Date().getTime() - new Date(lastUpdate).getTime() : 'N/A',
+      finalStatus: status,
+      isOnline
+    });
 
     const response = {
       uid,
       waterLevel: Number(waterLevel) || 0,
-      compressorOn: Boolean(compressorOn),
+      compressorOn,
+      fullTank,
+      producingWater,
       status,
-      isOnline: Boolean(isOnline),
+      isOnline,
       lastUpdate,
       timestamp: new Date().toISOString()
     };
 
-    console.log('✅ Data fetched successfully with 90s threshold:', response);
+    console.log('✅ Enhanced data fetched successfully:', response);
 
     return new Response(
       JSON.stringify(response),
@@ -93,7 +162,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('❌ Error fetching machine data:', error);
+    console.error('❌ Error fetching enhanced machine data:', error);
     return new Response(
       JSON.stringify({ error: 'Failed to fetch machine data', details: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
