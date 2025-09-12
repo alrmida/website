@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, Clock, Zap, Leaf, Recycle, TrendingUp } from 'lucide-react';
@@ -75,6 +74,8 @@ const getLocalizedStatus = (status: string, t: (key: string) => string): string 
 
 const MetricsCards = ({ waterTank, machineStatus, totalWaterProduced, lastUpdate }: MetricsCardsProps) => {
   const { t, formatCurrency } = useLocalization();
+  const currentYear = new Date().getFullYear();
+  const trackingStartDate = `${t('metrics.since.date')} Jan ${currentYear}`;
 
   // Calculate ESG metrics based on water production
   const co2Saved = Math.round(totalWaterProduced * 0.234); // kg CO2 saved per liter
@@ -131,6 +132,9 @@ const MetricsCards = ({ waterTank, machineStatus, totalWaterProduced, lastUpdate
             <div className="space-y-2">
               <div className="text-3xl font-bold text-kumulus-green">
                 {formatNumber(totalWaterProduced, 1)}L
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                {trackingStartDate}
               </div>
               {totalWaterProduced > 0 && (
                 <div className="text-xs text-kumulus-green/70">

@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface LocalizationContextType {
@@ -38,11 +39,6 @@ const translations = {
     'analytics.last.4.weeks': 'Last 4 Weeks',
     'analytics.last.3.months': 'Last 3 Months',
     'analytics.last.2.years': 'Last 2 Years',
-    'analytics.period.daily.text': 'the last 7 days',
-    'analytics.period.weekly.text': 'the last 4 weeks',
-    'analytics.period.monthly.text': 'the last 3 months',
-    'analytics.period.yearly.text': 'the last 2 years',
-    'analytics.status.yaxis': 'Percentage (%)',
     
     // Machine Info
     'machine.info': 'Machine Information',
@@ -118,11 +114,6 @@ const translations = {
     'analytics.last.4.weeks': '4 dernières semaines',
     'analytics.last.3.months': '3 derniers mois',
     'analytics.last.2.years': '2 dernières années',
-    'analytics.period.daily.text': 'les 7 derniers jours',
-    'analytics.period.weekly.text': 'les 4 dernières semaines',
-    'analytics.period.monthly.text': 'les 3 derniers mois',
-    'analytics.period.yearly.text': 'les 2 dernières années',
-    'analytics.status.yaxis': 'Pourcentage (%)',
     
     // Machine Info
     'machine.info': 'Informations sur la machine',
@@ -198,11 +189,6 @@ const translations = {
     'analytics.last.4.weeks': 'Últimas 4 semanas',
     'analytics.last.3.months': 'Últimos 3 meses',
     'analytics.last.2.years': 'Últimos 2 años',
-    'analytics.period.daily.text': 'los últimos 7 días',
-    'analytics.period.weekly.text': 'las últimas 4 semanas',
-    'analytics.period.monthly.text': 'los últimos 3 meses',
-    'analytics.period.yearly.text': 'los últimos 2 años',
-    'analytics.status.yaxis': 'Porcentaje (%)',
     
     // Machine Info
     'machine.info': 'Información de la máquina',
