@@ -63,11 +63,12 @@ export const fetchProductionData = async (machineId: string) => {
 
   console.log('🎯 [PRODUCTION SERVICE] Total all-time production:', totalAllTimeProduction);
 
-  // Fetch extended data (last 2 years for comprehensive coverage) - Remove event_type filter
-  const twoYearsAgo = new Date();
-  twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+  // Fetch extended data (last 3 years for comprehensive coverage) - Remove event_type filter
+  const threeYearsAgo = new Date();
+  threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
 
-  console.log('📅 [PRODUCTION SERVICE] Fetching events since:', twoYearsAgo.toISOString());
+  console.log('📅 [PRODUCTION SERVICE] Fetching events since:', threeYearsAgo.toISOString());
+  console.log('📅 [PRODUCTION SERVICE] Current date:', new Date().toISOString());
 
   console.log('🚀 [PRODUCTION SERVICE] About to execute recent events query...');
   
@@ -75,7 +76,7 @@ export const fetchProductionData = async (machineId: string) => {
     .from('water_production_events')
     .select('production_liters, timestamp_utc, event_type')
     .eq('machine_id', machineId)
-    .gte('timestamp_utc', twoYearsAgo.toISOString())
+    .gte('timestamp_utc', threeYearsAgo.toISOString())
     .order('timestamp_utc', { ascending: true });
 
   console.log('✅ [PRODUCTION SERVICE] Query completed!');
