@@ -140,9 +140,15 @@ export const useProductionAnalytics = (machineId?: string) => {
       newId: machineId
     });
     
-    setIsLoading(true);
-    fetchProductionAnalytics();
-  }, [machineId, fetchProductionAnalytics]);
+    if (machineId) {
+      setIsLoading(true);
+      fetchProductionAnalytics().catch(err => {
+        console.error('❌ [ANALYTICS HOOK] Error in initial fetch:', err);
+        setError(err instanceof Error ? err.message : 'Unknown error');
+        setIsLoading(false);
+      });
+    }
+  }, [machineId]); // Remove circular dependency
 
   // Set up automatic polling every 2 minutes
   useEffect(() => {
@@ -155,14 +161,16 @@ export const useProductionAnalytics = (machineId?: string) => {
     
     const interval = setInterval(() => {
       console.log('🔄 [ANALYTICS HOOK] Auto-refreshing production analytics data for machine:', machineId);
-      fetchProductionAnalytics();
+      fetchProductionAnalytics().catch(err => {
+        console.error('❌ [ANALYTICS HOOK] Error in polling fetch:', err);
+      });
     }, 2 * 60 * 1000); // 2 minutes
 
     return () => {
       console.log('🛑 [ANALYTICS HOOK] Cleaning up production analytics polling for machine:', machineId);
       clearInterval(interval);
     };
-  }, [machineId, fetchProductionAnalytics]);
+  }, [machineId]); // Remove circular dependency
 
   return { data, isLoading, error, refetch: fetchProductionAnalytics };
 };
