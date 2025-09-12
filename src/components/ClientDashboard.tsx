@@ -13,7 +13,7 @@ import { MachineWithClient } from '@/types/machine';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useSimpleWaterProduction } from '@/hooks/useSimpleWaterProduction';
-import { useProductionAnalytics } from '@/hooks/useProductionAnalytics';
+
 
 const ClientDashboard = () => {
   const { profile } = useAuth();
@@ -32,13 +32,11 @@ const ClientDashboard = () => {
     totalWaterProduced,
     liveData,
     dataLoading,
-    dataError
+    dataError,
+    analyticsData,
+    analyticsLoading,
+    analyticsError
   } = useDashboardData(selectedMachine);
-
-  // Get comprehensive production analytics
-  const { data: analyticsData, isLoading: analyticsLoading, error: analyticsError } = useProductionAnalytics(
-    selectedMachine?.machine_id
-  );
 
   // Get the actual production tracking data with real timestamps
   const { data: productionData } = useSimpleWaterProduction(

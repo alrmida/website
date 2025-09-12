@@ -10,16 +10,16 @@ export const useDashboardData = (selectedMachine: MachineWithClient | null) => {
   const { user } = useAuth();
   
   // Fetch live/static machine data based on selected machine
-  const { data: liveData, isLoading: dataLoading, error: dataError } = useLiveMachineData(selectedMachine);
+  const { data: liveData, isLoading: liveDataLoading, error: liveDataError } = useLiveMachineData(selectedMachine);
   
   // Fetch real production analytics data
   console.log('🎯 [DASHBOARD DATA] About to call useProductionAnalytics with machineId:', selectedMachine?.machine_id);
-  const { data: analyticsData, isLoading: analyticsLoading } = useProductionAnalytics(selectedMachine?.machine_id);
+  const { data: analyticsData, isLoading: analyticsLoading, error: analyticsError } = useProductionAnalytics(selectedMachine?.machine_id);
 
   const dashboardData = useMemo(() => {
     console.log('🔄 Updating dashboard data for machine:', selectedMachine?.machine_id);
     console.log('📊 Analytics data:', analyticsData);
-    console.log('🎯 Total all-time production:', analyticsData.totalAllTimeProduction);
+    console.log('🎯 Total all-time production:', analyticsData?.totalAllTimeProduction || 'no data');
 
     // Default machine info for when no machine is selected
     const defaultMachineInfo = {
@@ -36,20 +36,20 @@ export const useDashboardData = (selectedMachine: MachineWithClient | null) => {
       machineId: selectedMachine.machine_id,
       machineName: selectedMachine.name,
       location: selectedMachine.location || 'N/A',
-      status: liveData.status || 'Loading...',
+      status: liveData?.status || 'Loading...',
       modelName: getDisplayModelName(selectedMachine),
-      isOnline: liveData.isOnline
+      isOnline: liveData?.isOnline || false
     } : defaultMachineInfo;
 
     // Water tank specifications - use live data when machine is selected
     const waterTank = {
-      currentLevel: selectedMachine ? liveData.waterLevel : 0,
+      currentLevel: selectedMachine ? (liveData?.waterLevel || 0) : 0,
       maxCapacity: 10.0,
-      percentage: selectedMachine ? Math.round((liveData.waterLevel / 10.0) * 100) : 0
+      percentage: selectedMachine ? Math.round(((liveData?.waterLevel || 0) / 10.0) * 100) : 0
     };
 
     // Use real analytics data when available, otherwise use static data
-    const hasRealData = selectedMachine && analyticsData.totalAllTimeProduction > 0;
+    const hasRealData = selectedMachine && analyticsData && analyticsData.totalAllTimeProduction > 0;
     
     const dailyProductionData = hasRealData && analyticsData.dailyProductionData.length > 0 
       ? analyticsData.dailyProductionData 
@@ -69,7 +69,7 @@ export const useDashboardData = (selectedMachine: MachineWithClient | null) => {
       : getStaticMonthlyStatusData(selectedMachine?.machine_id);
 
     // Calculate total water produced using ALL-TIME data from analytics
-    const totalWaterProduced = selectedMachine && analyticsData.totalAllTimeProduction !== undefined
+    const totalWaterProduced = selectedMachine && analyticsData?.totalAllTimeProduction !== undefined
       ? analyticsData.totalAllTimeProduction
       : 0;
 
@@ -86,13 +86,16 @@ export const useDashboardData = (selectedMachine: MachineWithClient | null) => {
       statusData,
       monthlyStatusData,
       totalWaterProduced,
-      liveData
+      liveData: liveData || { status: 'Loading...', isOnline: false, waterLevel: 0, lastUpdated: new Date(), compressorOn: false }
     };
   }, [selectedMachine, liveData, analyticsData, user?.email]);
 
   return {
     ...dashboardData,
-    dataLoading: dataLoading || analyticsLoading,
-    dataError: dataError || null
+    dataLoading: liveDataLoading || analyticsLoading,
+    dataError: liveDataError || analyticsError,
+    analyticsData,
+    analyticsLoading,
+    analyticsError
   };
 };

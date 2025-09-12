@@ -141,6 +141,7 @@ export const useProductionAnalytics = (machineId?: string) => {
     });
     
     if (machineId) {
+      console.log('🎯 [ANALYTICS HOOK] About to call fetchProductionAnalytics...');
       setIsLoading(true);
       fetchProductionAnalytics().catch(err => {
         console.error('❌ [ANALYTICS HOOK] Error in initial fetch:', err);
