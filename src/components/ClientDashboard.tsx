@@ -203,14 +203,14 @@ const ClientDashboard = () => {
           <ProductionAnalytics
             selectedPeriod={selectedPeriod}
             onPeriodChange={setSelectedPeriod}
-            dailyProductionData={analyticsData?.dailyProductionData.map(item => ({ date: item.date, production: item.production })) || []}
-            weeklyProductionData={[]}
-            monthlyProductionData={analyticsData?.monthlyProductionData.map(item => ({ month: item.date, production: item.production })) || []}
-            yearlyProductionData={[]}
+            dailyProductionData={analyticsData?.dailyProductionData || []}
+            weeklyProductionData={analyticsData?.weeklyProductionData || []}
+            monthlyProductionData={analyticsData?.monthlyProductionData || []}
+            yearlyProductionData={analyticsData?.yearlyProductionData || []}
             statusData={analyticsData?.statusData || []}
-            weeklyStatusData={[]}
+            weeklyStatusData={analyticsData?.weeklyStatusData || []}
             monthlyStatusData={analyticsData?.monthlyStatusData || []}
-            yearlyStatusData={[]}
+            yearlyStatusData={analyticsData?.yearlyStatusData || []}
           />
         </div>
       </main>
