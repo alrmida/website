@@ -49,13 +49,17 @@ export const useProductionAnalytics = (machineId?: string) => {
       setIsLoading(true);
       setError(null);
       
-      console.log('📡 [ANALYTICS HOOK] About to call fetchProductionData service...');
-      console.log('🔄 [ANALYTICS HOOK] Calling fetchProductionData with machineId:', machineId);
+      console.log('📡 [ANALYTICS HOOK] About to call both services with Promise.all...');
+      console.log('🔄 [ANALYTICS HOOK] Calling services with machineId:', machineId);
       
-      const [productionData, statusData] = await Promise.all([
-        fetchProductionData(machineId),
-        fetchStatusData(machineId)
-      ]);
+      // Call services individually with explicit logging
+      console.log('🚀 [ANALYTICS HOOK] Step 1: Calling fetchProductionData...');
+      const productionData = await fetchProductionData(machineId);
+      console.log('✅ [ANALYTICS HOOK] Step 1 completed, got production data:', !!productionData);
+      
+      console.log('🚀 [ANALYTICS HOOK] Step 2: Calling fetchStatusData...');
+      const statusData = await fetchStatusData(machineId);
+      console.log('✅ [ANALYTICS HOOK] Step 2 completed, got status data:', !!statusData);
       
       console.log('🎯 [ANALYTICS HOOK] Services completed with results:', {
         productionData: {
