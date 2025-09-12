@@ -1,7 +1,7 @@
 
 import { useMemo } from 'react';
 import useLiveMachineData from '@/hooks/useLiveMachineData';
-import { useDirectProductionData } from '@/hooks/useDirectProductionData';
+import { useProductionAnalytics } from '@/hooks/useProductionAnalytics';
 import { MachineWithClient, getDisplayModelName } from '@/types/machine';
 import { useAuth } from '@/contexts/AuthContext';
 import { getStaticProductionData, getStaticStatusData, getStaticMonthlyStatusData } from '@/utils/staticDataGenerator';
@@ -12,9 +12,9 @@ export const useDashboardData = (selectedMachine: MachineWithClient | null) => {
   // Fetch live/static machine data based on selected machine
   const { data: liveData, isLoading: liveDataLoading, error: liveDataError } = useLiveMachineData(selectedMachine);
   
-  // Fetch real production data directly from database
-  console.log('🎯 [DASHBOARD DATA] About to call useDirectProductionData with machineId:', selectedMachine?.machine_id);
-  const { data: analyticsData, isLoading: analyticsLoading, error: analyticsError } = useDirectProductionData(selectedMachine?.machine_id);
+  // Fetch real production analytics data
+  console.log('🎯 [DASHBOARD DATA] About to call useProductionAnalytics with machineId:', selectedMachine?.machine_id);
+  const { data: analyticsData, isLoading: analyticsLoading, error: analyticsError } = useProductionAnalytics(selectedMachine?.machine_id);
 
   const dashboardData = useMemo(() => {
     console.log('🔄 Updating dashboard data for machine:', selectedMachine?.machine_id);
@@ -48,29 +48,34 @@ export const useDashboardData = (selectedMachine: MachineWithClient | null) => {
       percentage: selectedMachine ? Math.round(((liveData?.waterLevel || 0) / 10.0) * 100) : 0
     };
 
-    // Always use real data from database when machine is selected
-    const dailyProductionData = selectedMachine && analyticsData.dailyProductionData.length > 0 
+    // Use real analytics data when available, otherwise use static data
+    const hasRealData = selectedMachine && analyticsData && analyticsData.totalAllTimeProduction > 0;
+    
+    const dailyProductionData = hasRealData && analyticsData.dailyProductionData.length > 0 
       ? analyticsData.dailyProductionData 
-      : [];
+      : getStaticProductionData(selectedMachine?.machine_id).daily;
 
-    const monthlyProductionData = selectedMachine && analyticsData.monthlyProductionData.length > 0 
+    const monthlyProductionData = hasRealData && analyticsData.monthlyProductionData.length > 0 
       ? analyticsData.monthlyProductionData 
-      : [];
+      : getStaticProductionData(selectedMachine?.machine_id).monthly;
 
-    // Always use real status data from database when machine is selected
-    const statusData = selectedMachine && analyticsData.statusData.length > 0 
+    // Use real status data when available, otherwise use static data
+    const statusData = hasRealData && analyticsData.statusData.length > 0 
       ? analyticsData.statusData 
-      : [];
+      : getStaticStatusData(selectedMachine?.machine_id);
 
-    const monthlyStatusData = selectedMachine && analyticsData.monthlyStatusData.length > 0 
+    const monthlyStatusData = hasRealData && analyticsData.monthlyStatusData.length > 0 
       ? analyticsData.monthlyStatusData 
-      : [];
+      : getStaticMonthlyStatusData(selectedMachine?.machine_id);
 
-    // Use real total water produced from database
-    const totalWaterProduced = selectedMachine ? analyticsData.totalAllTimeProduction : 0;
+    // Calculate total water produced using ALL-TIME data from analytics
+    const totalWaterProduced = selectedMachine && analyticsData?.totalAllTimeProduction !== undefined
+      ? analyticsData.totalAllTimeProduction
+      : 0;
 
     console.log('📊 Final dashboard data:');
     console.log('- Total water produced (all-time):', totalWaterProduced);
+    console.log('- Using real data:', hasRealData);
     console.log('- Daily production points:', dailyProductionData.length);
 
     return {
