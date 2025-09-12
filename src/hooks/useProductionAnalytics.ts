@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ProductionAnalyticsData } from '@/types/productionAnalytics';
 import { fetchProductionData } from '@/services/productionDataService';
 import { fetchStatusData } from '@/services/statusDataService';
@@ -21,7 +21,7 @@ export const useProductionAnalytics = (machineId?: string) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchProductionAnalytics = async () => {
+  const fetchProductionAnalytics = useCallback(async () => {
     console.log('🚀 [ANALYTICS HOOK] Starting fetchProductionAnalytics for machine:', machineId);
     
     if (!machineId) {
@@ -131,7 +131,7 @@ export const useProductionAnalytics = (machineId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [machineId]);
 
   // Initial fetch when machineId changes
   useEffect(() => {
@@ -142,7 +142,7 @@ export const useProductionAnalytics = (machineId?: string) => {
     
     setIsLoading(true);
     fetchProductionAnalytics();
-  }, [machineId]);
+  }, [machineId, fetchProductionAnalytics]);
 
   // Set up automatic polling every 2 minutes
   useEffect(() => {
@@ -162,7 +162,7 @@ export const useProductionAnalytics = (machineId?: string) => {
       console.log('🛑 [ANALYTICS HOOK] Cleaning up production analytics polling for machine:', machineId);
       clearInterval(interval);
     };
-  }, [machineId]);
+  }, [machineId, fetchProductionAnalytics]);
 
   return { data, isLoading, error, refetch: fetchProductionAnalytics };
 };
