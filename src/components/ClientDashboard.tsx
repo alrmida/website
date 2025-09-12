@@ -13,6 +13,7 @@ import { MachineWithClient } from '@/types/machine';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useSimpleWaterProduction } from '@/hooks/useSimpleWaterProduction';
+import { useDirectProductionService } from '@/hooks/useDirectProductionService';
 
 
 const ClientDashboard = () => {
@@ -44,31 +45,69 @@ const ClientDashboard = () => {
     liveData?.waterLevel
   );
 
+  // DIRECT SERVICE FALLBACK - Guaranteed production data fetch
+  const { 
+    data: directProductionData, 
+    isLoading: directLoading, 
+    error: directError,
+    directFetch 
+  } = useDirectProductionService(selectedMachine?.machine_id);
+
+  // Use direct service data if analytics data is missing or zero
+  const finalAnalyticsData = analyticsData?.totalAllTimeProduction > 0 
+    ? analyticsData 
+    : directProductionData;
+
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        console.log('🔍 Fetching initial machine data...');
+        console.log('🔍 [CLIENT DASHBOARD] Fetching machines with production data priority...');
         
-        // Fetch the first available machine
+        // First, try to find machines with production data
+        const { data: productionCheck } = await supabase
+          .from('water_production_events')
+          .select('machine_id, production_liters')
+          .gt('production_liters', 0)
+          .order('timestamp_utc', { ascending: false });
+
+        const machinesWithProduction = productionCheck ? 
+          [...new Set(productionCheck.map(event => event.machine_id))] : [];
+
+        console.log('📊 [CLIENT DASHBOARD] Found machines with production data:', machinesWithProduction);
+
+        // Fetch all machines
         const { data: machines, error: machinesError } = await supabase
           .from('machines')
           .select('*')
-          .limit(1);
+          .order('created_at', { ascending: false });
 
         if (machinesError) {
-          console.error('Error fetching machines:', machinesError);
+          console.error('❌ [CLIENT DASHBOARD] Error fetching machines:', machinesError);
           return;
         }
 
         if (machines && machines.length > 0) {
-          const initialMachine = machines[0];
-          setSelectedMachine(initialMachine as MachineWithClient);
-          console.log('✅ Setting initial machine:', initialMachine.machine_id);
+          // Prioritize machines with production data
+          let selectedMachine = machines.find(m => machinesWithProduction.includes(m.machine_id));
+          
+          // If no machine with production data, use the first available
+          if (!selectedMachine) {
+            selectedMachine = machines[0];
+            console.log('⚠️ [CLIENT DASHBOARD] No machines with production data, using first available');
+          }
+
+          setSelectedMachine(selectedMachine as MachineWithClient);
+          console.log('✅ [CLIENT DASHBOARD] Setting priority machine:', {
+            machineId: selectedMachine.machine_id,
+            hasProductionData: machinesWithProduction.includes(selectedMachine.machine_id),
+            totalMachines: machines.length,
+            machinesWithData: machinesWithProduction.length
+          });
         } else {
-          console.log('ℹ️ No machines found in database');
+          console.log('ℹ️ [CLIENT DASHBOARD] No machines found in database');
         }
       } catch (error) {
-        console.error('❌ Error fetching initial data:', error);
+        console.error('❌ [CLIENT DASHBOARD] Error fetching initial data:', error);
       }
     };
 
@@ -142,7 +181,7 @@ const ClientDashboard = () => {
           <MetricsCards 
             waterTank={waterTank}
             machineStatus={liveData?.status || 'Loading...'}
-            totalWaterProduced={totalWaterProduced}
+            totalWaterProduced={finalAnalyticsData?.totalAllTimeProduction || totalWaterProduced}
             lastUpdate={productionData.lastProductionEvent ? productionData.lastProductionEvent.toISOString() : null}
           />
         </div>
@@ -150,27 +189,53 @@ const ClientDashboard = () => {
         {/* Production Analytics - Charts and Visualizations */}
         <div className="mb-6 sm:mb-8">
           {(() => {
-            console.log('🎨 [CLIENT DASHBOARD] Rendering ProductionAnalytics with data:', {
+            console.log('🎨 [CLIENT DASHBOARD] Rendering ProductionAnalytics with COMPREHENSIVE data:', {
               hasAnalyticsData: !!analyticsData,
-              dailyPoints: analyticsData?.dailyProductionData?.length || 0,
-              totalProduction: totalWaterProduced,
-              analyticsLoading: analyticsLoading,
+              hasDirectData: !!directProductionData,
+              analyticsTotal: analyticsData?.totalAllTimeProduction || 0,
+              directTotal: directProductionData?.totalAllTimeProduction || 0,
+              finalTotal: finalAnalyticsData?.totalAllTimeProduction || 0,
+              usingDirect: finalAnalyticsData === directProductionData,
+              dailyPoints: finalAnalyticsData?.dailyProductionData?.length || 0,
+              analyticsLoading,
+              directLoading,
               analyticsError,
-              sampleDaily: analyticsData?.dailyProductionData?.slice(0, 3)
+              directError,
+              selectedMachine: selectedMachine?.machine_id
             });
             return null;
           })()}
+          
+          {/* Force direct fetch button for debugging */}
+          {profile?.role === 'admin' && (
+            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800 mb-2">
+                Admin Debug: Force direct production data fetch
+              </p>
+              <button
+                onClick={directFetch}
+                className="px-3 py-1 bg-yellow-600 text-white rounded text-sm hover:bg-yellow-700"
+              >
+                Force Direct Fetch
+              </button>
+              <div className="mt-2 text-xs text-yellow-700">
+                Analytics Total: {analyticsData?.totalAllTimeProduction || 0}L | 
+                Direct Total: {directProductionData?.totalAllTimeProduction || 0}L
+              </div>
+            </div>
+          )}
+          
           <ProductionAnalytics
             selectedPeriod={selectedPeriod}
             onPeriodChange={setSelectedPeriod}
-            dailyProductionData={analyticsData?.dailyProductionData || []}
-            weeklyProductionData={analyticsData?.weeklyProductionData || []}
-            monthlyProductionData={analyticsData?.monthlyProductionData || []}
-            yearlyProductionData={analyticsData?.yearlyProductionData || []}
-            statusData={analyticsData?.statusData || []}
-            weeklyStatusData={analyticsData?.weeklyStatusData || []}
-            monthlyStatusData={analyticsData?.monthlyStatusData || []}
-            yearlyStatusData={analyticsData?.yearlyStatusData || []}
+            dailyProductionData={finalAnalyticsData?.dailyProductionData || []}
+            weeklyProductionData={finalAnalyticsData?.weeklyProductionData || []}
+            monthlyProductionData={finalAnalyticsData?.monthlyProductionData || []}
+            yearlyProductionData={finalAnalyticsData?.yearlyProductionData || []}
+            statusData={finalAnalyticsData?.statusData || []}
+            weeklyStatusData={finalAnalyticsData?.weeklyStatusData || []}
+            monthlyStatusData={finalAnalyticsData?.monthlyStatusData || []}
+            yearlyStatusData={finalAnalyticsData?.yearlyStatusData || []}
           />
         </div>
       </main>
