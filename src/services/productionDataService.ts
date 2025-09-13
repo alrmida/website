@@ -26,7 +26,7 @@ export const fetchProductionData = async (machineId: string) => {
   }
 
   try {
-    // Get total production first
+    // Get ALL production events for total calculation (no date filtering)
     const { data: totalData, error: totalError } = await supabase
       .from('water_production_events')
       .select('production_liters')
@@ -38,10 +38,15 @@ export const fetchProductionData = async (machineId: string) => {
       throw totalError;
     }
 
-    const totalAllTimeProduction = totalData?.reduce((sum, event) => 
-      sum + Number(event.production_liters || 0), 0) || 0;
+    console.log('🔍 [SIMPLIFIED PRODUCTION] Total events fetched:', totalData?.length || 0);
+    
+    const totalAllTimeProduction = totalData?.reduce((sum, event) => {
+      const production = Number(event.production_liters || 0);
+      return sum + production;
+    }, 0) || 0;
 
-    console.log('📈 [SIMPLIFIED PRODUCTION] Total production:', totalAllTimeProduction);
+    console.log('📈 [SIMPLIFIED PRODUCTION] Raw total from all events:', totalAllTimeProduction);
+    console.log('📈 [SIMPLIFIED PRODUCTION] Sample events:', totalData?.slice(0, 3));
 
     // Get last 30 days of production events to ensure we have recent data
     const thirtyDaysAgo = new Date();
@@ -112,19 +117,23 @@ export const fetchProductionData = async (machineId: string) => {
     }
 
     console.log('✅ [SIMPLIFIED PRODUCTION] Final daily data:', dailyProductionData);
+    console.log('📊 [SIMPLIFIED PRODUCTION] FINAL RESULT - Returning total:', Math.round(totalAllTimeProduction * 10) / 10);
 
     // For now, return simplified weekly/monthly/yearly (can be enhanced later)
     const weeklyProductionData: WeeklyProductionData[] = [];
     const monthlyProductionData: MonthlyProductionData[] = [];
     const yearlyProductionData: YearlyProductionData[] = [];
 
-    return {
+    const finalResult = {
       dailyProductionData,
       weeklyProductionData,
       monthlyProductionData,
       yearlyProductionData,
       totalAllTimeProduction: Math.round(totalAllTimeProduction * 10) / 10
     };
+
+    console.log('🎯 [SIMPLIFIED PRODUCTION] COMPLETE RESULT:', finalResult);
+    return finalResult;
 
   } catch (error) {
     console.error('❌ [SIMPLIFIED PRODUCTION] Unexpected error:', error);
