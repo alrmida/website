@@ -31,7 +31,8 @@ export const fetchProductionData = async (machineId: string) => {
       .from('water_production_events')
       .select('production_liters')
       .eq('machine_id', machineId)
-      .gt('production_liters', 0);
+      .gt('production_liters', 0)
+      .limit(10000); // Ensure we get all events, not just default 1000
 
     if (totalError) {
       console.error('❌ [SIMPLIFIED PRODUCTION] Error fetching total:', totalError);
