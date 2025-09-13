@@ -151,30 +151,47 @@ export const fetchProductionData = async (machineId: string) => {
     allEntries: Array.from(weeklyProduction.entries())
   });
 
-  // Create daily production array (last 7 days, using UTC)
+  // Create daily production array - use actual dates from data, not sliding window
   const dailyProductionData: ProductionData[] = [];
-  const today = new Date();
-  console.log('📅 [PRODUCTION SERVICE] Generating daily production data for last 7 days...');
-  console.log('🕐 [PRODUCTION SERVICE] Current time info:', {
-    now: Date.now(),
-    today: today.toISOString(),
-    todayUTC: today.toUTCString(),
-    todayDayKey: `${today.getUTCDate().toString().padStart(2, '0')} ${MONTHS[today.getUTCMonth()]}`
-  });
   
+  console.log('📅 [PRODUCTION SERVICE] Creating daily production array from actual data...');
+  console.log('🗂️ [PRODUCTION SERVICE] Available daily production keys:', Array.from(dailyProduction.keys()));
+  
+  // Get all dates from the last 7 days, but prioritize dates that have actual data
+  const last7Days: string[] = [];
   for (let i = 6; i >= 0; i--) {
     const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
     const dayKey = `${date.getUTCDate().toString().padStart(2, '0')} ${MONTHS[date.getUTCMonth()]}`;
+    last7Days.push(dayKey);
+  }
+  
+  // Also include any dates from our production data that might be recent
+  const allDataDates = Array.from(dailyProduction.keys());
+  const recentDataDates = allDataDates.filter(dateKey => {
+    // Include dates that might be from recent period (broader than just last 7 days)
+    return dailyProduction.get(dateKey)! > 0;
+  }).slice(-7); // Take last 7 dates with data
+  
+  // Combine and deduplicate, prioritizing dates with actual data
+  const finalDates = [...new Set([...recentDataDates, ...last7Days])].slice(-7);
+  
+  console.log('📊 [PRODUCTION SERVICE] Date selection process:', {
+    last7DaysCalculated: last7Days,
+    recentDataDates: recentDataDates,
+    finalSelectedDates: finalDates
+  });
+  
+  finalDates.forEach((dayKey, index) => {
     const mapValue = dailyProduction.get(dayKey) || 0;
     const production = Math.round(mapValue * 10) / 10;
     
-    console.log(`🔍 [PRODUCTION SERVICE] Daily lookup for day ${i} - Key: "${dayKey}", Map Value: ${mapValue}, Final Production: ${production}, Date Object: ${date.toISOString()}, UTC Date: ${date.getUTCDate()}, UTC Month: ${date.getUTCMonth()}`);
+    console.log(`🔍 [PRODUCTION SERVICE] Final daily data - Key: "${dayKey}", Map Value: ${mapValue}, Final Production: ${production}`);
     
     dailyProductionData.push({
       date: dayKey,
       production
     });
-  }
+  });
   
   console.log('✅ [PRODUCTION SERVICE] Final daily production data:', dailyProductionData);
 
