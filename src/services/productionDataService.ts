@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { ProductionData, MonthlyProductionData } from '@/types/productionAnalytics';
 
@@ -12,248 +11,123 @@ interface YearlyProductionData {
   production: number;
 }
 
-// Consistent month names for UTC formatting
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
 export const fetchProductionData = async (machineId: string) => {
-  console.log('🔥 [PRODUCTION SERVICE] *** FUNCTION CALLED *** - Machine:', machineId);
-  console.log('🔥 [PRODUCTION SERVICE] *** EXECUTION STARTING *** - Timestamp:', Date.now());
-  console.log('🔍 [PRODUCTION SERVICE] Fetching production data for machine:', machineId, '- FORCED EXECUTION VERSION');
+  console.log('🚀 [SIMPLIFIED PRODUCTION] Fetching data for machine:', machineId);
   
-  // First, let's check ALL events regardless of event_type to debug
-  const { data: debugEvents, error: debugError } = await supabase
-    .from('water_production_events')
-    .select('production_liters, timestamp_utc, event_type')
-    .eq('machine_id', machineId)
-    .order('timestamp_utc', { ascending: false })
-    .limit(10);
-
-  console.log('🐛 [PRODUCTION SERVICE] Debug - Recent events of all types:', {
-    count: debugEvents?.length || 0,
-    events: debugEvents?.map(e => ({
-      timestamp: e.timestamp_utc,
-      production: e.production_liters,
-      event_type: e.event_type,
-      isPositive: e.production_liters > 0
-    }))
-  });
-
-  // Fetch ALL production events (remove event_type filter to get all events)
-  const { data: allProductionEvents, error: allProductionError } = await supabase
-    .from('water_production_events')
-    .select('production_liters, timestamp_utc, event_type')
-    .eq('machine_id', machineId);
-
-  console.log('📊 [PRODUCTION SERVICE] All production events query result:', { 
-    count: allProductionEvents?.length || 0, 
-    error: allProductionError,
-    positiveEventsCount: allProductionEvents?.filter(e => e.production_liters > 0).length || 0,
-    totalPositiveProduction: allProductionEvents?.filter(e => e.production_liters > 0).reduce((sum, e) => sum + e.production_liters, 0) || 0,
-    samplePositiveEvents: allProductionEvents?.filter(e => e.production_liters > 0).slice(-3)
-  });
-
-  if (allProductionError) {
-    console.error('❌ [PRODUCTION SERVICE] Error fetching all production events:', allProductionError);
-    throw allProductionError;
+  if (!machineId || machineId.trim() === '') {
+    console.warn('⚠️ [SIMPLIFIED PRODUCTION] Invalid machineId provided');
+    return {
+      dailyProductionData: [],
+      weeklyProductionData: [],
+      monthlyProductionData: [],
+      yearlyProductionData: [],
+      totalAllTimeProduction: 0
+    };
   }
 
-  const totalAllTimeProduction = allProductionEvents
-    ?.filter(event => event.production_liters > 0)
-    .reduce((sum, event) => sum + event.production_liters, 0) || 0;
+  try {
+    // Get total production first
+    const { data: totalData, error: totalError } = await supabase
+      .from('water_production_events')
+      .select('production_liters')
+      .eq('machine_id', machineId)
+      .gt('production_liters', 0);
 
-  console.log('🎯 [PRODUCTION SERVICE] Total all-time production:', totalAllTimeProduction);
-
-  // Fetch extended data (last 3 years for comprehensive coverage) - Remove event_type filter
-  const threeYearsAgo = new Date();
-  threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
-
-  console.log('📅 [PRODUCTION SERVICE] Fetching events since:', threeYearsAgo.toISOString());
-  console.log('📅 [PRODUCTION SERVICE] Current date:', new Date().toISOString());
-
-  console.log('🚀 [PRODUCTION SERVICE] About to execute recent events query...');
-  
-  const { data: productionEvents, error: productionError } = await supabase
-    .from('water_production_events')
-    .select('production_liters, timestamp_utc, event_type')
-    .eq('machine_id', machineId)
-    .gte('timestamp_utc', threeYearsAgo.toISOString())
-    .order('timestamp_utc', { ascending: true });
-
-  console.log('✅ [PRODUCTION SERVICE] Query completed!');
-  console.log('📊 [PRODUCTION SERVICE] Recent production events query result:', { 
-    count: productionEvents?.length || 0, 
-    error: productionError,
-    sampleEvents: productionEvents?.slice(-3) // Show last 3 events
-  });
-
-  if (productionError) {
-    console.error('❌ [PRODUCTION SERVICE] Error fetching recent production events:', productionError);
-    throw productionError;
-  }
-
-  // Group production by different time periods
-  const dailyProduction = new Map<string, number>();
-  const weeklyProduction = new Map<string, number>();
-  const monthlyProduction = new Map<string, number>();
-  const yearlyProduction = new Map<string, number>();
-
-  productionEvents?.forEach((event, index) => {
-    console.log(`🔍 [PRODUCTION SERVICE] Processing event ${index}:`, {
-      timestamp: event.timestamp_utc,
-      production: event.production_liters,
-      eventType: event.event_type,
-      isPositive: event.production_liters > 0
-    });
-
-    if (event.production_liters > 0) {
-      const date = new Date(event.timestamp_utc);
-      
-      console.log(`📅 [PRODUCTION SERVICE] Event date breakdown:`, {
-        originalTimestamp: event.timestamp_utc,
-        dateObject: date.toISOString(),
-        utcDate: date.getUTCDate(),
-        utcMonth: date.getUTCMonth(),
-        utcYear: date.getUTCFullYear(),
-        monthName: MONTHS[date.getUTCMonth()]
-      });
-      
-      // Daily grouping (using UTC)
-      const dayKey = `${date.getUTCDate().toString().padStart(2, '0')} ${MONTHS[date.getUTCMonth()]}`;
-      const previousDailyValue = dailyProduction.get(dayKey) || 0;
-      const newDailyValue = previousDailyValue + event.production_liters;
-      dailyProduction.set(dayKey, newDailyValue);
-      
-      console.log(`📊 [PRODUCTION SERVICE] Daily aggregation - Key: "${dayKey}", Previous: ${previousDailyValue}, Added: ${event.production_liters}, New Total: ${newDailyValue}`);
-      
-      // Weekly grouping (ISO week, using UTC)
-      const weekStart = getWeekStartUTC(date);
-      const weekKey = `${weekStart.getUTCDate().toString().padStart(2, '0')} ${MONTHS[weekStart.getUTCMonth()]}`;
-      weeklyProduction.set(weekKey, (weeklyProduction.get(weekKey) || 0) + event.production_liters);
-      
-      // Monthly grouping (using UTC)
-      const monthKey = `${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
-      monthlyProduction.set(monthKey, (monthlyProduction.get(monthKey) || 0) + event.production_liters);
-      
-      // Yearly grouping (using UTC)
-      const yearKey = date.getUTCFullYear().toString();
-      yearlyProduction.set(yearKey, (yearlyProduction.get(yearKey) || 0) + event.production_liters);
+    if (totalError) {
+      console.error('❌ [SIMPLIFIED PRODUCTION] Error fetching total:', totalError);
+      throw totalError;
     }
-  });
 
-  console.log('🗂️ [PRODUCTION SERVICE] Daily production map after processing:', {
-    mapSize: dailyProduction.size,
-    allEntries: Array.from(dailyProduction.entries()),
-    totalMapProduction: Array.from(dailyProduction.values()).reduce((sum, val) => sum + val, 0)
-  });
+    const totalAllTimeProduction = totalData?.reduce((sum, event) => 
+      sum + Number(event.production_liters || 0), 0) || 0;
 
-  console.log('🗂️ [PRODUCTION SERVICE] Weekly production map after processing:', {
-    mapSize: weeklyProduction.size,
-    allEntries: Array.from(weeklyProduction.entries())
-  });
+    console.log('📈 [SIMPLIFIED PRODUCTION] Total production:', totalAllTimeProduction);
 
-  // Create daily production array - use actual dates from data, not sliding window
-  const dailyProductionData: ProductionData[] = [];
-  
-  console.log('📅 [PRODUCTION SERVICE] Creating daily production array from actual data...');
-  console.log('🗂️ [PRODUCTION SERVICE] Available daily production keys:', Array.from(dailyProduction.keys()));
-  
-  // Get all dates from the last 7 days, but prioritize dates that have actual data
-  const last7Days: string[] = [];
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-    const dayKey = `${date.getUTCDate().toString().padStart(2, '0')} ${MONTHS[date.getUTCMonth()]}`;
-    last7Days.push(dayKey);
-  }
-  
-  // Also include any dates from our production data that might be recent
-  const allDataDates = Array.from(dailyProduction.keys());
-  const recentDataDates = allDataDates.filter(dateKey => {
-    // Include dates that might be from recent period (broader than just last 7 days)
-    return dailyProduction.get(dateKey)! > 0;
-  }).slice(-7); // Take last 7 dates with data
-  
-  // Combine and deduplicate, prioritizing dates with actual data
-  const finalDates = [...new Set([...recentDataDates, ...last7Days])].slice(-7);
-  
-  console.log('📊 [PRODUCTION SERVICE] Date selection process:', {
-    last7DaysCalculated: last7Days,
-    recentDataDates: recentDataDates,
-    finalSelectedDates: finalDates
-  });
-  
-  finalDates.forEach((dayKey, index) => {
-    const mapValue = dailyProduction.get(dayKey) || 0;
-    const production = Math.round(mapValue * 10) / 10;
+    // Get last 30 days of production events to ensure we have recent data
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
-    console.log(`🔍 [PRODUCTION SERVICE] Final daily data - Key: "${dayKey}", Map Value: ${mapValue}, Final Production: ${production}`);
+    const { data: recentEvents, error: recentError } = await supabase
+      .from('water_production_events')
+      .select('production_liters, timestamp_utc')
+      .eq('machine_id', machineId)
+      .gt('production_liters', 0)
+      .gte('timestamp_utc', thirtyDaysAgo.toISOString())
+      .order('timestamp_utc', { ascending: true });
+
+    if (recentError) {
+      console.error('❌ [SIMPLIFIED PRODUCTION] Error fetching recent events:', recentError);
+      throw recentError;
+    }
+
+    console.log('📊 [SIMPLIFIED PRODUCTION] Recent events:', {
+      count: recentEvents?.length || 0,
+      sample: recentEvents?.slice(-3)
+    });
+
+    // Simple aggregation by day using JavaScript Date
+    const dailyMap = new Map<string, number>();
+    const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     
-    dailyProductionData.push({
-      date: dayKey,
-      production
+    recentEvents?.forEach(event => {
+      const date = new Date(event.timestamp_utc);
+      const dateKey = `${date.getUTCDate().toString().padStart(2, '0')} ${MONTHS[date.getUTCMonth()]}`;
+      dailyMap.set(dateKey, (dailyMap.get(dateKey) || 0) + Number(event.production_liters));
     });
-  });
-  
-  console.log('✅ [PRODUCTION SERVICE] Final daily production data:', dailyProductionData);
 
-  // Create weekly production array (last 4 weeks, using UTC)
-  const weeklyProductionData: WeeklyProductionData[] = [];
-  for (let i = 3; i >= 0; i--) {
-    const date = new Date(Date.now() - (i * 7) * 24 * 60 * 60 * 1000);
-    const weekStart = getWeekStartUTC(date);
-    const weekKey = `${weekStart.getUTCDate().toString().padStart(2, '0')} ${MONTHS[weekStart.getUTCMonth()]}`;
-    weeklyProductionData.push({
-      week: weekKey,
-      production: Math.round((weeklyProduction.get(weekKey) || 0) * 10) / 10
-    });
+    console.log('🗓️ [SIMPLIFIED PRODUCTION] Daily aggregation:', Array.from(dailyMap.entries()));
+
+    // Get the most recent 7 days that have data, fallback to last 7 calendar days
+    let dailyProductionData: ProductionData[] = [];
+    
+    if (dailyMap.size > 0) {
+      // Use dates that have actual data
+      const sortedDates = Array.from(dailyMap.entries())
+        .sort((a, b) => {
+          // Simple sort by parsing date strings - not perfect but works for recent data
+          const aMonth = MONTHS.indexOf(a[0].split(' ')[1]);
+          const aDay = parseInt(a[0].split(' ')[0]);
+          const bMonth = MONTHS.indexOf(b[0].split(' ')[1]);
+          const bDay = parseInt(b[0].split(' ')[0]);
+          
+          if (aMonth !== bMonth) return aMonth - bMonth;
+          return aDay - bDay;
+        })
+        .slice(-7); // Take last 7 days with data
+      
+      dailyProductionData = sortedDates.map(([date, production]) => ({
+        date,
+        production: Math.round(production * 10) / 10
+      }));
+    } else {
+      // Fallback: show last 7 calendar days with 0 production
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+        const dayKey = `${date.getUTCDate().toString().padStart(2, '0')} ${MONTHS[date.getUTCMonth()]}`;
+        dailyProductionData.push({
+          date: dayKey,
+          production: 0
+        });
+      }
+    }
+
+    console.log('✅ [SIMPLIFIED PRODUCTION] Final daily data:', dailyProductionData);
+
+    // For now, return simplified weekly/monthly/yearly (can be enhanced later)
+    const weeklyProductionData: WeeklyProductionData[] = [];
+    const monthlyProductionData: MonthlyProductionData[] = [];
+    const yearlyProductionData: YearlyProductionData[] = [];
+
+    return {
+      dailyProductionData,
+      weeklyProductionData,
+      monthlyProductionData,
+      yearlyProductionData,
+      totalAllTimeProduction: Math.round(totalAllTimeProduction * 10) / 10
+    };
+
+  } catch (error) {
+    console.error('❌ [SIMPLIFIED PRODUCTION] Unexpected error:', error);
+    throw error;
   }
-
-  // Create monthly production array (last 3 months, using UTC)
-  const monthlyProductionData: MonthlyProductionData[] = [];
-  for (let i = 2; i >= 0; i--) {
-    const now = new Date();
-    const date = new Date(now.getUTCFullYear(), now.getUTCMonth() - i, 1);
-    const monthKey = `${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
-    monthlyProductionData.push({
-      month: monthKey,
-      production: Math.round((monthlyProduction.get(monthKey) || 0) * 10) / 10
-    });
-  }
-
-  // Create yearly production array (last 2 years, using UTC)
-  const yearlyProductionData: YearlyProductionData[] = [];
-  for (let i = 1; i >= 0; i--) {
-    const now = new Date();
-    const date = new Date(now.getUTCFullYear() - i, 0, 1);
-    const yearKey = date.getUTCFullYear().toString();
-    yearlyProductionData.push({
-      year: yearKey,
-      production: Math.round((yearlyProduction.get(yearKey) || 0) * 10) / 10
-    });
-  }
-
-  const result = {
-    dailyProductionData,
-    weeklyProductionData,
-    monthlyProductionData,
-    yearlyProductionData,
-    totalAllTimeProduction: Math.round(totalAllTimeProduction * 10) / 10
-  };
-  
-  console.log('🚀 [PRODUCTION SERVICE] Final result:', {
-    dailyPoints: result.dailyProductionData.length,
-    totalProduction: result.totalAllTimeProduction,
-    sampleDaily: result.dailyProductionData.slice(0, 3)
-  });
-  
-  return result;
 };
-
-// Helper function to get the start of the week (Monday) using UTC
-function getWeekStartUTC(date: Date): Date {
-  const d = new Date(date);
-  const day = d.getUTCDay();
-  const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
-  const result = new Date(d);
-  result.setUTCDate(diff);
-  return result;
-}
