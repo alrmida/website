@@ -48,50 +48,50 @@ export const useDashboardData = (selectedMachine: MachineWithClient | null) => {
       percentage: selectedMachine ? Math.round(((liveData?.waterLevel || 0) / 10.0) * 100) : 0
     };
 
-    // Use real analytics data when available, otherwise use static data
-    const hasRealData = selectedMachine && analyticsData && analyticsData.totalAllTimeProduction > 0;
+    // Use analytics data when available and machine is selected, otherwise show empty data
+    const hasAnalyticsData = selectedMachine && analyticsData && !analyticsLoading;
     
-    const dailyProductionData = hasRealData && analyticsData.dailyProductionData.length > 0 
+    const dailyProductionData = hasAnalyticsData 
       ? analyticsData.dailyProductionData 
-      : getStaticProductionData(selectedMachine?.machine_id).daily;
+      : [];
 
-    const weeklyProductionData = hasRealData && analyticsData.weeklyProductionData.length > 0 
+    const weeklyProductionData = hasAnalyticsData 
       ? analyticsData.weeklyProductionData 
       : [];
 
-    const monthlyProductionData = hasRealData && analyticsData.monthlyProductionData.length > 0 
+    const monthlyProductionData = hasAnalyticsData 
       ? analyticsData.monthlyProductionData 
-      : getStaticProductionData(selectedMachine?.machine_id).monthly;
+      : [];
 
-    const yearlyProductionData = hasRealData && analyticsData.yearlyProductionData.length > 0 
+    const yearlyProductionData = hasAnalyticsData 
       ? analyticsData.yearlyProductionData 
       : [];
 
-    // Use real status data when available, otherwise use static data
-    const statusData = hasRealData && analyticsData.statusData.length > 0 
+    // Use analytics status data when available
+    const statusData = hasAnalyticsData 
       ? analyticsData.statusData 
-      : getStaticStatusData(selectedMachine?.machine_id);
+      : [];
 
-    const weeklyStatusData = hasRealData && analyticsData.weeklyStatusData.length > 0 
+    const weeklyStatusData = hasAnalyticsData 
       ? analyticsData.weeklyStatusData 
       : [];
 
-    const monthlyStatusData = hasRealData && analyticsData.monthlyStatusData.length > 0 
+    const monthlyStatusData = hasAnalyticsData 
       ? analyticsData.monthlyStatusData 
-      : getStaticMonthlyStatusData(selectedMachine?.machine_id);
+      : [];
 
-    const yearlyStatusData = hasRealData && analyticsData.yearlyStatusData.length > 0 
+    const yearlyStatusData = hasAnalyticsData 
       ? analyticsData.yearlyStatusData 
       : [];
 
-    // Calculate total water produced using ALL-TIME data from analytics
-    const totalWaterProduced = selectedMachine && analyticsData?.totalAllTimeProduction !== undefined
+    // Calculate total water produced using analytics data
+    const totalWaterProduced = hasAnalyticsData && analyticsData?.totalAllTimeProduction !== undefined
       ? analyticsData.totalAllTimeProduction
       : 0;
 
     console.log('📊 Final dashboard data:');
     console.log('- Total water produced (all-time):', totalWaterProduced);
-    console.log('- Using real data:', hasRealData);
+    console.log('- Using analytics data:', hasAnalyticsData);
     console.log('- Daily production points:', dailyProductionData.length);
 
     return {
