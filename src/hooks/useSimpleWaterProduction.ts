@@ -55,7 +55,7 @@ export const useSimpleWaterProduction = (machineId?: string, currentWaterLevel?:
           throw eventsError;
         }
 
-        totalProduced = events?.reduce((sum, event) => sum + (event.production_liters || 0), 0) || 0;
+        totalProduced = events?.reduce((sum, event) => sum + Math.max(0, event.production_liters || 0), 0) || 0;
         lastProductionEvent = events && events.length > 0 ? new Date(events[0].timestamp_utc) : null;
 
       } else if (totalError) {

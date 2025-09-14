@@ -12,9 +12,7 @@ import { MachineWithClient } from '@/types/machine';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useSimpleProductionData } from '@/hooks/useSimpleProductionData';
-import { triggerProductionAggregation } from '@/services/productionSummaryService';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Database } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ClientDashboard = () => {
@@ -22,7 +20,6 @@ const ClientDashboard = () => {
   const { t } = useLocalization();
   const [selectedMachine, setSelectedMachine] = useState<MachineWithClient | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState('daily');
-  const [isAggregating, setIsAggregating] = useState(false);
 
   // Keep using existing production data system for now
   const {
@@ -41,30 +38,6 @@ const ClientDashboard = () => {
     dataError
   } = useDashboardData(selectedMachine);
 
-  // Trigger production data aggregation for the new summary system
-  const handleAggregateData = async (mode: 'incremental' | 'backfill' = 'incremental') => {
-    if (!selectedMachine) return;
-    
-    setIsAggregating(true);
-    try {
-      console.log(`🔄 Triggering ${mode} aggregation for machine:`, selectedMachine.machine_id);
-      
-      await triggerProductionAggregation(selectedMachine.machine_id, mode);
-      
-      toast.success(`${mode === 'backfill' ? 'Historical data backfill' : 'Data update'} completed successfully!`);
-      
-      // Refresh current data
-      setTimeout(() => {
-        refreshProduction();
-      }, 2000);
-      
-    } catch (error) {
-      console.error('❌ Aggregation failed:', error);
-      toast.error(`Failed to ${mode === 'backfill' ? 'backfill historical' : 'update'} data`);
-    } finally {
-      setIsAggregating(false);
-    }
-  };
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -145,30 +118,6 @@ const ClientDashboard = () => {
               </p>
             </div>
             
-            {/* New Summary System Controls */}
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleAggregateData('incremental')}
-                disabled={isAggregating || !selectedMachine}
-                className="w-full sm:w-auto"
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isAggregating ? 'animate-spin' : ''}`} />
-                Update Summary Data
-              </Button>
-              
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => handleAggregateData('backfill')}
-                disabled={isAggregating || !selectedMachine}
-                className="w-full sm:w-auto"
-              >
-                <Database className="h-4 w-4 mr-2" />
-                Backfill Historical Data
-              </Button>
-            </div>
           </div>
           
           {profile?.role === 'client' && selectedMachine && (

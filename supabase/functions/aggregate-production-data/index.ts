@@ -555,7 +555,7 @@ async function updateMachineTotal(supabase: any, machineId: string) {
     throw new Error(`Failed to calculate total production: ${totalError.message}`);
   }
 
-  const totalProduction = totalResult?.reduce((sum: number, event: any) => sum + event.production_liters, 0) || 0;
+  const totalProduction = totalResult?.reduce((sum: number, event: any) => sum + Math.max(0, event.production_liters), 0) || 0;
 
   // Get the latest production event ID
   const { data: latestEvent, error: latestError } = await supabase
