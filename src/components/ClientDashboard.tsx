@@ -14,7 +14,7 @@ import { useDashboardData } from '@/hooks/useDashboardData';
 import { useSimpleProductionData } from '@/hooks/useSimpleProductionData';
 
 const ClientDashboard = () => {
-  // Fixed: Removed finalAnalyticsData reference - using simple production data
+  // Cache busting - timestamp: 2024-09-14-12:51:17 - Fixed finalAnalyticsData error
   const { profile } = useAuth();
   const { t } = useLocalization();
   const [selectedMachine, setSelectedMachine] = useState<MachineWithClient | null>(null);
