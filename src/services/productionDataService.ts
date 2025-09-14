@@ -33,131 +33,82 @@ export const fetchProductionData = async (machineId: string) => {
   }
 
   try {
-    // Get total production - fetch ALL events without limit
+    // Get total production using SQL SUM aggregation
     const { data: totalData, error: totalError } = await supabase
-      .from('water_production_events')
-      .select('production_liters')
-      .eq('machine_id', machineId)
-      .gt('production_liters', 0)
-      .limit(10000);
+      .rpc('get_total_production', { p_machine_id: machineId });
 
     if (totalError) throw totalError;
+    const totalAllTimeProduction = totalData || 0;
 
-    const totalAllTimeProduction = totalData?.reduce((sum, event) => 
-      sum + Number(event.production_liters || 0), 0) || 0;
-
-    // Get daily data (last 7 days) using SQL aggregation
+    // Get daily aggregated data using SQL DATE_TRUNC
     const { data: dailyData, error: dailyError } = await supabase
-      .from('water_production_events')
-      .select(`
-        timestamp_utc,
-        production_liters
-      `)
-      .eq('machine_id', machineId)
-      .gt('production_liters', 0)
-      .gte('timestamp_utc', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-      .order('timestamp_utc', { ascending: true });
+      .rpc('get_daily_production', { 
+        p_machine_id: machineId,
+        p_days: 7
+      });
 
     if (dailyError) throw dailyError;
 
-    // Aggregate daily data
-    const dailyMap = new Map<string, number>();
-    dailyData?.forEach(event => {
-      const date = new Date(event.timestamp_utc);
-      const dateKey = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-      dailyMap.set(dateKey, (dailyMap.get(dateKey) || 0) + Number(event.production_liters));
-    });
-
+    // Format daily data for chart
     const dailyProductionData = Array.from({ length: 7 }, (_, i) => {
       const date = new Date();
       date.setDate(date.getDate() - (6 - i));
       const dateKey = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-      return { date: dateKey, production: Math.round((dailyMap.get(dateKey) || 0) * 10) / 10 };
+      const dayData = dailyData?.find(d => {
+        const dataDate = new Date(d.day);
+        return dataDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) === dateKey;
+      });
+      return { date: dateKey, production: Math.round((dayData?.total_production || 0) * 10) / 10 };
     });
 
-    // Get weekly data (last 4 weeks) using SQL aggregation
+    // Get weekly aggregated data using SQL
     const { data: weeklyData, error: weeklyError } = await supabase
-      .from('water_production_events')
-      .select(`
-        timestamp_utc,
-        production_liters
-      `)
-      .eq('machine_id', machineId)
-      .gt('production_liters', 0)
-      .gte('timestamp_utc', new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString())
-      .order('timestamp_utc', { ascending: true });
+      .rpc('get_weekly_production', { 
+        p_machine_id: machineId,
+        p_weeks: 4
+      });
 
     if (weeklyError) throw weeklyError;
 
-    // Aggregate weekly data
-    const weeklyMap = new Map<string, number>();
-    weeklyData?.forEach(event => {
-      const date = new Date(event.timestamp_utc);
-      const weekStart = new Date(date);
-      weekStart.setDate(date.getDate() - date.getDay());
-      const weekKey = `Week ${Math.ceil((Date.now() - weekStart.getTime()) / (7 * 24 * 60 * 60 * 1000))}`;
-      weeklyMap.set(weekKey, (weeklyMap.get(weekKey) || 0) + Number(event.production_liters));
-    });
-
     const weeklyProductionData = Array.from({ length: 4 }, (_, i) => {
       const weekKey = `Week ${i + 1}`;
-      return { week: weekKey, production: Math.round((weeklyMap.get(weekKey) || 0) * 10) / 10 };
+      const weekData = weeklyData?.find(w => w.week_number === i + 1);
+      return { week: weekKey, production: Math.round((weekData?.total_production || 0) * 10) / 10 };
     });
 
-    // Get monthly data (last 3 months) using SQL aggregation
+    // Get monthly aggregated data using SQL
     const { data: monthlyData, error: monthlyError } = await supabase
-      .from('water_production_events')
-      .select(`
-        timestamp_utc,
-        production_liters
-      `)
-      .eq('machine_id', machineId)
-      .gt('production_liters', 0)
-      .gte('timestamp_utc', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString())
-      .order('timestamp_utc', { ascending: true });
+      .rpc('get_monthly_production', { 
+        p_machine_id: machineId,
+        p_months: 3
+      });
 
     if (monthlyError) throw monthlyError;
-
-    // Aggregate monthly data
-    const monthlyMap = new Map<string, number>();
-    monthlyData?.forEach(event => {
-      const date = new Date(event.timestamp_utc);
-      const monthKey = date.toLocaleDateString('en-GB', { month: 'short' });
-      monthlyMap.set(monthKey, (monthlyMap.get(monthKey) || 0) + Number(event.production_liters));
-    });
 
     const monthlyProductionData = Array.from({ length: 3 }, (_, i) => {
       const date = new Date();
       date.setMonth(date.getMonth() - (2 - i));
       const monthKey = date.toLocaleDateString('en-GB', { month: 'short' });
-      return { month: monthKey, production: Math.round((monthlyMap.get(monthKey) || 0) * 10) / 10 };
+      const monthData = monthlyData?.find(m => {
+        const dataDate = new Date(m.month);
+        return dataDate.toLocaleDateString('en-GB', { month: 'short' }) === monthKey;
+      });
+      return { month: monthKey, production: Math.round((monthData?.total_production || 0) * 10) / 10 };
     });
 
-    // Get yearly data (last 2 years) using SQL aggregation
+    // Get yearly aggregated data using SQL
     const { data: yearlyData, error: yearlyError } = await supabase
-      .from('water_production_events')
-      .select(`
-        timestamp_utc,
-        production_liters
-      `)
-      .eq('machine_id', machineId)
-      .gt('production_liters', 0)
-      .gte('timestamp_utc', new Date(Date.now() - 730 * 24 * 60 * 60 * 1000).toISOString())
-      .order('timestamp_utc', { ascending: true });
+      .rpc('get_yearly_production', { 
+        p_machine_id: machineId,
+        p_years: 2
+      });
 
     if (yearlyError) throw yearlyError;
 
-    // Aggregate yearly data
-    const yearlyMap = new Map<string, number>();
-    yearlyData?.forEach(event => {
-      const date = new Date(event.timestamp_utc);
-      const yearKey = date.getFullYear().toString();
-      yearlyMap.set(yearKey, (yearlyMap.get(yearKey) || 0) + Number(event.production_liters));
-    });
-
     const yearlyProductionData = Array.from({ length: 2 }, (_, i) => {
       const year = (new Date().getFullYear() - (1 - i)).toString();
-      return { year, production: Math.round((yearlyMap.get(year) || 0) * 10) / 10 };
+      const yearData = yearlyData?.find(y => y.year.toString() === year);
+      return { year, production: Math.round((yearData?.total_production || 0) * 10) / 10 };
     });
 
     return {
