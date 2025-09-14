@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -493,12 +493,12 @@ export type Database = {
     Functions: {
       admin_create_user: {
         Args: {
-          p_email: string
-          p_password: string
-          p_username: string
-          p_role: Database["public"]["Enums"]["user_role"]
           p_contact_email?: string
           p_contact_phone?: string
+          p_email: string
+          p_password: string
+          p_role: Database["public"]["Enums"]["user_role"]
+          p_username: string
         }
         Returns: string
       }
@@ -508,19 +508,19 @@ export type Database = {
       }
       admin_update_user_profile: {
         Args: {
-          p_user_id: string
-          p_username: string
-          p_role: Database["public"]["Enums"]["user_role"]
           p_contact_email?: string
           p_contact_phone?: string
+          p_role: Database["public"]["Enums"]["user_role"]
+          p_user_id: string
+          p_username: string
         }
         Returns: undefined
       }
       assign_microcontroller_uid: {
         Args: {
+          p_assigned_by?: string
           p_machine_id: number
           p_microcontroller_uid: string
-          p_assigned_by?: string
           p_notes?: string
         }
         Returns: string
@@ -531,9 +531,9 @@ export type Database = {
       }
       create_invitation: {
         Args: {
+          p_created_by: string
           p_email: string
           p_role: Database["public"]["Enums"]["user_role"]
-          p_created_by: string
         }
         Returns: string
       }
@@ -556,17 +556,17 @@ export type Database = {
       get_users_with_auth_emails: {
         Args: Record<PropertyKey, never>
         Returns: {
-          id: string
-          username: string
-          role: Database["public"]["Enums"]["user_role"]
+          auth_email: string
           contact_email: string
           contact_phone: string
           created_at: string
-          auth_email: string
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+          username: string
         }[]
       }
       reset_machine_metrics: {
-        Args: { p_machine_id: string; p_admin_user_id: string }
+        Args: { p_admin_user_id: string; p_machine_id: string }
         Returns: undefined
       }
     }
