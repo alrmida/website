@@ -163,36 +163,6 @@ const ClientDashboard = () => {
           </div>
         )}
 
-        {/* Production Data Info with new summary system status */}
-        {selectedMachine && (
-          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <p className="text-sm text-blue-800 mb-2">
-                  📊 Production Data for {selectedMachine.machine_id}
-                </p>
-                <div className="text-xs text-blue-700 space-y-1">
-                  <div>Total Production: {productionData.totalProduction.toFixed(2)}L</div>
-                  <div>Daily Data Points: {productionData.dailyData.length}</div>
-                  <div className="text-green-600">
-                    ✨ New: Fast summary tables created! Click "Backfill Historical Data" to populate them.
-                  </div>
-                  {productionError && <div className="text-red-600">Error: {productionError}</div>}
-                </div>
-              </div>
-              
-              <div className="flex gap-2">
-                <button
-                  onClick={refreshProduction}
-                  disabled={productionLoading}
-                  className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {productionLoading ? 'Loading...' : '🔄 Refresh Data'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Metrics Cards Grid - mobile optimized spacing */}
         <div className="mb-6 sm:mb-8">
