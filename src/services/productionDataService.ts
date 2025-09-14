@@ -37,7 +37,8 @@ export const fetchProductionData = async (machineId: string) => {
     const { data: totalData, error: totalError } = await supabase
       .from('water_production_events')
       .select('production_liters.sum()')
-      .eq('machine_id', machineId);
+      .eq('machine_id', machineId)
+      .gt('production_liters', 0);
 
     if (totalError) throw totalError;
     const totalAllTimeProduction = (totalData && totalData[0] ? totalData[0].sum : 0) || 0;
