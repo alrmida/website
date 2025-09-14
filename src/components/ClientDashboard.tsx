@@ -14,6 +14,7 @@ import { useDashboardData } from '@/hooks/useDashboardData';
 import { useSimpleProductionData } from '@/hooks/useSimpleProductionData';
 
 const ClientDashboard = () => {
+  // Fixed: Removed finalAnalyticsData reference - using simple production data
   const { profile } = useAuth();
   const { t } = useLocalization();
   const [selectedMachine, setSelectedMachine] = useState<MachineWithClient | null>(null);
