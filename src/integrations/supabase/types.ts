@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      daily_production_summary: {
+        Row: {
+          created_at: string
+          date: string
+          disconnected_percentage: number
+          drainage_events_count: number
+          first_event_time: string | null
+          full_water_percentage: number
+          id: string
+          idle_percentage: number
+          last_event_time: string | null
+          machine_id: string
+          producing_percentage: number
+          production_events_count: number
+          total_production_liters: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          disconnected_percentage?: number
+          drainage_events_count?: number
+          first_event_time?: string | null
+          full_water_percentage?: number
+          id?: string
+          idle_percentage?: number
+          last_event_time?: string | null
+          machine_id: string
+          producing_percentage?: number
+          production_events_count?: number
+          total_production_liters?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          disconnected_percentage?: number
+          drainage_events_count?: number
+          first_event_time?: string | null
+          full_water_percentage?: number
+          id?: string
+          idle_percentage?: number
+          last_event_time?: string | null
+          machine_id?: string
+          producing_percentage?: number
+          production_events_count?: number
+          total_production_liters?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       data_ingestion_logs: {
         Row: {
           created_at: string
@@ -141,6 +192,36 @@ export type Database = {
           },
         ]
       }
+      machine_production_totals: {
+        Row: {
+          created_at: string
+          id: string
+          last_production_event_id: string | null
+          last_updated: string
+          machine_id: string
+          total_production_liters: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_production_event_id?: string | null
+          last_updated?: string
+          machine_id: string
+          total_production_liters?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_production_event_id?: string | null
+          last_updated?: string
+          machine_id?: string
+          total_production_liters?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       machines: {
         Row: {
           client_id: string | null
@@ -194,6 +275,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      monthly_production_summary: {
+        Row: {
+          created_at: string
+          disconnected_percentage: number
+          drainage_events_count: number
+          first_event_time: string | null
+          full_water_percentage: number
+          id: string
+          idle_percentage: number
+          last_event_time: string | null
+          machine_id: string
+          month: number
+          month_year: string
+          producing_percentage: number
+          production_events_count: number
+          total_production_liters: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          disconnected_percentage?: number
+          drainage_events_count?: number
+          first_event_time?: string | null
+          full_water_percentage?: number
+          id?: string
+          idle_percentage?: number
+          last_event_time?: string | null
+          machine_id: string
+          month: number
+          month_year: string
+          producing_percentage?: number
+          production_events_count?: number
+          total_production_liters?: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          disconnected_percentage?: number
+          drainage_events_count?: number
+          first_event_time?: string | null
+          full_water_percentage?: number
+          id?: string
+          idle_percentage?: number
+          last_event_time?: string | null
+          machine_id?: string
+          month?: number
+          month_year?: string
+          producing_percentage?: number
+          production_events_count?: number
+          total_production_liters?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -483,6 +621,114 @@ export type Database = {
           production_liters?: number | null
           water_level_end?: number | null
           water_level_start?: number | null
+        }
+        Relationships: []
+      }
+      weekly_production_summary: {
+        Row: {
+          created_at: string
+          disconnected_percentage: number
+          drainage_events_count: number
+          first_event_time: string | null
+          full_water_percentage: number
+          id: string
+          idle_percentage: number
+          last_event_time: string | null
+          machine_id: string
+          producing_percentage: number
+          production_events_count: number
+          total_production_liters: number
+          updated_at: string
+          week_number: number
+          week_start: string
+          week_year: number
+        }
+        Insert: {
+          created_at?: string
+          disconnected_percentage?: number
+          drainage_events_count?: number
+          first_event_time?: string | null
+          full_water_percentage?: number
+          id?: string
+          idle_percentage?: number
+          last_event_time?: string | null
+          machine_id: string
+          producing_percentage?: number
+          production_events_count?: number
+          total_production_liters?: number
+          updated_at?: string
+          week_number: number
+          week_start: string
+          week_year: number
+        }
+        Update: {
+          created_at?: string
+          disconnected_percentage?: number
+          drainage_events_count?: number
+          first_event_time?: string | null
+          full_water_percentage?: number
+          id?: string
+          idle_percentage?: number
+          last_event_time?: string | null
+          machine_id?: string
+          producing_percentage?: number
+          production_events_count?: number
+          total_production_liters?: number
+          updated_at?: string
+          week_number?: number
+          week_start?: string
+          week_year?: number
+        }
+        Relationships: []
+      }
+      yearly_production_summary: {
+        Row: {
+          created_at: string
+          disconnected_percentage: number
+          drainage_events_count: number
+          first_event_time: string | null
+          full_water_percentage: number
+          id: string
+          idle_percentage: number
+          last_event_time: string | null
+          machine_id: string
+          producing_percentage: number
+          production_events_count: number
+          total_production_liters: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          disconnected_percentage?: number
+          drainage_events_count?: number
+          first_event_time?: string | null
+          full_water_percentage?: number
+          id?: string
+          idle_percentage?: number
+          last_event_time?: string | null
+          machine_id: string
+          producing_percentage?: number
+          production_events_count?: number
+          total_production_liters?: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          disconnected_percentage?: number
+          drainage_events_count?: number
+          first_event_time?: string | null
+          full_water_percentage?: number
+          id?: string
+          idle_percentage?: number
+          last_event_time?: string | null
+          machine_id?: string
+          producing_percentage?: number
+          production_events_count?: number
+          total_production_liters?: number
+          updated_at?: string
+          year?: number
         }
         Relationships: []
       }
