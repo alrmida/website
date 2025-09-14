@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLocalization } from '@/contexts/LocalizationContext';
 import DashboardHeader from './DashboardHeader';
@@ -12,10 +11,7 @@ import DashboardNotifications from './DashboardNotifications';
 import { MachineWithClient } from '@/types/machine';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDashboardData } from '@/hooks/useDashboardData';
-import { useSimpleWaterProduction } from '@/hooks/useSimpleWaterProduction';
-import { useDirectProductionService } from '@/hooks/useDirectProductionService';
-import { useForceProductionRefresh } from '@/hooks/useForceProductionRefresh';
-
+import { useSimpleProductionData } from '@/hooks/useSimpleProductionData';
 
 const ClientDashboard = () => {
   const { profile } = useAuth();
@@ -23,44 +19,22 @@ const ClientDashboard = () => {
   const [selectedMachine, setSelectedMachine] = useState<MachineWithClient | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState('daily');
 
-  // Use the new dashboard data hook that handles both live data and analytics
+  // Simple production data - no complex layering
+  const {
+    data: productionData,
+    isLoading: productionLoading,
+    error: productionError,
+    refetch: refreshProduction
+  } = useSimpleProductionData(selectedMachine?.machine_id);
+
+  // Basic dashboard data for machine info and water tank
   const {
     machineInfo,
     waterTank,
-    dailyProductionData,
-    monthlyProductionData,
-    statusData,
-    monthlyStatusData,
-    totalWaterProduced,
     liveData,
     dataLoading,
-    dataError,
-    analyticsData,
-    analyticsLoading,
-    analyticsError
+    dataError
   } = useDashboardData(selectedMachine);
-
-  // Get the actual production tracking data with real timestamps
-  const { data: productionData } = useSimpleWaterProduction(
-    selectedMachine?.machine_id, 
-    liveData?.waterLevel
-  );
-
-  // DIRECT SERVICE FALLBACK - Guaranteed production data fetch
-  const { 
-    data: directProductionData, 
-    isLoading: directLoading, 
-    error: directError,
-    directFetch 
-  } = useDirectProductionService(selectedMachine?.machine_id);
-
-  // EMERGENCY FORCE REFRESH
-  const { forceRefresh, isRefreshing, lastRefresh } = useForceProductionRefresh();
-
-  // Use direct service data if analytics data is missing or zero
-  const finalAnalyticsData = analyticsData?.totalAllTimeProduction > 0 
-    ? analyticsData 
-    : directProductionData;
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -180,75 +154,54 @@ const ClientDashboard = () => {
           </div>
         )}
 
+        {/* Simple Refresh Controls */}
+        {selectedMachine && (
+          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800 mb-2">
+              📊 Production Data for {selectedMachine.machine_id}
+            </p>
+            <div className="flex gap-2 mb-2">
+              <button
+                onClick={refreshProduction}
+                disabled={productionLoading}
+                className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50"
+              >
+                {productionLoading ? 'Loading...' : '🔄 Refresh Data'}
+              </button>
+            </div>
+            <div className="text-xs text-blue-700">
+              <div>Total Production: {productionData.totalProduction.toFixed(2)}L</div>
+              <div>Daily Data Points: {productionData.dailyData.length}</div>
+              <div>Weekly Data Points: {productionData.weeklyData.length}</div>
+              <div>Monthly Data Points: {productionData.monthlyData.length}</div>
+              {productionError && <div className="text-red-600">Error: {productionError}</div>}
+            </div>
+          </div>
+        )}
+
         {/* Metrics Cards Grid - mobile optimized spacing */}
         <div className="mb-6 sm:mb-8">
           <MetricsCards 
             waterTank={waterTank}
             machineStatus={liveData?.status || 'Loading...'}
-            totalWaterProduced={finalAnalyticsData?.totalAllTimeProduction || totalWaterProduced}
-            lastUpdate={productionData.lastProductionEvent ? productionData.lastProductionEvent.toISOString() : null}
+            totalWaterProduced={productionData.totalProduction}
+            lastUpdate={new Date().toISOString()}
           />
         </div>
 
         {/* Production Analytics - Charts and Visualizations */}
         <div className="mb-6 sm:mb-8">
-          {(() => {
-            console.log('🎨 [CLIENT DASHBOARD] Rendering ProductionAnalytics with COMPREHENSIVE data:', {
-              hasAnalyticsData: !!analyticsData,
-              hasDirectData: !!directProductionData,
-              analyticsTotal: analyticsData?.totalAllTimeProduction || 0,
-              directTotal: directProductionData?.totalAllTimeProduction || 0,
-              finalTotal: finalAnalyticsData?.totalAllTimeProduction || 0,
-              usingDirect: finalAnalyticsData === directProductionData,
-              dailyPoints: finalAnalyticsData?.dailyProductionData?.length || 0,
-              analyticsLoading,
-              directLoading,
-              analyticsError,
-              directError,
-              selectedMachine: selectedMachine?.machine_id
-            });
-            return null;
-          })()}
-          
-          {/* EMERGENCY PRODUCTION REFRESH - Always visible */}
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-800 mb-2">
-              🚨 EMERGENCY: Force Production Data Refresh (Database shows 458.36L for ID97, 302.98L for ID94)
-            </p>
-            <div className="flex gap-2 mb-2">
-              <button
-                onClick={() => selectedMachine && forceRefresh(selectedMachine.machine_id)}
-                disabled={isRefreshing}
-                className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 disabled:opacity-50"
-              >
-                {isRefreshing ? 'Refreshing...' : '🚨 FORCE REFRESH'}
-              </button>
-              <button
-                onClick={directFetch}
-                className="px-3 py-1 bg-yellow-600 text-white rounded text-sm hover:bg-yellow-700"
-              >
-                Force Direct Fetch
-              </button>
-            </div>
-            <div className="text-xs text-red-700">
-              <div>Analytics Total: {analyticsData?.totalAllTimeProduction || 0}L</div>
-              <div>Direct Total: {directProductionData?.totalAllTimeProduction || 0}L</div>
-              <div>Last Refresh: {lastRefresh || 'Never'}</div>
-              <div>Expected: KU001619000097=458.36L | KU001619000094=302.98L</div>
-            </div>
-          </div>
-          
           <ProductionAnalytics
             selectedPeriod={selectedPeriod}
             onPeriodChange={setSelectedPeriod}
-            dailyProductionData={finalAnalyticsData?.dailyProductionData || []}
-            weeklyProductionData={finalAnalyticsData?.weeklyProductionData || []}
-            monthlyProductionData={finalAnalyticsData?.monthlyProductionData || []}
-            yearlyProductionData={finalAnalyticsData?.yearlyProductionData || []}
-            statusData={finalAnalyticsData?.statusData || []}
-            weeklyStatusData={finalAnalyticsData?.weeklyStatusData || []}
-            monthlyStatusData={finalAnalyticsData?.monthlyStatusData || []}
-            yearlyStatusData={finalAnalyticsData?.yearlyStatusData || []}
+            dailyProductionData={productionData.dailyData.map(d => ({ date: d.date, production: d.production }))}
+            weeklyProductionData={productionData.weeklyData.map(d => ({ week: d.week, production: d.production }))}
+            monthlyProductionData={productionData.monthlyData.map(d => ({ month: d.month, production: d.production }))}
+            yearlyProductionData={productionData.yearlyData.map(d => ({ year: d.year, production: d.production }))}
+            statusData={[]}
+            weeklyStatusData={[]}
+            monthlyStatusData={[]}
+            yearlyStatusData={[]}
           />
         </div>
       </main>
