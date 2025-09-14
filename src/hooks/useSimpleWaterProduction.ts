@@ -48,7 +48,7 @@ export const useSimpleWaterProduction = (machineId?: string, currentWaterLevel?:
           .from('water_production_events')
           .select('production_liters, timestamp_utc')
           .eq('machine_id', machineId)
-          .eq('event_type', 'production')
+          .gt('production_liters', 0)
           .order('timestamp_utc', { ascending: false });
 
         if (eventsError) {
@@ -68,7 +68,7 @@ export const useSimpleWaterProduction = (machineId?: string, currentWaterLevel?:
           .from('water_production_events')
           .select('timestamp_utc')
           .eq('machine_id', machineId)
-          .eq('event_type', 'production')
+          .gt('production_liters', 0)
           .order('timestamp_utc', { ascending: false })
           .limit(1)
           .maybeSingle();

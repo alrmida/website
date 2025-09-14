@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Trash2, RefreshCw } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MachineWithClient } from '@/types/machine';
+import { ManualAggregationTrigger } from './ManualAggregationTrigger';
 
 interface RawMachineData {
   id: string;
@@ -188,7 +189,9 @@ const RawDataManagement = ({ selectedMachine, onRefresh }: RawDataManagementProp
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <ManualAggregationTrigger />
+      <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
           <h3 className="text-lg font-semibold">Enhanced Raw Machine Data</h3>
@@ -314,14 +317,15 @@ const RawDataManagement = ({ selectedMachine, onRefresh }: RawDataManagementProp
                       <TableCell className="text-xs">{formatTimestamp(record.created_at)}</TableCell>
                     </TableRow>
                   ))
-                )}
-              </TableBody>
-            </Table>
-          </ScrollArea>
-        </div>
-      )}
-    </div>
-  );
+                 )}
+               </TableBody>
+             </Table>
+           </ScrollArea>
+         </div>
+       )}
+     </div>
+   </div>
+ );
 };
 
 export default RawDataManagement;
