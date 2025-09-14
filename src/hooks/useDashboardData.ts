@@ -55,18 +55,34 @@ export const useDashboardData = (selectedMachine: MachineWithClient | null) => {
       ? analyticsData.dailyProductionData 
       : getStaticProductionData(selectedMachine?.machine_id).daily;
 
+    const weeklyProductionData = hasRealData && analyticsData.weeklyProductionData.length > 0 
+      ? analyticsData.weeklyProductionData 
+      : [];
+
     const monthlyProductionData = hasRealData && analyticsData.monthlyProductionData.length > 0 
       ? analyticsData.monthlyProductionData 
       : getStaticProductionData(selectedMachine?.machine_id).monthly;
+
+    const yearlyProductionData = hasRealData && analyticsData.yearlyProductionData.length > 0 
+      ? analyticsData.yearlyProductionData 
+      : [];
 
     // Use real status data when available, otherwise use static data
     const statusData = hasRealData && analyticsData.statusData.length > 0 
       ? analyticsData.statusData 
       : getStaticStatusData(selectedMachine?.machine_id);
 
+    const weeklyStatusData = hasRealData && analyticsData.weeklyStatusData.length > 0 
+      ? analyticsData.weeklyStatusData 
+      : [];
+
     const monthlyStatusData = hasRealData && analyticsData.monthlyStatusData.length > 0 
       ? analyticsData.monthlyStatusData 
       : getStaticMonthlyStatusData(selectedMachine?.machine_id);
+
+    const yearlyStatusData = hasRealData && analyticsData.yearlyStatusData.length > 0 
+      ? analyticsData.yearlyStatusData 
+      : [];
 
     // Calculate total water produced using ALL-TIME data from analytics
     const totalWaterProduced = selectedMachine && analyticsData?.totalAllTimeProduction !== undefined
@@ -82,9 +98,13 @@ export const useDashboardData = (selectedMachine: MachineWithClient | null) => {
       machineInfo,
       waterTank,
       dailyProductionData,
+      weeklyProductionData,
       monthlyProductionData,
+      yearlyProductionData,
       statusData,
+      weeklyStatusData,
       monthlyStatusData,
+      yearlyStatusData,
       totalWaterProduced,
       liveData: liveData || { status: 'Loading...', isOnline: false, waterLevel: 0, lastUpdated: new Date(), compressorOn: false }
     };

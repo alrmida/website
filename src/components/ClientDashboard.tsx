@@ -11,7 +11,7 @@ import DashboardNotifications from './DashboardNotifications';
 import { MachineWithClient } from '@/types/machine';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDashboardData } from '@/hooks/useDashboardData';
-import { useSimpleProductionData } from '@/hooks/useSimpleProductionData';
+
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -21,19 +21,20 @@ const ClientDashboard = () => {
   const [selectedMachine, setSelectedMachine] = useState<MachineWithClient | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState('daily');
 
-  // Keep using existing production data system for now
-  const {
-    data: productionData,
-    isLoading: productionLoading,
-    error: productionError,
-    refetch: refreshProduction
-  } = useSimpleProductionData(selectedMachine?.machine_id);
-
-  // Keep using existing dashboard data system
+  // Use dashboard data from summary tables
   const {
     machineInfo,
     waterTank,
     liveData,
+    dailyProductionData,
+    weeklyProductionData,
+    monthlyProductionData,
+    yearlyProductionData,
+    statusData,
+    weeklyStatusData,
+    monthlyStatusData,
+    yearlyStatusData,
+    totalWaterProduced,
     dataLoading,
     dataError
   } = useDashboardData(selectedMachine);
@@ -169,7 +170,7 @@ const ClientDashboard = () => {
           <MetricsCards 
             waterTank={waterTank}
             machineStatus={liveData?.status || 'Loading...'}
-            totalWaterProduced={productionData.totalProduction}
+            totalWaterProduced={totalWaterProduced}
             lastUpdate={new Date().toISOString()}
           />
         </div>
@@ -179,14 +180,14 @@ const ClientDashboard = () => {
           <ProductionAnalytics
             selectedPeriod={selectedPeriod}
             onPeriodChange={setSelectedPeriod}
-            dailyProductionData={productionData.dailyData.map(d => ({ date: d.date, production: d.production }))}
-            weeklyProductionData={productionData.weeklyData.map(d => ({ week: d.week, production: d.production }))}
-            monthlyProductionData={productionData.monthlyData.map(d => ({ month: d.month, production: d.production }))}
-            yearlyProductionData={productionData.yearlyData.map(d => ({ year: d.year, production: d.production }))}
-            statusData={[]}
-            weeklyStatusData={[]}
-            monthlyStatusData={[]}
-            yearlyStatusData={[]}
+            dailyProductionData={dailyProductionData}
+            weeklyProductionData={weeklyProductionData}
+            monthlyProductionData={monthlyProductionData}
+            yearlyProductionData={yearlyProductionData}
+            statusData={statusData}
+            weeklyStatusData={weeklyStatusData}
+            monthlyStatusData={monthlyStatusData}
+            yearlyStatusData={yearlyStatusData}
           />
         </div>
       </main>
