@@ -1,12 +1,4 @@
 import { supabase } from '@/integrations/supabase/client';
-import { ProductionData, MonthlyProductionData } from '@/types/productionAnalytics';
-import { 
-  aggregateDailyToWeekly,
-  aggregateWeeklyToMonthly,
-  aggregateMonthlyToYearly,
-  generateTimePeriodLabels,
-  ProductionPoint
-} from '@/utils/productionAggregation';
 
 interface WeeklyProductionData {
   week: string;
@@ -19,172 +11,182 @@ interface YearlyProductionData {
 }
 
 export const fetchProductionData = async (machineId: string) => {
-  console.log('🚀 [PRODUCTION SERVICE] Starting hierarchical production data fetch for machine:', machineId);
-  
   if (!machineId || machineId.trim() === '') {
-    console.warn('⚠️ [PRODUCTION SERVICE] Invalid machineId provided');
-    const { dailyLabels, weeklyLabels, monthlyLabels, yearlyLabels } = generateTimePeriodLabels();
-    
     return {
-      dailyProductionData: dailyLabels.map(date => ({ date, production: 0 })),
-      weeklyProductionData: weeklyLabels.map(week => ({ week, production: 0 })),
-      monthlyProductionData: monthlyLabels.map(month => ({ month, production: 0 })),
-      yearlyProductionData: yearlyLabels.map(year => ({ year, production: 0 })),
+      dailyProductionData: Array.from({ length: 7 }, (_, i) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (6 - i));
+        return { date: date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }), production: 0 };
+      }),
+      weeklyProductionData: Array.from({ length: 4 }, (_, i) => ({ week: `Week ${i + 1}`, production: 0 })),
+      monthlyProductionData: Array.from({ length: 3 }, (_, i) => {
+        const date = new Date();
+        date.setMonth(date.getMonth() - (2 - i));
+        return { month: date.toLocaleDateString('en-GB', { month: 'short' }), production: 0 };
+      }),
+      yearlyProductionData: Array.from({ length: 2 }, (_, i) => {
+        const year = new Date().getFullYear() - (1 - i);
+        return { year: year.toString(), production: 0 };
+      }),
       totalAllTimeProduction: 0
     };
   }
 
   try {
-    // Phase 1: Get ALL production events for total calculation (no date filtering)
-    console.log('📡 [PRODUCTION SERVICE] Phase 1: Fetching ALL production events...');
+    // Get total production - fetch ALL events without limit
     const { data: totalData, error: totalError } = await supabase
       .from('water_production_events')
-      .select('production_liters, timestamp_utc')
+      .select('production_liters')
+      .eq('machine_id', machineId)
+      .gt('production_liters', 0);
+
+    if (totalError) throw totalError;
+
+    const totalAllTimeProduction = totalData?.reduce((sum, event) => 
+      sum + Number(event.production_liters || 0), 0) || 0;
+
+    // Get daily data (last 7 days) using SQL aggregation
+    const { data: dailyData, error: dailyError } = await supabase
+      .from('water_production_events')
+      .select(`
+        timestamp_utc,
+        production_liters
+      `)
       .eq('machine_id', machineId)
       .gt('production_liters', 0)
+      .gte('timestamp_utc', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
       .order('timestamp_utc', { ascending: true });
 
-    if (totalError) {
-      console.error('❌ [PRODUCTION SERVICE] Error fetching total:', totalError);
-      throw totalError;
-    }
+    if (dailyError) throw dailyError;
 
-    console.log('🔍 [PRODUCTION SERVICE] ALL events fetched:', totalData?.length || 0);
-    
-    const totalAllTimeProduction = totalData?.reduce((sum, event) => {
-      const production = Number(event.production_liters || 0);
-      return sum + production;
-    }, 0) || 0;
-
-    console.log('📈 [PRODUCTION SERVICE] Raw total from ALL events:', totalAllTimeProduction);
-    console.log('📈 [PRODUCTION SERVICE] Sample events:', totalData?.slice(0, 3));
-    console.log('📈 [PRODUCTION SERVICE] Sample recent events:', totalData?.slice(-3));
-
-    // Phase 2: Get sufficient recent data for hierarchical aggregation (90 days)
-    console.log('📡 [PRODUCTION SERVICE] Phase 2: Fetching recent events for aggregation...');
-    const ninetyDaysAgo = new Date();
-    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-    
-    const recentEvents = totalData?.filter(event => 
-      new Date(event.timestamp_utc) >= ninetyDaysAgo
-    ) || [];
-
-    console.log('📊 [PRODUCTION SERVICE] Recent events for aggregation:', {
-      total: totalData?.length || 0,
-      recent90Days: recentEvents.length,
-      dateRange: recentEvents.length > 0 ? {
-        from: recentEvents[0]?.timestamp_utc,
-        to: recentEvents[recentEvents.length - 1]?.timestamp_utc
-      } : 'No recent data'
-    });
-
-    // Phase 3: Aggregate by day using JavaScript Date
-    console.log('📡 [PRODUCTION SERVICE] Phase 3: Creating daily aggregation...');
+    // Aggregate daily data
     const dailyMap = new Map<string, number>();
-    const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
-    recentEvents.forEach(event => {
+    dailyData?.forEach(event => {
       const date = new Date(event.timestamp_utc);
-      const dateKey = `${date.getUTCDate().toString().padStart(2, '0')} ${MONTHS[date.getUTCMonth()]}`;
+      const dateKey = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
       dailyMap.set(dateKey, (dailyMap.get(dateKey) || 0) + Number(event.production_liters));
     });
 
-    console.log('🗓️ [PRODUCTION SERVICE] Daily aggregation map:', Array.from(dailyMap.entries()).slice(-7));
+    const dailyProductionData = Array.from({ length: 7 }, (_, i) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (6 - i));
+      const dateKey = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+      return { date: dateKey, production: Math.round((dailyMap.get(dateKey) || 0) * 10) / 10 };
+    });
 
-    // Phase 4: Create production points for hierarchical aggregation
-    let allDailyPoints: ProductionPoint[] = [];
-    
-    if (dailyMap.size > 0) {
-      // Create production points from all data with proper sorting
-      allDailyPoints = Array.from(dailyMap.entries())
-        .map(([date, production]) => ({
-          date,
-          production: Math.round(production * 10) / 10
-        }))
-        .sort((a, b) => {
-          // Parse dates for proper sorting
-          const parseDate = (dateStr: string) => {
-            const [day, month] = dateStr.split(' ');
-            const monthIndex = MONTHS.indexOf(month);
-            const year = new Date().getFullYear();
-            return new Date(year, monthIndex, parseInt(day));
-          };
-          return parseDate(a.date).getTime() - parseDate(b.date).getTime();
-        });
-    }
+    // Get weekly data (last 4 weeks) using SQL aggregation
+    const { data: weeklyData, error: weeklyError } = await supabase
+      .from('water_production_events')
+      .select(`
+        timestamp_utc,
+        production_liters
+      `)
+      .eq('machine_id', machineId)
+      .gt('production_liters', 0)
+      .gte('timestamp_utc', new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString())
+      .order('timestamp_utc', { ascending: true });
 
-    // Phase 5: Extract data for different time periods
-    const dailyProductionData = allDailyPoints.slice(-7); // Last 7 days
-    
-    // Phase 6: Hierarchical aggregation
-    console.log('📡 [PRODUCTION SERVICE] Phase 6: Hierarchical aggregation...');
-    const weeklyPoints = aggregateDailyToWeekly(allDailyPoints);
-    const monthlyPoints = aggregateWeeklyToMonthly(weeklyPoints);
-    const yearlyPoints = aggregateMonthlyToYearly(monthlyPoints);
-    
-    // Extract the required time periods
-    const weeklyProductionData = weeklyPoints.slice(-4); // Last 4 weeks
-    const monthlyProductionData = monthlyPoints.slice(-3); // Last 3 months
-    const yearlyProductionData = yearlyPoints.slice(-2); // Last 2 years
+    if (weeklyError) throw weeklyError;
 
-    // Phase 7: Ensure proper fallback data if needed
-    const { dailyLabels, weeklyLabels, monthlyLabels, yearlyLabels } = generateTimePeriodLabels();
-    
-    const fillMissingPeriods = (actual: any[], expected: string[], keyField: string) => {
-      const result = [...actual];
-      
-      while (result.length < expected.length) {
-        const missingLabel = expected[expected.length - result.length - 1];
-        result.unshift({
-          [keyField]: missingLabel,
-          production: 0
-        });
-      }
-      
-      return result.slice(-expected.length);
-    };
+    // Aggregate weekly data
+    const weeklyMap = new Map<string, number>();
+    weeklyData?.forEach(event => {
+      const date = new Date(event.timestamp_utc);
+      const weekStart = new Date(date);
+      weekStart.setDate(date.getDate() - date.getDay());
+      const weekKey = `Week ${Math.ceil((Date.now() - weekStart.getTime()) / (7 * 24 * 60 * 60 * 1000))}`;
+      weeklyMap.set(weekKey, (weeklyMap.get(weekKey) || 0) + Number(event.production_liters));
+    });
 
-    const finalDailyData = fillMissingPeriods(dailyProductionData, dailyLabels, 'date');
-    const finalWeeklyData = fillMissingPeriods(weeklyProductionData, weeklyLabels, 'week');
-    const finalMonthlyData = fillMissingPeriods(monthlyProductionData, monthlyLabels, 'month');
-    const finalYearlyData = fillMissingPeriods(yearlyProductionData, yearlyLabels, 'year');
+    const weeklyProductionData = Array.from({ length: 4 }, (_, i) => {
+      const weekKey = `Week ${i + 1}`;
+      return { week: weekKey, production: Math.round((weeklyMap.get(weekKey) || 0) * 10) / 10 };
+    });
 
-    const finalResult = {
-      dailyProductionData: finalDailyData,
-      weeklyProductionData: finalWeeklyData,
-      monthlyProductionData: finalMonthlyData,
-      yearlyProductionData: finalYearlyData,
+    // Get monthly data (last 3 months) using SQL aggregation
+    const { data: monthlyData, error: monthlyError } = await supabase
+      .from('water_production_events')
+      .select(`
+        timestamp_utc,
+        production_liters
+      `)
+      .eq('machine_id', machineId)
+      .gt('production_liters', 0)
+      .gte('timestamp_utc', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString())
+      .order('timestamp_utc', { ascending: true });
+
+    if (monthlyError) throw monthlyError;
+
+    // Aggregate monthly data
+    const monthlyMap = new Map<string, number>();
+    monthlyData?.forEach(event => {
+      const date = new Date(event.timestamp_utc);
+      const monthKey = date.toLocaleDateString('en-GB', { month: 'short' });
+      monthlyMap.set(monthKey, (monthlyMap.get(monthKey) || 0) + Number(event.production_liters));
+    });
+
+    const monthlyProductionData = Array.from({ length: 3 }, (_, i) => {
+      const date = new Date();
+      date.setMonth(date.getMonth() - (2 - i));
+      const monthKey = date.toLocaleDateString('en-GB', { month: 'short' });
+      return { month: monthKey, production: Math.round((monthlyMap.get(monthKey) || 0) * 10) / 10 };
+    });
+
+    // Get yearly data (last 2 years) using SQL aggregation
+    const { data: yearlyData, error: yearlyError } = await supabase
+      .from('water_production_events')
+      .select(`
+        timestamp_utc,
+        production_liters
+      `)
+      .eq('machine_id', machineId)
+      .gt('production_liters', 0)
+      .gte('timestamp_utc', new Date(Date.now() - 730 * 24 * 60 * 60 * 1000).toISOString())
+      .order('timestamp_utc', { ascending: true });
+
+    if (yearlyError) throw yearlyError;
+
+    // Aggregate yearly data
+    const yearlyMap = new Map<string, number>();
+    yearlyData?.forEach(event => {
+      const date = new Date(event.timestamp_utc);
+      const yearKey = date.getFullYear().toString();
+      yearlyMap.set(yearKey, (yearlyMap.get(yearKey) || 0) + Number(event.production_liters));
+    });
+
+    const yearlyProductionData = Array.from({ length: 2 }, (_, i) => {
+      const year = (new Date().getFullYear() - (1 - i)).toString();
+      return { year, production: Math.round((yearlyMap.get(year) || 0) * 10) / 10 };
+    });
+
+    return {
+      dailyProductionData,
+      weeklyProductionData,
+      monthlyProductionData,
+      yearlyProductionData,
       totalAllTimeProduction: Math.round(totalAllTimeProduction * 10) / 10
     };
 
-    console.log('🎯 [PRODUCTION SERVICE] HIERARCHICAL AGGREGATION COMPLETE:', {
-      totalEvents: totalData?.length || 0,
-      totalProduction: finalResult.totalAllTimeProduction,
-      dailyPoints: finalResult.dailyProductionData.length,
-      weeklyPoints: finalResult.weeklyProductionData.length,
-      monthlyPoints: finalResult.monthlyProductionData.length,
-      yearlyPoints: finalResult.yearlyProductionData.length,
-      sampleDaily: finalResult.dailyProductionData.slice(-2),
-      sampleWeekly: finalResult.weeklyProductionData.slice(-2)
-    });
-    
-    return finalResult;
-
   } catch (error) {
-    console.error('❌ [PRODUCTION SERVICE] Unexpected error:', error);
+    console.error('❌ [PRODUCTION SERVICE] Error:', error);
     
-    // Return safe fallback data
-    const { dailyLabels, weeklyLabels, monthlyLabels, yearlyLabels } = generateTimePeriodLabels();
-    
-    const fallbackData = {
-      dailyProductionData: dailyLabels.map(date => ({ date, production: 0 })),
-      weeklyProductionData: weeklyLabels.map(week => ({ week, production: 0 })),
-      monthlyProductionData: monthlyLabels.map(month => ({ month, production: 0 })),
-      yearlyProductionData: yearlyLabels.map(year => ({ year, production: 0 })),
+    return {
+      dailyProductionData: Array.from({ length: 7 }, (_, i) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (6 - i));
+        return { date: date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }), production: 0 };
+      }),
+      weeklyProductionData: Array.from({ length: 4 }, (_, i) => ({ week: `Week ${i + 1}`, production: 0 })),
+      monthlyProductionData: Array.from({ length: 3 }, (_, i) => {
+        const date = new Date();
+        date.setMonth(date.getMonth() - (2 - i));
+        return { month: date.toLocaleDateString('en-GB', { month: 'short' }), production: 0 };
+      }),
+      yearlyProductionData: Array.from({ length: 2 }, (_, i) => {
+        const year = new Date().getFullYear() - (1 - i);
+        return { year: year.toString(), production: 0 };
+      }),
       totalAllTimeProduction: 0
     };
-
-    console.log('🔄 [PRODUCTION SERVICE] Returning fallback data due to error');
-    return fallbackData;
   }
 };
