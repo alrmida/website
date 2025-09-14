@@ -61,6 +61,11 @@ export const getDisplayModelName = (machine: DatabaseMachine): string => {
     return machine.machine_model;
   }
   
+  // Safety check: ensure machine_id exists before calling includes()
+  if (!machine.machine_id) {
+    return 'Unknown';
+  }
+  
   // Infer model from machine ID pattern (6 digits after 619)
   if (machine.machine_id.includes('001619')) return 'Amphore';
   if (machine.machine_id.includes('002619')) return 'BoKs';
