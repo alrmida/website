@@ -33,15 +33,15 @@ export const fetchProductionData = async (machineId: string) => {
   }
 
   try {
-    // Get total production using direct SQL aggregation
+    // Get total production using filtered fetch and JavaScript sum
     const { data: totalData, error: totalError } = await supabase
       .from('water_production_events')
-      .select('production_liters.sum()')
+      .select('production_liters')
       .eq('machine_id', machineId)
       .gt('production_liters', 0);
 
     if (totalError) throw totalError;
-    const totalAllTimeProduction = (totalData && totalData[0] ? totalData[0].sum : 0) || 0;
+    const totalAllTimeProduction = totalData?.reduce((sum, event) => sum + Number(event.production_liters), 0) || 0;
 
     // Get daily production using SQL DATE_TRUNC aggregation
     const { data: dailyData, error: dailyError } = await supabase
