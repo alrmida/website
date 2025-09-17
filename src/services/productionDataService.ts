@@ -120,6 +120,21 @@ export const fetchProductionData = async (machineId: string) => {
       });
     }
 
+    // Helpers for consistent labeling
+    const formatWeekRange = (isoStart: string) => {
+      const start = new Date(isoStart);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      const startStr = start.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+      const endStr = end.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+      return `${startStr} - ${endStr}`;
+    };
+
+    const formatMonthYear = (isoMonth: string) => {
+      const date = new Date(isoMonth);
+      return date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+    };
+
     // 3. Get weekly data from summary table
     let weeklyProductionData = [];
     const { data: weeklySummaries, error: weeklyError } = await supabase
@@ -132,24 +147,33 @@ export const fetchProductionData = async (machineId: string) => {
     if (weeklyError) throw weeklyError;
 
     if (weeklySummaries && weeklySummaries.length > 0) {
-      weeklyProductionData = weeklySummaries.slice(-4).map((summary, i) => ({
-        week: `Week ${i + 1}`,
+      const sliced = weeklySummaries.slice(-4);
+      weeklyProductionData = sliced.map((summary) => ({
+        week: formatWeekRange(summary.week_start),
         production: Math.round(Number(summary.total_production_liters) * 10) / 10
       }));
       
       // Pad with zeros if needed
       while (weeklyProductionData.length < 4) {
+        const lastStart = new Date();
+        lastStart.setDate(lastStart.getDate() - ((4 - weeklyProductionData.length) * 7));
+        // align to week start (Sunday)
+        const align = new Date(lastStart);
+        align.setDate(align.getDate() - align.getDay());
         weeklyProductionData.unshift({ 
-          week: `Week ${weeklyProductionData.length + 1}`, 
+          week: formatWeekRange(align.toISOString().split('T')[0]), 
           production: 0 
         });
       }
     } else {
       // Fallback to zero data
-      weeklyProductionData = Array.from({ length: 4 }, (_, i) => ({ 
-        week: `Week ${i + 1}`, 
-        production: 0 
-      }));
+      weeklyProductionData = Array.from({ length: 4 }, (_, i) => {
+        const now = new Date();
+        now.setDate(now.getDate() - ((3 - i) * 7));
+        const start = new Date(now);
+        start.setDate(start.getDate() - start.getDay());
+        return { week: formatWeekRange(start.toISOString().split('T')[0]), production: 0 };
+      });
     }
 
     // 4. Get monthly data from summary table
@@ -164,20 +188,17 @@ export const fetchProductionData = async (machineId: string) => {
     if (monthlyError) throw monthlyError;
 
     if (monthlySummaries && monthlySummaries.length > 0) {
-      monthlyProductionData = monthlySummaries.slice(-3).map(summary => {
-        const date = new Date(summary.month_year);
-        return {
-          month: date.toLocaleDateString('en-GB', { month: 'short' }),
-          production: Math.round(Number(summary.total_production_liters) * 10) / 10
-        };
-      });
+      monthlyProductionData = monthlySummaries.slice(-3).map(summary => ({
+        month: formatMonthYear(summary.month_year),
+        production: Math.round(Number(summary.total_production_liters) * 10) / 10
+      }));
       
       // Pad with zeros if needed
       while (monthlyProductionData.length < 3) {
         const date = new Date();
         date.setMonth(date.getMonth() - (3 - monthlyProductionData.length));
         monthlyProductionData.unshift({
-          month: date.toLocaleDateString('en-GB', { month: 'short' }),
+          month: date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }),
           production: 0
         });
       }
@@ -187,7 +208,7 @@ export const fetchProductionData = async (machineId: string) => {
         const date = new Date();
         date.setMonth(date.getMonth() - (2 - i));
         return { 
-          month: date.toLocaleDateString('en-GB', { month: 'short' }), 
+          month: date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }), 
           production: 0 
         };
       });

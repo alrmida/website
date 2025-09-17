@@ -202,33 +202,47 @@ export const fetchStatusData = async (machineId: string) => {
     if (weeklyError) throw weeklyError;
 
     if (weeklySummaries && weeklySummaries.length > 0) {
-      weeklyStatusData = weeklySummaries.slice(-4).map((summary, i) => ({
-        week: `Week ${i + 1}`,
+      const formatWeekRange = (isoStart: string) => {
+        const start = new Date(isoStart);
+        const end = new Date(start);
+        end.setDate(start.getDate() + 6);
+        const startStr = start.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+        const endStr = end.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+        return `${startStr} - ${endStr}`;
+      };
+
+      const sliced = weeklySummaries.slice(-4);
+      weeklyStatusData = sliced.map((summary) => ({
+        week: formatWeekRange(summary.week_start),
         producing: Math.round(Number(summary.producing_percentage) * 10) / 10,
         idle: Math.round(Number(summary.idle_percentage) * 10) / 10,
         fullWater: Math.round(Number(summary.full_water_percentage) * 10) / 10,
         disconnected: Math.round(Number(summary.disconnected_percentage) * 10) / 10
       }));
 
-      // Pad with disconnected status if needed
+      // Pad with neutral status if needed
       while (weeklyStatusData.length < 4) {
+        const now = new Date();
+        now.setDate(now.getDate() - ((4 - weeklyStatusData.length) * 7));
+        const start = new Date(now);
+        start.setDate(start.getDate() - start.getDay());
         weeklyStatusData.unshift({
-          week: `Week ${weeklyStatusData.length + 1}`,
+          week: formatWeekRange(start.toISOString().split('T')[0]),
           producing: 0,
           idle: 0,
           fullWater: 0,
-          disconnected: 100
+          disconnected: 0
         });
       }
     } else {
-      // Fallback to disconnected status
+      // Fallback to neutral (0) status with explicit labels
       const { weeklyLabels } = generateTimePeriodLabels();
       weeklyStatusData = weeklyLabels.map(week => ({ 
         week, 
         producing: 0, 
         idle: 0, 
-        fullWater: 0, 
-        disconnected: 100 
+        fullWater: 0,
+        disconnected: 0 
       }));
     }
 
@@ -253,7 +267,7 @@ export const fetchStatusData = async (machineId: string) => {
       monthlyStatusData = monthlySummaries.slice(-3).map(summary => {
         const date = new Date(summary.month_year);
         return {
-          month: date.toLocaleDateString('en-GB', { month: 'short' }),
+          month: date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }),
           producing: Math.round(Number(summary.producing_percentage) * 10) / 10,
           idle: Math.round(Number(summary.idle_percentage) * 10) / 10,
           fullWater: Math.round(Number(summary.full_water_percentage) * 10) / 10,
@@ -266,22 +280,22 @@ export const fetchStatusData = async (machineId: string) => {
         const date = new Date();
         date.setMonth(date.getMonth() - (3 - monthlyStatusData.length));
         monthlyStatusData.unshift({
-          month: date.toLocaleDateString('en-GB', { month: 'short' }),
+          month: date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }),
           producing: 0,
           idle: 0,
           fullWater: 0,
-          disconnected: 100
+          disconnected: 0
         });
       }
     } else {
-      // Fallback to disconnected status
+      // Fallback to neutral status
       const { monthlyLabels } = generateTimePeriodLabels();
       monthlyStatusData = monthlyLabels.map(month => ({ 
         month, 
         producing: 0, 
         idle: 0, 
-        fullWater: 0, 
-        disconnected: 100 
+        fullWater: 0,
+        disconnected: 0 
       }));
     }
 

@@ -67,15 +67,18 @@ const MachineSelector = ({ onMachineSelect, selectedMachine }: MachineSelectorPr
                profile?.role === 'commercial' ? 'KUMULUS Personnel' : 'Client'}
             </Badge>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </Button>
+          {/** Hide manual refresh for clients; keep for admin/commercial */}
+          {(profile?.role === 'admin' || profile?.role === 'commercial') && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent>
